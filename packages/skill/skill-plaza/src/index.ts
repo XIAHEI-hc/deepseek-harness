@@ -16,8 +16,8 @@ import { resolve as resolvePath } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-working-directory'
-import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
+import { BlockAssembler, createAssistantMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
+import type { ContentBlock, RequestMessage } from '@deepseek-ai/dsh-llm'
 import { SessionQueryError } from '@deepseek-ai/dsh-session-query'
 import { renderSkillContent } from '@deepseek-ai/dsh-skill'
 import type { SkillCandidate, SkillDefinition, SkillInvocationPolicy, SkillProvider } from '@deepseek-ai/dsh-skill'
@@ -363,13 +363,15 @@ export class SkillPlazaService extends TypertRemoteService {
       .find(record => record.idempotencyKey === request.idempotencyKey
         && record.workspace === workspace
         && record.turnId === request.turnId)
-    if (existing !== undefined) return { job: toJobView(existing) }
-    // A repeated request while the first attempt is still running joins it
-    // instead of starting a second model call.
+    // A settled attempt answers a repeat request. A failed one is the retry
+    // signal: the next request runs the next attempt of the same job.
+    if (existing !== undefined && existing.status !== 'failed') return { job: toJobView(existing) }
+    // A repeated request while an attempt is still running joins it instead of
+    // starting a second model call.
     const inFlightKey = `${workspace}\u0000${request.idempotencyKey}`
     const inFlight = this.generating.get(inFlightKey)
     if (inFlight !== undefined) return { job: toJobView(await inFlight) }
-    const attempt = this.runGeneration(request, workspace, signal)
+    const attempt = this.runGeneration(request, workspace, existing, signal)
     this.generating.set(inFlightKey, attempt)
     try {
       return { job: toJobView(await attempt) }
@@ -382,26 +384,40 @@ export class SkillPlazaService extends TypertRemoteService {
    * Record and run one generation attempt.
    * @param request - Session, turn, and idempotency key of the attempt.
    * @param workspace - resolved workspace directory the attempt belongs to.
+   * @param previous - failed attempt the request retries, when one exists.
    * @param signal - caller cancellation for the model call.
    * @returns the stored attempt after it settled.
    */
   private async runGeneration(
     request: PlazaGenerateRequest,
     workspace: string,
+    previous: PlazaJobRecord | undefined,
     signal: AbortSignal,
   ): Promise<PlazaJobRecord> {
     const domain = await this.domain()
     const jobs = domain.table('jobs')
-    const job: PlazaJobRecord = {
-      jobId: `job-${randomUUID()}`,
-      workspace,
-      sessionId: request.sessionId,
-      turnId: request.turnId,
-      idempotencyKey: request.idempotencyKey,
-      status: 'running',
-      attempt: 1,
-      updatedAt: new Date().toISOString(),
-    }
+    const now = new Date().toISOString()
+    const job: PlazaJobRecord = previous === undefined
+      ? {
+        jobId: `job-${randomUUID()}`,
+        workspace,
+        sessionId: request.sessionId,
+        turnId: request.turnId,
+        idempotencyKey: request.idempotencyKey,
+        status: 'running',
+        attempt: 1,
+        updatedAt: now,
+      }
+      : {
+        jobId: previous.jobId,
+        workspace,
+        sessionId: previous.sessionId,
+        turnId: previous.turnId,
+        idempotencyKey: previous.idempotencyKey,
+        status: 'running',
+        attempt: previous.attempt + 1,
+        updatedAt: now,
+      }
     await jobs.put(job.jobId, job)
     const outcome = await this.distill(request.sessionId, workspace, request.turnId, signal)
       .then(draft => ({ ok: true as const, draft }))
@@ -591,20 +607,7 @@ export class SkillPlazaService extends TypertRemoteService {
     }
     signal.throwIfAborted()
     const route = await this.generationRoute()
-    const assembler = new BlockAssembler()
-    for await (const chunk of this.ctx.llm.stream({
-      provider: route.provider,
-      model: route.model,
-      system: GENERATION_SYSTEM_PROMPT,
-      messages: [createUserMessage({ content: [{ type: 'text', text: material }], source: { kind: 'user' } })],
-      signal,
-    })) {
-      assembler.push(chunk)
-    }
-    if (assembler.finish.kind === 'error') {
-      throw new Error(`the model call failed: ${assembler.finish.failure.code}`)
-    }
-    const content = parseGeneratedContent(textOf(assembler.blocks()))
+    const content = await this.draftFromModel(route, material, signal)
     validateContent(content)
     const record: PlazaDraftRecord = {
       ...content,
@@ -618,6 +621,78 @@ export class SkillPlazaService extends TypertRemoteService {
     return toDraftView(record)
   }
 
+  /**
+   * Ask the model for one draft payload, repairing a non-JSON reply once.
+   * @param route - provider and model the call uses.
+   * @param material - bounded conversation material to distill.
+   * @param signal - caller cancellation for both attempts.
+   * @returns the validated draft content.
+   */
+  private async draftFromModel(
+    route: { provider: string; model: string },
+    material: string,
+    signal: AbortSignal,
+  ): Promise<PlazaContent> {
+    const request = `${material}\n\n---\n\nReturn the distilled skill as one JSON object and nothing else.`
+    const first = await this.callModel(route, [
+      createUserMessage({ content: [{ type: 'text', text: request }], source: { kind: 'user' } }),
+    ], signal)
+    try {
+      return parseGeneratedContent(first)
+    } catch (error: unknown) {
+      // One repair attempt: show the reply that missed the contract and ask for
+      // the object alone. A second failure reports the original reason.
+      // The reason is not interpolated: the repair asks for the object only, and
+      // a second failure reports the first attempt's error unchanged.
+      const repaired = await this.callModel(route, [
+        createUserMessage({ content: [{ type: 'text', text: request }], source: { kind: 'user' } }),
+        createAssistantMessage({
+          content: [{ type: 'text', text: first }],
+          source: { model: route.model, provider: route.provider },
+        }),
+        createUserMessage({
+          content: [{
+            type: 'text',
+            text: 'That reply did not match the contract. Reply again with only the JSON object, no prose and no code fences.',
+          }],
+          source: { kind: 'user' },
+        }),
+      ], signal)
+      try {
+        return parseGeneratedContent(repaired)
+      } catch {
+        throw error
+      }
+    }
+  }
+
+  /**
+   * Run one structured generation call and return its text.
+   * @param route - provider and model the call uses.
+   * @param messages - request messages for this attempt.
+   * @param signal - caller cancellation for the call.
+   * @returns the concatenated text blocks of the completion.
+   */
+  private async callModel(
+    route: { provider: string; model: string },
+    messages: RequestMessage[],
+    signal: AbortSignal,
+  ): Promise<string> {
+    const assembler = new BlockAssembler()
+    for await (const chunk of this.ctx.llm.stream({
+      provider: route.provider,
+      model: route.model,
+      system: GENERATION_SYSTEM_PROMPT,
+      messages,
+      signal,
+    })) {
+      assembler.push(chunk)
+    }
+    if (assembler.finish.kind === 'error') {
+      throw new Error(`the model call failed: ${assembler.finish.failure.code}`)
+    }
+    return textOf(assembler.blocks())
+  }
   /** Resolve the model route a structured generation call uses. */
   private async generationRoute(): Promise<{ provider: string; model: string }> {
     const fallback = this.ctx.get('agentDefaultModel')?.currentSelection()

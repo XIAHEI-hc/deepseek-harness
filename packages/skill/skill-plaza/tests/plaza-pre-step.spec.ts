@@ -101,6 +101,7 @@ async function mount(options: {
   defaultSelection?: { provider: string; model: string } | undefined
   failure?: string
   finishError?: string
+  replies?: readonly string[]
 } = {}): Promise<Bench> {
   const ctx = new Context()
   const agent = fakeAgent(options.messages ?? ['/release-metrics-compare compare two releases'])
@@ -119,7 +120,8 @@ async function mount(options: {
       }
     },
   } as never)
-  const reply = options.reply ?? JSON.stringify(GENERATED)
+  const replies = options.replies ?? [options.reply ?? JSON.stringify(GENERATED)]
+  let replyIndex = 0
   const selection = 'defaultSelection' in options ? options.defaultSelection : { provider: 'mock', model: 'mock' }
   ctx.provide('agentDefaultModel', { currentSelection: () => selection } as never)
   ctx.provide('llm', {
@@ -129,6 +131,8 @@ async function mount(options: {
         .map(block => block.text ?? '')
         .join('\n'))
       if (options.failure !== undefined) throw options.failure
+      const reply = replies[Math.min(replyIndex, replies.length - 1)] ?? ''
+      replyIndex += 1
       yield { type: 'block-start', index: 0, blockType: 'text' }
       yield { type: 'text-delta', index: 0, text: reply }
       yield { type: 'block-end', index: 0, block: { type: 'text', text: reply } }
@@ -312,6 +316,53 @@ it('bounds the distilled material at the reply the entry belongs to', async () =
   expect(generated.job.status).toBe('succeeded')
   expect(streamedPrompts.at(-1)).toContain('EARLY-TURN')
   expect(streamedPrompts.at(-1)).not.toContain('LATER-TURN')
+})
+
+it('retries a failed attempt on the next identical request', async () => {
+  const bench = await mount({ reply: 'not a json object at all' })
+  const request = {
+    sessionId: bench.agent.id as never,
+    turnId: 'turn-retry',
+    idempotencyKey: 'generate-retry',
+  }
+  const first = await bench.plaza.generate(request, new AbortController().signal)
+  expect(first.job).toMatchObject({ status: 'failed', attempt: 1 })
+  await bench.close()
+  mounted = undefined
+
+  const retried = await mount({ replies: ['still not json', JSON.stringify(GENERATED)] })
+  const second = await retried.plaza.generate({
+    sessionId: retried.agent.id as never,
+    turnId: 'turn-retry',
+    idempotencyKey: 'generate-retry',
+  }, new AbortController().signal)
+  expect(second.job.status).toBe('succeeded')
+  expect(second.job.attempt).toBe(1)
+})
+
+it('increments the attempt when the same job is retried', async () => {
+  const bench = await mount({ reply: 'not a json object at all' })
+  const request = {
+    sessionId: bench.agent.id as never,
+    turnId: 'turn-retry-same-store',
+    idempotencyKey: 'generate-retry-same-store',
+  }
+  const first = await bench.plaza.generate(request, new AbortController().signal)
+  expect(first.job).toMatchObject({ status: 'failed', attempt: 1 })
+  const second = await bench.plaza.generate(request, new AbortController().signal)
+  expect(second.job).toMatchObject({ jobId: first.job.jobId, status: 'failed', attempt: 2 })
+})
+
+it('repairs one non-JSON reply instead of failing the attempt', async () => {
+  const bench = await mount({ replies: ['Sure! Here is the method you asked about.', JSON.stringify(GENERATED)] })
+  const generated = await bench.plaza.generate({
+    sessionId: bench.agent.id as never,
+    turnId: 'turn-repair',
+    idempotencyKey: 'generate-repair',
+  }, new AbortController().signal)
+  expect(generated.job.status).toBe('succeeded')
+  const drafts = (await bench.plaza.drafts({})).drafts
+  expect(drafts[0]).toMatchObject({ slug: GENERATED.slug })
 })
 
 it('records a model reply that is not a draft payload as a failure', async () => {

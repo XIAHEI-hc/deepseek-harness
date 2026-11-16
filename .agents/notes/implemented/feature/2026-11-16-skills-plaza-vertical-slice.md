@@ -43,7 +43,7 @@ The stored active body contains that sentence, so the quoted rule is Host state 
 | A02 | pass | Generation bounds its material at the clicked reply's message identity, and a fork carries its own log, so another branch's content cannot enter (plaza-pre-step.spec.ts) |
 | A03 | pass | The action does not exist before a reply finishes: an empty Session and a streaming reply render no generate entry, which the slot contract enforces |
 | A04 | pass | A second identical request joins the attempt already running, producing one job and one draft; the entry also disables itself while busy (plaza-pre-step.spec.ts) |
-| A05 | pass (unit) | A failed generation stores a readable reason and produces no draft (`plaza.spec.ts`) |
+| A05 | pass (unit) | A non-JSON reply is repaired once; a failed attempt stores a readable reason and produces no draft, and the next identical request runs the next attempt of the same job (`plaza-pre-step.spec.ts`) |
 | A06 | pass | The generated draft parameterized its inputs and carried no concrete ids, paths, or values from the source turn |
 | A07 | pass (unit) | A stale revision conflicts with both numbers; a matching one advances (`plaza.spec.ts`). Two windows were not driven |
 | A08 | pass | The picker listed only the published entry while a draft existed |
@@ -64,7 +64,7 @@ The stored active body contains that sentence, so the quoted rule is Host state 
 - `dsh --profile web --dump-config` — composes `skill-plaza` and `ui-skill-plaza`.
 - `verify-package-readme-{summaries,limitations,model-experience}`, `check-workspace-constraints` — green.
 - `pnpm run persistence-changes --record 2026-11-16-skill-invocation-version` — records the two optional source fields.
-- `npx vitest run packages/skill/skill-plaza/tests packages/client/ui-skill-plaza/tests` — sixty tests pass: twenty-four Host tests (drafts, conflicts, publication, provider serving, name shadowing, pinning, pinned pre-step injection, workspace isolation, concurrent generation, bounded harvest, generation success and failure paths) and thirty-six client tests (plugin registrations, injected faces, page rendering and mutations, picker filtering, pin refusal, teardown, inert node half).
+- `npx vitest run packages/skill/skill-plaza/tests packages/client/ui-skill-plaza/tests` — ninety-five tests pass at 100% statement, branch, function, and line coverage for both packages: thirty-five Host tests (drafts, conflicts, publication, provider serving, name shadowing, pinning, pinned pre-step injection, workspace isolation, concurrent and repeated generation, retry after failure, one-shot JSON repair, bounded harvest, model failure modes) and sixty client tests (plugin registrations, injected faces, page rendering and mutations, picker filtering, pin refusal, teardown, inert node half).
 
 ## Alternatives considered
 
@@ -82,4 +82,4 @@ The composer keeps its plain-text reference model, so a selection is the `/slug`
 
 ## What this record does not claim
 
-The pin is Host memory keyed by Session, so a Host restart between selection and send falls back to name resolution; a durable reference needs a `SessionPromptRequest` field, a `MessageSource` member, and a `tool-skill` read, plus their persistence record. Generation still runs inside the Remote request with no durable queue. Both packages meet the per-file coverage gate. Three defensive arms carry reasoned 8 ignore comments: a published version cannot be removed by any API in this package, and the provider never receives a non-version locator. The generated catalogs are current.
+The pin is Host memory keyed by Session, so a Host restart between selection and send falls back to name resolution; a durable reference needs a `SessionPromptRequest` field, a `MessageSource` member, and a `tool-skill` read, plus their persistence record. Generation still runs inside the Remote request with no durable queue. Both packages meet the per-file coverage gate. Three defensive arms carry reasoned `v8 ignore` comments: a published version cannot be removed by any API in this package, and the provider never receives a non-version locator. The generated catalogs are current.
