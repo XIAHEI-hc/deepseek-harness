@@ -53,6 +53,13 @@ export const VIEWER_ENDPOINT_CLASSES = {
   'session/follow': 'reader-session-read', // the page follows a visible Session
   'session/page': 'reader-session-read', // the page reads a visible Session page
   'session/projections': 'reader-session-read', // the page reads visible Session projections
+  'skillPlaza/catalog': 'owner-only', // plaza skill bodies are author-scoped
+  'skillPlaza/drafts': 'owner-only', // plaza drafts are author-scoped
+  'skillPlaza/saveDraft': 'owner-only', // plaza drafts are author-scoped
+  'skillPlaza/publish': 'owner-only', // publishing an immutable version is an owner action
+  'skillPlaza/pin': 'owner-only', // a version binding belongs to the selecting owner
+  'skillPlaza/generate': 'owner-only', // generation reads the owner Session log
+  'skillPlaza/job': 'owner-only', // generation attempts are owner-scoped
   'skills/list': 'reader-session-read', // the page lists the skills of a visible Session
   'session/events': 'reader-session-read', // the page reads the event history of a visible Session
   'session/observeEvent': 'reader-session-read', // the page follows one visible Session's events

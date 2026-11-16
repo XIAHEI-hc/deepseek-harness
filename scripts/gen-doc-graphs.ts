@@ -709,6 +709,13 @@ const SERVICE_ROLES: ServiceRole[] = [
     implementations: ['sandbox-windows-acl', 'skill-badge', 'skill-filesystem', 'skill-office'],
     consumers: ['tool-skill'],
     note: 'Merges provider skill catalogs; tool-skill renders the session-prefix catalog and loads complete skill bodies.',
+  },  {
+    key: 'skillPlaza',
+    pkg: 'skill-plaza',
+    title: 'Skills plaza store',
+    mode: 'service',
+    consumers: ['client-ui-skill-plaza'],
+    note: 'Keeps drafts and immutable published versions per workspace and registers a provider on the skill registry; the browser edits drafts and binds one published version to a task.',
   },
   {
     key: 'agents',

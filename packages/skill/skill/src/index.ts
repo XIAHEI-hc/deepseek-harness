@@ -152,6 +152,13 @@ export interface SkillInvocationSource {
   readonly name: string
   /** Injected skill bodies are instructions for the model to follow. */
   readonly form: 'instructions'
+  /**
+   * Published version the injection was bound to, when the caller pinned one.
+   * Absent for name-resolved invocations, whose body is the active content.
+   */
+  readonly version?: number
+  /** Provider that served the injected body, recorded when a version was pinned. */
+  readonly provider?: string
 }
 
 declare module '@deepseek-ai/dsh-llm' {

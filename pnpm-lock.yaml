@@ -1641,6 +1641,9 @@ importers:
       '@deepseek-ai/dsh-settings':
         specifier: workspace:*
         version: link:../../settings/settings
+      '@deepseek-ai/dsh-skill-plaza':
+        specifier: workspace:*
+        version: link:../../skill/skill-plaza
       '@deepseek-ai/dsh-subagent':
         specifier: workspace:*
         version: link:../../subagent/subagent
@@ -3232,6 +3235,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-skill':
         specifier: workspace:*
         version: link:../../client/ui-skill
+      '@deepseek-ai/dsh-client-ui-skill-plaza':
+        specifier: workspace:*
+        version: link:../../client/ui-skill-plaza
       '@deepseek-ai/dsh-client-ui-subagent':
         specifier: workspace:*
         version: link:../../client/ui-subagent
@@ -3361,6 +3367,9 @@ importers:
       '@deepseek-ai/dsh-skill-office':
         specifier: workspace:*
         version: link:../../skill/skill-office
+      '@deepseek-ai/dsh-skill-plaza':
+        specifier: workspace:*
+        version: link:../../skill/skill-plaza
       '@deepseek-ai/dsh-subprocess':
         specifier: workspace:*
         version: link:../../subprocess/subprocess
@@ -6988,6 +6997,51 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
+
+  packages/client/ui-skill-plaza:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:~
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-api-remote-access':
+        specifier: workspace:*
+        version: link:../../api/remote-access
+      '@deepseek-ai/dsh-api-remotes':
+        specifier: workspace:*
+        version: link:../../api/remotes
+      '@deepseek-ai/dsh-api-session-controller':
+        specifier: workspace:*
+        version: link:../../api/session-controller
+      '@deepseek-ai/dsh-client-locale':
+        specifier: workspace:*
+        version: link:../locale
+      '@deepseek-ai/dsh-client-ui-chat':
+        specifier: workspace:*
+        version: link:../ui-chat
+      '@deepseek-ai/dsh-client-ui-conversation':
+        specifier: workspace:*
+        version: link:../ui-conversation
+      '@deepseek-ai/dsh-client-ui-layout':
+        specifier: workspace:*
+        version: link:../ui-layout
+      '@deepseek-ai/dsh-client-ui-renderer':
+        specifier: workspace:*
+        version: link:../ui-renderer
+      '@deepseek-ai/dsh-client-ui-sidebar':
+        specifier: workspace:*
+        version: link:../ui-sidebar
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: workspace:*
+        version: link:../ui-slots
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:*
+        version: link:../../core/session
+      '@deepseek-ai/dsh-skill-plaza':
+        specifier: workspace:*
+        version: link:../../skill/skill-plaza
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
 
   packages/client/ui-slots:
     devDependencies:
@@ -17110,6 +17164,40 @@ importers:
       '@deepseek-ai/dsh-tool-executor-ptc':
         specifier: workspace:*
         version: link:../../core/tool-executor-ptc
+
+  packages/skill/skill-plaza:
+    dependencies:
+      zod:
+        specifier: 4.6.6
+        version: 4.6.6
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:~
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-agent':
+        specifier: workspace:*
+        version: link:../../core/agent
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:*
+        version: link:../../llm/llm
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:*
+        version: link:../../core/session
+      '@deepseek-ai/dsh-session-query':
+        specifier: workspace:*
+        version: link:../../session-query/session-query
+      '@deepseek-ai/dsh-skill':
+        specifier: workspace:*
+        version: link:../skill
+      '@deepseek-ai/dsh-storage-domain':
+        specifier: workspace:*
+        version: link:../../storage/storage-domain
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: workspace:*
+        version: link:../../typert/protocol
+      '@deepseek-ai/dsh-working-directory':
+        specifier: workspace:*
+        version: link:../../session/working-directory
 
   packages/skill/tool-skill:
     dependencies:

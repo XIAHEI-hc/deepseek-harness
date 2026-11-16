@@ -63,6 +63,7 @@ kind: "package-group"
 | [`ui-commands/`](ui-commands/README.zh.md) | 提供会话感知的命令发现与分发 | — |
 | [`ui-input-trigger/`](ui-input-trigger/README.zh.md) | 协调内联命令与引用建议 | — |
 | [`ui-skill/`](ui-skill/README.zh.md) | 向内联建议添加 skill（技能）引用 | — |
+| [`ui-skill-plaza/`](ui-skill-plaza/README.zh.md) | 添加技能广场页面、生成入口与输入框技能选择器 | — |
 | [`ui-reference/`](ui-reference/README.zh.md) | 统一的 Web `@file` / `@session` 引用 source | — |
 | [`ui-secret-mask/`](ui-secret-mask/README.zh.md) | 遮挡已发送用户文本中可识别的凭据 | — |
 | [`ui-agent-team/`](ui-agent-team/README.zh.md) | Session Team 开关与 Subagent 树下方的共享任务 | — |

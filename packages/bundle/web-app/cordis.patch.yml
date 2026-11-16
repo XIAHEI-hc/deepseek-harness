@@ -135,6 +135,11 @@
     - id: schedule
       name: '@deepseek-ai/dsh-schedule'
 
+    # The Skills plaza keeps drafts and immutable published versions, and serves
+    # them through the host `skill` registry so every consumer reads one body.
+    - id: skill-plaza
+      name: '@deepseek-ai/dsh-skill-plaza'
+
     # Configuration-surface reads and writes over Typert Remote. Each method
     # reports an actionable error when its settings-domain provider is absent.
     - id: ui-settings-account
@@ -415,6 +420,9 @@
 
     - id: ui-skill
       name: '@deepseek-ai/dsh-client-ui-skill'
+
+    - id: ui-skill-plaza
+      name: '@deepseek-ai/dsh-client-ui-skill-plaza'
 
     - id: ui-agent-team
       name: '@deepseek-ai/dsh-client-ui-agent-team'

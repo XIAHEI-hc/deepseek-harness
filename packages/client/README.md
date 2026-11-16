@@ -63,6 +63,7 @@ The kernel packages boot and serve the page; the UI feature packages present it.
 | [`ui-commands/`](ui-commands/README.md) | Provides session-aware command discovery and dispatch | — |
 | [`ui-input-trigger/`](ui-input-trigger/README.md) | Coordinates inline command and reference suggestions | — |
 | [`ui-skill/`](ui-skill/README.md) | Adds skill references to inline suggestions | — |
+| [`ui-skill-plaza/`](ui-skill-plaza/README.md) | Adds the Skills plaza page, the generate action, and the composer skill picker | — |
 | [`ui-reference/`](ui-reference/README.md) | Unified Web `@file` / `@session` reference source | — |
 | [`ui-secret-mask/`](ui-secret-mask/README.md) | Masks recognized credentials in sent user text | — |
 | [`ui-agent-team/`](ui-agent-team/README.md) | Session Team switch and shared tasks below the Subagent tree | — |

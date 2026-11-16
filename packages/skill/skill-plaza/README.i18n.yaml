@@ -1,0 +1,52 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/skill/skill-plaza/README.md
+/:
+  en: 7a63323a462e4b4d
+  zh: a465d882d7ea3e4a
+/deepseek-ai-dsh-skill-plaza:
+  en: 260599a7af95923a
+  zh: ec6f71dce9d13884
+/deepseek-ai-dsh-skill-plaza/summary:
+  en: fd0d0628abbedf1b
+  zh: 809847e3c5fce42c
+/deepseek-ai-dsh-skill-plaza/table-of-contents:
+  en: 3460b3e585e0c020
+  zh: 7cff0e24d2a58500
+/deepseek-ai-dsh-skill-plaza/use-this-package:
+  en: 09e1abb020672326
+  zh: 1b74cec35107c791
+/deepseek-ai-dsh-skill-plaza/use-this-package/what-it-stores:
+  en: 6e4d4c0581565518
+  zh: a1df8ce2667b420c
+/deepseek-ai-dsh-skill-plaza/use-this-package/what-the-remote-offers:
+  en: 9d91ed09baba7868
+  zh: 6f72f720e0167fa4
+/deepseek-ai-dsh-skill-plaza/use-this-package/skill-provider:
+  en: 002d7ad9c14bc7ca
+  zh: 72ef66b87f1c70ff
+/deepseek-ai-dsh-skill-plaza/understand-the-implementation:
+  en: e53cd953ba1dbacf
+  zh: 90da6a51387a1109
+/deepseek-ai-dsh-skill-plaza/model-experience:
+  en: 215e7ba838619b7b
+  zh: 215e7ba838619b7b
+/deepseek-ai-dsh-skill-plaza/model-experience/published-skill-bodies:
+  en: 88942d40292941b1
+  zh: 6045cb135d272f78
+/deepseek-ai-dsh-skill-plaza/model-experience/published-skill-bodies/what-the-model-sees:
+  en: 70e397c69323e4f1
+  zh: 1e36886af9f1b099
+/deepseek-ai-dsh-skill-plaza/model-experience/published-skill-bodies/token-effect:
+  en: eb8f9eccc1ae5994
+  zh: 5409a8f356c68703
+/deepseek-ai-dsh-skill-plaza/model-experience/published-skill-bodies/kv-cache-effect:
+  en: 937edd83ac80e20c
+  zh: 7e4233579723dbf9
+/deepseek-ai-dsh-skill-plaza/known-limitations-and-deferred-work:
+  en: 0aaaaa62a6db2fac
+  zh: 2d6e29127a263a3c
+/deepseek-ai-dsh-skill-plaza/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

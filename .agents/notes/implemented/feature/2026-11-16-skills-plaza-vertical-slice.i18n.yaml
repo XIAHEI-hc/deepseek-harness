@@ -1,0 +1,31 @@
+# Bilingual-pair consistency record for 2026-11-16-skills-plaza-vertical-slice.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-11-16-skills-plaza-vertical-slice.md
+/agent-note-skills-plaza-vertical-slice:
+  en: 2b54e77888b86e67
+  zh: de23e445df6d9a24
+/agent-note-skills-plaza-vertical-slice/problem:
+  en: 1c22280ec2ff8e5b
+  zh: 1e28d75e0fd72f40
+/agent-note-skills-plaza-vertical-slice/decision:
+  en: e38e11cee123a83f
+  zh: 91c0d76e6b9df458
+/agent-note-skills-plaza-vertical-slice/evidence:
+  en: baa8a28b4fab45c9
+  zh: 8f2b107c4d2a98aa
+/agent-note-skills-plaza-vertical-slice/acceptance:
+  en: 946649d0784e9d8d
+  zh: 55c707290e6b8609
+/agent-note-skills-plaza-vertical-slice/verification-commands:
+  en: 9a1ee270d18b9eaa
+  zh: 94acc1013b3cff3b
+/agent-note-skills-plaza-vertical-slice/alternatives-considered:
+  en: 4e3eced6b4d2ee6e
+  zh: 2cae49b820845cec
+/agent-note-skills-plaza-vertical-slice/consequences:
+  en: 936ad80137de0836
+  zh: a4ad5307680a2fd2
+/agent-note-skills-plaza-vertical-slice/what-this-record-does-not-claim:
+  en: 3e2076e7ca64bd8c
+  zh: 3943a0f825d3f089
