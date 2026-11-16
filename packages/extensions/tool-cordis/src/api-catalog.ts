@@ -3732,6 +3732,58 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'skillPlaza',
+    summary: 'Host owner of the Skills plaza: drafts, published versions, the catalog, and the generation attempts that distill a completed turn into a draft.',
+    description: 'Host owner of the Skills plaza: drafts, published versions, the catalog, and the generation attempts that distill a completed turn into a draft.',
+    methods: [
+      {
+        signature: '@Remote async catalog(request: PlazaSessionRequest, signal?: AbortSignal): Promise<PlazaCatalogValue>',
+        description: 'Read the published skills callable in one Session\'s workspace.',
+        parameters: [{ name: 'request', description: 'Session whose working directory selects the workspace.' }, { name: 'signal', description: 'caller cancellation for the workspace read.' }],
+        returns: 'active published skills sorted by slug.',
+      },
+      {
+        signature: '@Remote async drafts(request: PlazaSessionRequest): Promise<PlazaDraftsValue>',
+        description: 'Read the drafts one Session\'s workspace holds.',
+        parameters: [{ name: 'request', description: 'Session whose working directory selects the workspace.' }],
+        returns: 'drafts, most recently saved first.',
+      },
+      {
+        signature: '@Remote async saveDraft(request: PlazaSaveDraftRequest): Promise<PlazaSaveDraftValue>',
+        description: 'Create a draft, or replace one whose revision still matches.',
+        parameters: [{ name: 'request', description: 'Session, optional draft identity, content, and expected revision.' }],
+        returns: 'the stored draft at its new revision.',
+        throws: ['RemoteError `skillPlaza/conflict` when the caller\'s revision is behind.'],
+      },
+      {
+        signature: '@Remote async publish(request: PlazaPublishRequest): Promise<PlazaPublishValue>',
+        description: 'Publish one draft as an immutable version and make it the active one.',
+        parameters: [{ name: 'request', description: 'Session, draft identity, expected revision, and idempotency key.' }],
+        returns: 'the active catalog entry after publication.',
+        throws: ['RemoteError `skillPlaza/conflict` for a stale revision, `skillPlaza/name-conflict` for a taken slug.'],
+      },
+      {
+        signature: '@Remote async generate(request: PlazaGenerateRequest, signal: AbortSignal): Promise<PlazaGenerateValue>',
+        description: 'Distill a draft from one completed turn of a live Session.',
+        parameters: [{ name: 'request', description: 'Session, completed turn, and idempotency key.' }, { name: 'signal', description: 'caller cancellation for the model call.' }],
+        returns: 'the attempt, carrying its draft when it succeeded and its reason when it failed.',
+      },
+      {
+        signature: '@Remote async pin(request: PlazaPinRequest): Promise<PlazaPinValue>',
+        description: 'Bind one published version to a Session\'s next explicit invocation.',
+        parameters: [{ name: 'request', description: 'Session, skill identity, exact version, and callable name.' }],
+        returns: 'the binding the next step will inject.',
+        throws: ['RemoteError when the skill or that version is not published in the Session\'s workspace.'],
+      },
+      {
+        signature: '@Remote async job(request: PlazaJobRequest): Promise<PlazaJobValue>',
+        description: 'Read one generation attempt.',
+        parameters: [{ name: 'request', description: 'job identity.' }],
+        returns: 'the attempt as stored.',
+      },
+    ],
+  },
+  {
     key: 'skills',
     summary: 'Layered registry of skill providers, the host+per-scope shape the tools registry established.',
     description: 'Layered registry of skill providers, the host+per-scope shape the tools registry established. A registration files into the layer of its calling context\'s scope (scopeOf): host rows and repository plugins land in the global layer, while a plugin mounted by an agent preset\'s standing composition lands in that preset\'s layer. A read merges the global layer with the viewing scope\'s chain — the nearest layer\'s entry wins a duplicate name outright, and the rank order decides duplicates only within one layer. It exposes sorted invocation-neutral summaries and loads full skill bodies on demand.',
@@ -5589,6 +5641,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     summary: 'One profile entry\'s form values, availability, or page policy changed.',
     description: 'One profile entry\'s form values, availability, or page policy changed. Form clients re-read its schema, resolved values, and revision.',
     parameters: [{ name: 'ns', description: 'Profile entry id.' }, { name: 'revision', description: 'The entry\'s new revision.' }],
+  },
+  {
+    name: 'skill-plaza/changed',
+    mode: 'emit',
+    signature: '\'skill-plaza/changed\'(): void',
+    summary: 'A draft or published version changed; plaza surfaces refetch their workspace lists.',
+    description: 'A draft or published version changed; plaza surfaces refetch their workspace lists.',
+    parameters: [],
   },
   {
     name: 'skills/change',
@@ -8189,6 +8249,82 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PlatformSession',
     declaration: 'export interface PlatformSession {\n    readonly origin: string;\n    readonly token: string;\n    readonly userId: AccountUserId | null;\n    readonly embeddedPageDist?: string;\n    readonly requestHeaders?: Readonly<Record<string, string>>;\n}',
+  },
+  {
+    name: 'PlazaCatalogValue',
+    declaration: 'export interface PlazaCatalogValue {\n    readonly skills: readonly PlazaSkillEntry[];\n}',
+  },
+  {
+    name: 'PlazaDraftContent',
+    declaration: 'export interface PlazaDraftContent {\n    readonly title: string;\n    readonly slug: string;\n    readonly description: string;\n    readonly inputs: readonly string[];\n    readonly steps: readonly string[];\n    readonly outputs: readonly string[];\n    readonly verification: string;\n    readonly failureHandling: string;\n    readonly toolDependencies: readonly string[];\n}',
+  },
+  {
+    name: 'PlazaDraftSource',
+    declaration: 'export interface PlazaDraftSource {\n    readonly sessionId: string;\n    readonly turnId: string;\n}',
+  },
+  {
+    name: 'PlazaDraftsValue',
+    declaration: 'export interface PlazaDraftsValue {\n    readonly drafts: readonly PlazaDraftView[];\n}',
+  },
+  {
+    name: 'PlazaDraftView',
+    declaration: 'export interface PlazaDraftView extends PlazaDraftContent {\n    readonly draftId: string;\n    readonly skillId?: string;\n    readonly revision: number;\n    readonly updatedAt: string;\n    readonly source?: PlazaDraftSource;\n}',
+  },
+  {
+    name: 'PlazaGenerateRequest',
+    declaration: 'export interface PlazaGenerateRequest {\n    readonly sessionId: SessionId;\n    readonly turnId: string;\n    readonly idempotencyKey: string;\n}',
+  },
+  {
+    name: 'PlazaGenerateValue',
+    declaration: 'export interface PlazaGenerateValue {\n    readonly job: PlazaJobView;\n}',
+  },
+  {
+    name: 'PlazaJobRequest',
+    declaration: 'export interface PlazaJobRequest {\n    readonly jobId: string;\n}',
+  },
+  {
+    name: 'PlazaJobStatus',
+    declaration: 'export type PlazaJobStatus = \'queued\' | \'running\' | \'succeeded\' | \'failed\';',
+  },
+  {
+    name: 'PlazaJobValue',
+    declaration: 'export interface PlazaJobValue {\n    readonly job: PlazaJobView;\n}',
+  },
+  {
+    name: 'PlazaJobView',
+    declaration: 'export interface PlazaJobView {\n    readonly jobId: string;\n    readonly status: PlazaJobStatus;\n    readonly attempt: number;\n    readonly draftId?: string;\n    readonly error?: string;\n    readonly updatedAt: string;\n}',
+  },
+  {
+    name: 'PlazaPinRequest',
+    declaration: 'export interface PlazaPinRequest {\n    readonly sessionId: SessionId;\n    readonly skillId: string;\n    readonly version: number;\n    readonly slug: string;\n}',
+  },
+  {
+    name: 'PlazaPinValue',
+    declaration: 'export interface PlazaPinValue {\n    readonly skillId: string;\n    readonly version: number;\n    readonly slug: string;\n}',
+  },
+  {
+    name: 'PlazaPublishRequest',
+    declaration: 'export interface PlazaPublishRequest {\n    readonly sessionId?: SessionId;\n    readonly draftId: string;\n    readonly expectedRevision: number;\n    readonly idempotencyKey: string;\n}',
+  },
+  {
+    name: 'PlazaPublishValue',
+    declaration: 'export interface PlazaPublishValue {\n    readonly skill: PlazaSkillEntry;\n}',
+  },
+  {
+    name: 'PlazaSaveDraftRequest',
+    declaration: 'export interface PlazaSaveDraftRequest {\n    readonly sessionId?: SessionId;\n    readonly draftId?: string;\n    readonly content: PlazaDraftContent;\n    readonly expectedRevision?: number;\n}',
+  },
+  {
+    name: 'PlazaSaveDraftValue',
+    declaration: 'export interface PlazaSaveDraftValue {\n    readonly draft: PlazaDraftView;\n}',
+  },
+  {
+    name: 'PlazaSessionRequest',
+    declaration: 'export interface PlazaSessionRequest {\n    readonly sessionId?: SessionId;\n}',
+  },
+  {
+    name: 'PlazaSkillEntry',
+    declaration: 'export interface PlazaSkillEntry {\n    readonly skillId: string;\n    readonly slug: string;\n    readonly title: string;\n    readonly description: string;\n    readonly version: number;\n    readonly updatedAt: string;\n}',
   },
   {
     name: 'PluginChange',

@@ -236,6 +236,8 @@ The model-facing `skill({ name })` tool validates the kebab-case name, finds the
 
 `SkillListRequest` addresses one Session by `sessionId`; `SkillListValue` returns the user-invocable entries with name, description, optional usage guidance, and model-invocation availability. `SessionSkillCatalog` reads the Session cwd and recorded preset without activating an Agent. A live Agent may supply its scoped registry, while a cold Session uses the preset's standing scope.
 
+An explicit invocation can be bound to one published version. `SkillInvocationSource` records the optional `version` and `provider` of the body the Host injected, so the durable message names what the model actually read. A caller that pinned a version — the Skills plaza composer — has exactly that body injected, and a pin whose version is no longer published fails the step instead of loading the active one. Name-resolved invocations leave both fields absent.
+
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
 <a id="cordis-surface"></a>
@@ -262,6 +264,70 @@ Host service backing `ctx.remote.skills` without activating a cold Agent.
 ```
 
 Source: [`packages/api/session-controller/src/skill-catalog.ts`](../../packages/api/session-controller/src/skill-catalog.ts)
+
+<a id="ctxskillplaza--skillplazaservice"></a>
+
+### `ctx.skillPlaza` — `SkillPlazaService`
+
+Host owner of the Skills plaza: drafts, published versions, the catalog, and the generation attempts that distill a completed turn into a draft.
+
+```ts cordis-catalog
+/**
+ * Read the published skills callable in one Session's workspace.
+ * @param request - Session whose working directory selects the workspace.
+ * @param signal - caller cancellation for the workspace read.
+ * @returns active published skills sorted by slug.
+ */
+@Remote async catalog(request: PlazaSessionRequest, signal?: AbortSignal): Promise<PlazaCatalogValue>
+
+/**
+ * Read the drafts one Session's workspace holds.
+ * @param request - Session whose working directory selects the workspace.
+ * @returns drafts, most recently saved first.
+ */
+@Remote async drafts(request: PlazaSessionRequest): Promise<PlazaDraftsValue>
+
+/**
+ * Create a draft, or replace one whose revision still matches.
+ * @param request - Session, optional draft identity, content, and expected revision.
+ * @returns the stored draft at its new revision.
+ * @throws RemoteError `skillPlaza/conflict` when the caller's revision is behind.
+ */
+@Remote async saveDraft(request: PlazaSaveDraftRequest): Promise<PlazaSaveDraftValue>
+
+/**
+ * Publish one draft as an immutable version and make it the active one.
+ * @param request - Session, draft identity, expected revision, and idempotency key.
+ * @returns the active catalog entry after publication.
+ * @throws RemoteError `skillPlaza/conflict` for a stale revision, `skillPlaza/name-conflict` for a taken slug.
+ */
+@Remote async publish(request: PlazaPublishRequest): Promise<PlazaPublishValue>
+
+/**
+ * Distill a draft from one completed turn of a live Session.
+ * @param request - Session, completed turn, and idempotency key.
+ * @param signal - caller cancellation for the model call.
+ * @returns the attempt, carrying its draft when it succeeded and its reason when it failed.
+ */
+@Remote async generate(request: PlazaGenerateRequest, signal: AbortSignal): Promise<PlazaGenerateValue>
+
+/**
+ * Bind one published version to a Session's next explicit invocation.
+ * @param request - Session, skill identity, exact version, and callable name.
+ * @returns the binding the next step will inject.
+ * @throws RemoteError when the skill or that version is not published in the Session's workspace.
+ */
+@Remote async pin(request: PlazaPinRequest): Promise<PlazaPinValue>
+
+/**
+ * Read one generation attempt.
+ * @param request - job identity.
+ * @returns the attempt as stored.
+ */
+@Remote async job(request: PlazaJobRequest): Promise<PlazaJobValue>
+```
+
+Source: [`packages/skill/skill-plaza/src/index.ts`](../../packages/skill/skill-plaza/src/index.ts)
 
 <a id="ctxskills--skillregistry"></a>
 
@@ -326,6 +392,27 @@ async get(name: string, options: SkillViewOptions = {}): Promise<SkillDefinition
 ```
 
 Source: [`packages/skill/skill/src/index.ts`](../../packages/skill/skill/src/index.ts)
+
+<a id="skill-plaza-events"></a>
+
+### `skill-plaza/*` events
+
+<a id="skill-plazachanged--emit"></a>
+
+#### `skill-plaza/changed` — emit
+
+A draft or published version changed; plaza surfaces refetch their workspace lists.
+
+```ts cordis-catalog
+/**
+ * A draft or published version changed; plaza surfaces refetch their
+ * workspace lists.
+ * @mode emit
+ */
+'skill-plaza/changed'(): void
+```
+
+Source: [`packages/skill/skill-plaza/src/types.ts`](../../packages/skill/skill-plaza/src/types.ts)
 
 <a id="skills-events"></a>
 
