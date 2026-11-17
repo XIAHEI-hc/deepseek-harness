@@ -140,6 +140,9 @@ export const VIEWER_ENDPOINT_CLASSES = {
   'directoryPicker/pick': 'owner-only', // owner filesystem picker
   'workspace/archiveSession': 'owner-only', // owner archives a Session
   'workspace/create': 'owner-only', // owner creates a Workspace
+  'workspace/list': 'owner-only', // owner reads the Workspaces of its own account
+  'workspace/setInstructions': 'owner-only', // owner edits its project instructions
+  'workspace/moveSession': 'owner-only', // owner groups a Session under a project
   'workspace/delete': 'owner-only', // owner deletes a Workspace
   'workspace/initializeDefault': 'owner-only', // owner initializes the default Workspace
   'workspace/insertBefore': 'owner-only', // owner reorders Workspaces

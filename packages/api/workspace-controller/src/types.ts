@@ -22,9 +22,9 @@ export interface WorkspaceView {
   /** User-visible title. */
   readonly title: string
   /** Project instructions every later turn of this Workspace's Sessions reads; empty when unset. */
-  readonly instructions: string
+  readonly instructions?: string
   /** Revision of {@link instructions}; `0` before the first save. */
-  readonly instructionsRevision: number
+  readonly instructionsRevision?: number
   /** Sessions accounted to this Workspace in manual order. */
   readonly sessionIds: readonly SessionId[]
   /** ISO-8601 creation instant. */

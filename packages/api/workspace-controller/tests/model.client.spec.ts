@@ -12,10 +12,14 @@ import type {
   WorkspaceFollowFrame,
   WorkspaceInsertBeforeRequest,
   WorkspaceInsertSessionBeforeRequest,
+  WorkspaceListValue,
+  WorkspaceMoveSessionRequest,
+  WorkspaceMoveSessionValue,
   WorkspaceOrderValue,
   WorkspacePinSessionRequest,
   WorkspacePinValue,
   WorkspaceRenameRequest,
+  WorkspaceSetInstructionsRequest,
   WorkspaceUnarchiveSessionRequest,
   WorkspaceUnpinSessionRequest,
   WorkspaceValue,
@@ -111,6 +115,23 @@ class FakeWorkspaceRemote implements WorkspaceRemote {
   rename(request: WorkspaceRenameRequest): Promise<RemoteResult<WorkspaceValue>> {
     this.record('rename', request)
     return this.onRename(request)
+  }
+
+  list(): Promise<RemoteResult<WorkspaceListValue>> {
+    this.record('list', {})
+    return Promise.resolve(remoteOk({ items: [workspace('default')] }))
+  }
+
+  setInstructions(request: WorkspaceSetInstructionsRequest): Promise<RemoteResult<WorkspaceValue>> {
+    this.record('setInstructions', request)
+    return Promise.resolve(remoteOk({
+      workspace: { ...workspace(String(request.workspaceId)), instructions: request.instructions, instructionsRevision: 1 },
+    }))
+  }
+
+  moveSession(request: WorkspaceMoveSessionRequest): Promise<RemoteResult<WorkspaceMoveSessionValue>> {
+    this.record('moveSession', request)
+    return Promise.resolve(remoteOk({ sessionId: request.sessionId, workspaceId: request.workspaceId ?? null }))
   }
 
   delete(request: WorkspaceDeleteRequest): Promise<RemoteResult<WorkspaceDeleteValue>> {

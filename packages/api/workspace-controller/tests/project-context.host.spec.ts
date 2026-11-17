@@ -6,6 +6,7 @@ import { SESSION_FORMAT_VERSION, Session, type SessionId } from '@deepseek-ai/ds
 import { unsupportedInbox, unsupportedModel } from '@deepseek-ai/dsh-agent-loop-testkit'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import { expect, it } from 'vitest'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { installProjectContext } from '../src/project-context.ts'
 
 const DIR = '/workspace/project-a'
@@ -53,7 +54,7 @@ async function step(ctx: Context, agent: Agent) {
     'agent/pre-step',
     {
       modelSelection: { provider: 'mock', model: 'mock' },
-      messages: [{ role: 'user', content: [{ type: 'text', text: 'compare the releases' }] }],
+      messages: [createUserMessage({ content: [{ type: 'text', text: 'compare the releases' }], source: { kind: 'user' } })],
       turn: 1, step: 1, signal: new AbortController().signal,
     },
     () => Promise.resolve({ kind: 'enter' as const, messages: [] }),
