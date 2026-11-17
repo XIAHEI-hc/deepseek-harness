@@ -44,6 +44,19 @@ interface Workspace {
   /** Display title. Defaults to the final path segment, or a filesystem root's own spelling; duplicates are allowed. */
   readonly title: string
 
+  /** Project instructions applied to later turns of this workspace's sessions; empty when unset. */
+  readonly instructions: string
+
+  /** Revision of {@link instructions}; `0` before the first save and incremented by every save. */
+  readonly instructionsRevision: number
+
+  /**
+   * Replace the project instructions of this workspace.
+   * @param instructions - Replacement text; an empty string clears them.
+   * @returns the new revision.
+   */
+  setInstructions(instructions: string): Promise<number>
+
   /** ISO-8601 creation instant, stamped at create and never rewritten. */
   readonly createdAt: string
 
