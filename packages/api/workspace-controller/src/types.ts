@@ -88,6 +88,11 @@ export interface WorkspaceSetInstructionsRequest {
   readonly instructions: string
 }
 
+/** Ordered Workspace projections read once by a caller outside the stream. */
+export interface WorkspaceListValue {
+  readonly items: readonly WorkspaceView[]
+}
+
 /** Workspace mutation returning the complete changed row. */
 export interface WorkspaceValue {
   readonly workspace: WorkspaceView

@@ -25,6 +25,7 @@ import type {
   WorkspaceOrderValue,
   WorkspacePinSessionRequest,
   WorkspacePinValue,
+  WorkspaceListValue,
   WorkspaceRenameRequest,
   WorkspaceSetInstructionsRequest,
   WorkspaceUnarchiveSessionRequest,
@@ -112,6 +113,24 @@ export class WorkspaceController extends TypertRemoteService {
       )
     })
     return workspace === undefined ? undefined : { workspace: workspaceView(workspace) }
+  }
+
+  /**
+   * Read every admitted Workspace once, for a caller that does not need the stream.
+   * @returns the ordered Workspace projections this account may see.
+   */
+  @Remote('list')
+  list(): WorkspaceListValue {
+    const value = this.feed.baseline()
+    const access = this.ctx.remoteAccess
+    return {
+      items: value.items
+        .filter(item => access.allows({ kind: 'workspace', id: item.workspaceId }))
+        .map(item => ({
+          ...item,
+          sessionIds: item.sessionIds.filter(sessionId => access.allows({ kind: 'session', id: sessionId })),
+        })),
+    }
   }
 
   /**
