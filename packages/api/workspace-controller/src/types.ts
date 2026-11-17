@@ -119,6 +119,20 @@ export interface WorkspaceOrderValue {
   readonly workspaceIds: readonly WorkspaceId[]
 }
 
+/** Group one Session under a Workspace, or clear the grouping to fall back to its cwd. */
+export interface WorkspaceMoveSessionRequest {
+  readonly sessionId: SessionId
+  /** Target Workspace; omitted clears the product-level grouping. */
+  readonly workspaceId?: WorkspaceId
+}
+
+/** Result of grouping a Session. */
+export interface WorkspaceMoveSessionValue {
+  readonly sessionId: SessionId
+  /** Workspace the Session is now grouped under, or null when it follows its cwd again. */
+  readonly workspaceId: WorkspaceId | null
+}
+
 /** DOM-insertBefore-like Session membership order mutation. */
 export interface WorkspaceInsertSessionBeforeRequest {
   readonly workspaceId: WorkspaceId

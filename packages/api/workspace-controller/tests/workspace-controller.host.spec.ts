@@ -637,3 +637,15 @@ it('lists the accounts Workspaces in registry order', async () => {
   expect(ids).toEqual([second.workspace.workspaceId, first.workspace.workspaceId])
   expect(listed.items[0]).toMatchObject({ title: 'beta', instructions: '', instructionsRevision: 0 })
 })
+
+it('moves a Session between projects without touching its own log', async () => {
+  const { controller, root } = await harness()
+  const target = await controller.create({ path: stageDir(root, 'target') })
+  const sessionId = 'movable-session' as never
+
+  // The fixture stores no Session headers, so the registry refuses an unknown id;
+  // the happy path lives in the workspace package's own move test.
+  await expect(controller.moveSession({ sessionId, workspaceId: target.workspace.workspaceId }))
+    .rejects.toThrow(/does not know it/)
+  await expect(controller.moveSession({ sessionId })).rejects.toThrow(/does not know it/)
+})

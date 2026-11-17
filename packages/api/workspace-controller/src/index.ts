@@ -22,6 +22,8 @@ import type {
   WorkspaceId,
   WorkspaceInsertBeforeRequest,
   WorkspaceInsertSessionBeforeRequest,
+  WorkspaceMoveSessionRequest,
+  WorkspaceMoveSessionValue,
   WorkspaceOrderValue,
   WorkspacePinSessionRequest,
   WorkspacePinValue,
@@ -182,6 +184,16 @@ export class WorkspaceController extends TypertRemoteService {
   @Remote('insertSessionBefore')
   insertSessionBefore(request: WorkspaceInsertSessionBeforeRequest): Promise<WorkspaceValue> {
     return this.commands.insertSessionBefore(request)
+  }
+
+  /**
+   * Group one Session under a Workspace, or clear the grouping so it follows its cwd.
+   * @param request - Session identity and the target Workspace, if any.
+   * @returns the resulting grouping.
+   */
+  @Remote('moveSession')
+  moveSession(request: WorkspaceMoveSessionRequest): Promise<WorkspaceMoveSessionValue> {
+    return this.commands.moveSession(request)
   }
 
   /**

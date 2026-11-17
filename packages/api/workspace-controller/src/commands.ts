@@ -3,6 +3,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { Workspace } from '@deepseek-ai/dsh-workspace'
 import {
   WorkspaceActiveSessionError,
@@ -22,6 +23,8 @@ import type {
   WorkspaceDeleteValue,
   WorkspaceInsertBeforeRequest,
   WorkspaceInsertSessionBeforeRequest,
+  WorkspaceMoveSessionRequest,
+  WorkspaceMoveSessionValue,
   WorkspaceOrderValue,
   WorkspacePinSessionRequest,
   WorkspacePinValue,
@@ -174,6 +177,22 @@ export class WorkspaceCommands {
    * @param request - Session identity to archive and whether to stop its work.
    * @returns the complete resulting archive set.
    */
+  /**
+   * Group one Session under a Workspace, or clear the grouping.
+   * @param request - Session identity and the target Workspace, if any.
+   * @returns the resulting grouping.
+   */
+  async moveSession(request: WorkspaceMoveSessionRequest): Promise<WorkspaceMoveSessionValue> {
+    const sessionId = brandString<SessionId>(request.sessionId)
+    const workspaceId = request.workspaceId === undefined ? undefined : brandString<WorkspaceId>(request.workspaceId)
+    try {
+      await this.ctx.workspaceRegistry.moveSessionToWorkspace(sessionId, workspaceId)
+    } catch (error) {
+      throw remoteErrorOf(error) ?? error
+    }
+    return { sessionId: request.sessionId, workspaceId: workspaceId ?? null }
+  }
+
   async archiveSession(request: WorkspaceArchiveSessionRequest): Promise<WorkspaceArchiveValue> {
     try {
       await this.ctx.workspaceRegistry.archiveSession(
