@@ -626,3 +626,14 @@ it('stores project instructions and returns the revision each save stamped', asy
   const second = await controller.setInstructions({ workspaceId, instructions: 'Second revision.' })
   expect(second.workspace).toMatchObject({ instructions: 'Second revision.', instructionsRevision: 2 })
 })
+
+it('lists the accounts Workspaces in registry order', async () => {
+  const { controller, root } = await harness()
+  const first = await controller.create({ path: stageDir(root, 'alpha') })
+  const second = await controller.create({ path: stageDir(root, 'beta') })
+
+  const listed = controller.list()
+  const ids = listed.items.map(item => item.workspaceId)
+  expect(ids).toEqual([second.workspace.workspaceId, first.workspace.workspaceId])
+  expect(listed.items[0]).toMatchObject({ title: 'beta', instructions: '', instructionsRevision: 0 })
+})
