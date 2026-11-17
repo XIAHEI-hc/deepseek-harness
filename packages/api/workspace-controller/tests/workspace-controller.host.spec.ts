@@ -612,3 +612,17 @@ describe('first-use Remote', () => {
       .rejects.toThrow('permission denied')
   })
 })
+
+it('stores project instructions and returns the revision each save stamped', async () => {
+  const { controller, root } = await harness()
+  const created = await controller.create({ path: stageDir(root, 'project') })
+  const workspaceId = created.workspace.workspaceId
+  expect(created.workspace.instructions).toBe('')
+  expect(created.workspace.instructionsRevision).toBe(0)
+
+  const first = await controller.setInstructions({ workspaceId, instructions: 'Compare metrics.' })
+  expect(first.workspace).toMatchObject({ instructions: 'Compare metrics.', instructionsRevision: 1 })
+
+  const second = await controller.setInstructions({ workspaceId, instructions: 'Second revision.' })
+  expect(second.workspace).toMatchObject({ instructions: 'Second revision.', instructionsRevision: 2 })
+})
