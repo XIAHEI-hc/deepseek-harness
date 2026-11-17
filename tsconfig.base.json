@@ -260,6 +260,8 @@
       "@deepseek-ai/dsh-host-authentication-desktop/src/*": ["./packages/host/authentication-desktop/src/*"],
       "@deepseek-ai/dsh-host-authentication-token": ["./packages/host/authentication-token/src/index.ts"],
       "@deepseek-ai/dsh-host-authentication-token/src/*": ["./packages/host/authentication-token/src/*"],
+      "@deepseek-ai/dsh-host-authentication-gateway": ["./packages/host/authentication-gateway/src/index.ts"],
+      "@deepseek-ai/dsh-host-authentication-gateway/src/*": ["./packages/host/authentication-gateway/src/*"],
       "@deepseek-ai/dsh-plugin-manager": ["./packages/boot/plugin-manager/src"],
       "@deepseek-ai/dsh-plugin-manager/diagnostic": ["./packages/boot/plugin-manager/src/diagnostic.ts"],
       "@deepseek-ai/dsh-plugin-manager/types": ["./packages/boot/plugin-manager/src/types.ts"],
