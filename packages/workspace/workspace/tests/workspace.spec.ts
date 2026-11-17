@@ -174,7 +174,14 @@ function storedRecord(pool: MemoryMediaPool, id: string): WorkspaceRecord {
 }
 
 function storedState(pool: MemoryMediaPool): WorkspaceDomainState {
-  return pool.media.get('workspace')!.global as WorkspaceDomainState
+  const state = { ...(pool.media.get('workspace')!.global as WorkspaceDomainState) }
+  // Empty defaults and absent markers are dropped so a format addition does not
+  // rewrite every bootstrap expectation.
+  if (Object.keys(state.sessionProjectIds ?? {}).length === 0) {
+    delete (state as Partial<WorkspaceDomainState>).sessionProjectIds
+  }
+  if (state.pendingMutation === undefined) delete (state as Partial<WorkspaceDomainState>).pendingMutation
+  return state
 }
 
 let base: string
@@ -1607,4 +1614,31 @@ it('stores project instructions with a revision that survives a restart', async 
   const restored = restarted.registry.get(workspace.id)!
   expect(restored.instructions).toBe('Second revision.')
   expect(restored.instructionsRevision).toBe(2)
+})
+
+it('groups a Session under another project without touching its own log', async () => {
+  const dirA = await makeDir('move-a')
+  const dirB = await makeDir('move-b')
+  const pool = new MemoryMediaPool()
+  const movable = brandString<SessionId>('movable')
+  const bench = await harness({ pool, sessions: [header('movable', dirA)] })
+  const projectA = await bench.registry.create(dirA)
+  const projectB = await bench.registry.create(dirB)
+  await projectA.attachSession(movable)
+
+  expect(bench.registry.sessionProject(movable)).toBeUndefined()
+
+  await bench.registry.moveSessionToWorkspace(movable, projectB.id)
+  expect(bench.registry.sessionProject(movable)).toBe(projectB.id)
+  expect(storedState(pool).sessionProjectIds).toEqual({ movable: projectB.id })
+  // The Session keeps its cwd membership; grouping is a product-level association.
+  expect(projectA.sessionIds).toContain('movable')
+
+  await expect(bench.registry.moveSessionToWorkspace(brandString<SessionId>('unknown'), projectB.id))
+    .rejects.toThrow(/does not know it/)
+  await expect(bench.registry.moveSessionToWorkspace(movable, brandString<WorkspaceId>('missing-project')))
+    .rejects.toThrow(/unknown workspace/)
+
+  await bench.registry.moveSessionToWorkspace(movable, undefined)
+  expect(bench.registry.sessionProject(movable)).toBeUndefined()
 })

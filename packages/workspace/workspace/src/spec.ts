@@ -65,6 +65,8 @@ export const workspaceDomainState = z.object({
   workspaceIds: z.array(workspaceId),
   archivedSessionIds: z.array(sessionId).default([]),
   pinnedSessionIds: z.array(sessionId).default([]),
+  /** Product-level project membership keyed by Session; the Session's own cwd stays authoritative for execution. */
+  sessionProjectIds: z.record(z.string(), workspaceId).default({}),
   pendingMutation: workspacePendingMutation.optional(),
 })
 
@@ -83,7 +85,7 @@ export const workspaceDomainSpec = defineDomain({
   compatibleVersions: [1, 2],
   global: {
     schema: workspaceDomainState,
-    initial: { initialized: false, workspaceIds: [], archivedSessionIds: [], pinnedSessionIds: [] },
+    initial: { initialized: false, workspaceIds: [], archivedSessionIds: [], pinnedSessionIds: [], sessionProjectIds: {} },
   },
   tables: { workspaces: domainTable<WorkspaceId, WorkspaceRecord>(workspaceRecord) },
 })

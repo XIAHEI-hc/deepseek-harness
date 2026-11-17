@@ -12,7 +12,7 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import type { SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import type { DomainGlobal, KvTable } from '@deepseek-ai/dsh-storage-domain'
-import { WorkspaceEntity } from './entity.ts'
+import { WorkspaceEntity, WorkspaceMoveInvalidError } from './entity.ts'
 import type { WorkspaceEntityHost } from './entity.ts'
 
 export { WorkspaceMoveInvalidError } from './entity.ts'
@@ -358,6 +358,35 @@ export class WorkspaceRegistry extends Service {
    * session keeps its `sessionIds` slot so unarchiving restores its position.
    * @returns the archived session ids in archive order.
    */
+  /** Project each Session is grouped under, when the account moved it out of its cwd Workspace. */
+  sessionProject(sessionId: SessionId): WorkspaceId | undefined {
+    const mapped = this.requireState().sessionProjectIds[sessionId]
+    return mapped === undefined ? undefined : brandString<WorkspaceId>(mapped)
+  }
+
+  /**
+   * Group one Session under a Workspace, or clear the grouping.
+   * @param sessionId - Session to move; it must be known to the registry.
+   * @param workspaceId - Target Workspace, or undefined to fall back to cwd grouping.
+   * @returns resolution after durability.
+   */
+  moveSessionToWorkspace(sessionId: SessionId, workspaceId: WorkspaceId | undefined): Promise<void> {
+    return this.enqueueOperation(async () => {
+      if (!(await this.sessionKnown(sessionId))) {
+        throw new WorkspaceMoveInvalidError(`cannot move session '${sessionId}': the registry does not know it`)
+      }
+      const state = this.requireState()
+      if (workspaceId !== undefined && !state.workspaceIds.includes(workspaceId)) {
+        throw new WorkspaceMoveInvalidError(`cannot move a session into unknown workspace '${workspaceId}'`)
+      }
+      const next = { ...state.sessionProjectIds }
+      if (workspaceId === undefined) delete next[sessionId]
+      else next[sessionId] = workspaceId
+      if (JSON.stringify(next) === JSON.stringify(state.sessionProjectIds)) return
+      await this.setState({ ...state, sessionProjectIds: next })
+    })
+  }
+
   get archivedSessionIds(): readonly SessionId[] {
     return this.requireState().archivedSessionIds
   }
@@ -754,6 +783,7 @@ export class WorkspaceRegistry extends Service {
         workspaceIds,
         archivedSessionIds: state.archivedSessionIds,
         pinnedSessionIds: state.pinnedSessionIds,
+        sessionProjectIds: state.sessionProjectIds,
       })
     }
     await this.setState({
@@ -761,6 +791,7 @@ export class WorkspaceRegistry extends Service {
       workspaceIds,
       archivedSessionIds: state.archivedSessionIds,
       pinnedSessionIds: state.pinnedSessionIds,
+      sessionProjectIds: state.sessionProjectIds,
     })
   }
 
