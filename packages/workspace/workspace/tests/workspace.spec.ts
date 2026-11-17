@@ -1585,3 +1585,26 @@ describe('archive follow-up lifecycle', () => {
     } finally { await result.ctx.fiber.dispose() }
   })
 })
+
+it('stores project instructions with a revision that survives a restart', async () => {
+  const dir = await makeDir('project-instructions')
+  const initial = await harness()
+  onTestFinished(() => initial.ctx.fiber.dispose())
+  const workspace = await initial.registry.create(dir, 'Benchmark')
+  expect(workspace.instructions).toBe('')
+  expect(workspace.instructionsRevision).toBe(0)
+  expect(await workspace.setInstructions('Compare metrics carefully.')).toBe(1)
+  expect(workspace.instructions).toBe('Compare metrics carefully.')
+  expect(storedRecord(initial.pool, workspace.id)).toMatchObject({
+    instructions: 'Compare metrics carefully.',
+    instructionsRevision: 1,
+  })
+  expect(await workspace.setInstructions('Second revision.')).toBe(2)
+  await initial.ctx.fiber.dispose()
+
+  const restarted = await harness({ pool: initial.pool })
+  onTestFinished(() => restarted.ctx.fiber.dispose())
+  const restored = restarted.registry.get(workspace.id)!
+  expect(restored.instructions).toBe('Second revision.')
+  expect(restored.instructionsRevision).toBe(2)
+})
