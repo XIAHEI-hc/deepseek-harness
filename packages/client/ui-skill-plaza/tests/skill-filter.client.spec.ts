@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PlazaSkillEntry } from '@deepseek-ai/dsh-skill-plaza/types'
-import { filterSkills } from '../src/client/skill-filter.ts'
+import { categoriesOf, filterCategory, filterSkills } from '../src/client/skill-filter.ts'
 
 const entry = (over: Partial<PlazaSkillEntry>): PlazaSkillEntry => ({
   skillId: 'skill',
@@ -44,5 +44,34 @@ describe('filterSkills', () => {
   it('keeps list order among equally ranked matches', () => {
     const matched = filterSkills(ENTRIES, 'e')
     expect(matched.map(item => item.skillId)).toEqual(['s1', 's2', 's3'])
+  })
+})
+describe('catalog facets', () => {
+  const CATEGORIZED: readonly PlazaSkillEntry[] = [
+    entry({ skillId: 's1', category: 'data analysis' }),
+    entry({ skillId: 's2', category: 'office documents' }),
+    entry({ skillId: 's3', category: 'data analysis' }),
+    entry({ skillId: 's4' }),
+    entry({ skillId: 's5', category: '   ' }),
+  ]
+
+  it('lists distinct categories in a stable order', () => {
+    expect(categoriesOf(CATEGORIZED)).toEqual(['data analysis', 'office documents'])
+  })
+
+  it('keeps only the selected category, in list order', () => {
+    expect(filterCategory(CATEGORIZED, 'data analysis').map(item => item.skillId)).toEqual(['s1', 's3'])
+    expect(filterCategory(CATEGORIZED, 'missing')).toEqual([])
+  })
+
+  it('keeps every entry when no category is selected', () => {
+    expect(filterCategory(CATEGORIZED, undefined)).toEqual(CATEGORIZED)
+  })
+
+  it('combines the category facet with the query', () => {
+    const scoped = filterCategory(CATEGORIZED, 'data analysis')
+    expect(filterSkills(scoped, 'purpose').map(item => item.skillId)).toEqual(['s1', 's3'])
+    expect(filterSkills(CATEGORIZED, 'purpose')).toHaveLength(5)
+    expect(filterCategory(ENTRIES, 'office documents')).toEqual([])
   })
 })

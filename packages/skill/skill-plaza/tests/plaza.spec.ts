@@ -12,7 +12,8 @@ import { remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
 import { afterEach, expect, it } from 'vitest'
 import { MemoryMediaPool, MemoryStorageBackend } from '../../../storage/storage-domain/tests/helpers/memory-backend.ts'
 import SkillPlazaService, { PLAZA_PROVIDER, renderSkillBody } from '../src/index.ts'
-import type { PlazaDraftContent } from '../src/types.ts'
+import { skillPlazaDomain } from '../src/storage.ts'
+import type { PlazaDraftContent, PlazaPresentation } from '../src/types.ts'
 
 const MISSING_WORKSPACE = '/workspace/missing'
 
@@ -47,6 +48,10 @@ interface Bench {
   readonly ctx: Context
   readonly plaza: SkillPlazaService
   readonly workspace: string
+  /** The medium the plaza wrote to, for a second reader of the same data. */
+  readonly backend: MemoryStorageBackend
+  /** Stop the plaza service, releasing its hold on the storage unit. */
+  readonly stopService: () => Promise<void>
   readonly close: () => Promise<void>
 }
 
@@ -74,6 +79,10 @@ async function mount(): Promise<Bench> {
     ctx,
     plaza: ctx.skillPlaza,
     workspace,
+    backend,
+    stopService: async () => {
+      await fiber.dispose()
+    },
     close: async () => {
       await fiber.dispose()
       await facility.closeAll()
@@ -129,6 +138,20 @@ it('rejects content that cannot be served as a skill name', async () => {
     .catch((error: unknown) => error)
 
   expect(remoteErrorOf(failure)).toMatchObject({ code: 'skillPlaza/invalid', details: { reason: 'slug' } })
+})
+
+it('rejects structural presentation content it cannot store', async () => {
+  const current = await mount()
+  const failure = await current.plaza
+    .saveDraft({
+      content: {
+        ...CONTENT,
+        presentation: { schemaVersion: 1, examples: [{ assetId: '', title: 'x' } as never] },
+      },
+    })
+    .catch((error: unknown) => error)
+
+  expect(remoteErrorOf(failure)).toMatchObject({ code: 'skillPlaza/invalid', details: { reason: 'presentation' } })
 })
 
 it('publishes an immutable version and makes it the catalog entry', async () => {
@@ -251,4 +274,246 @@ it('renders every draft field into the published body', () => {
   expect(body).toContain('1. read the changelog')
   expect(body).toContain('## Failure handling')
   expect(body.endsWith('\n')).toBe(true)
+})
+
+/** One 2x1 PNG with a valid IHDR header. */
+const PNG_BYTES = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+  0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00,
+])
+
+/** Presentation content over one stored image, two branches, and a subflow. */
+function presentationOf(assetId: string): PlazaPresentation {
+  return {
+    schemaVersion: 1,
+    category: 'data analysis',
+    scenarios: ['locate anomalous dies in a batch'],
+    examplePrompt: 'analyse this batch',
+    coverAssetId: assetId,
+    examples: [{ assetId, title: 'Wafer map', alt: 'a wafer map', caption: 'sample data' }],
+    workflow: {
+      rootLayerId: 'flow',
+      layers: [
+        {
+          id: 'flow',
+          entryNodeId: 'read',
+          nodes: [
+            { id: 'read', type: 'action', title: 'Read STDF' },
+            {
+              id: 'validate',
+              type: 'decision',
+              title: 'Validate file',
+              inputs: ['STDF file'],
+              checks: ['record format'],
+              verification: 'the record parses',
+              failureHandling: 'ask for a new upload',
+              subflowLayerId: 'detail',
+            },
+            { id: 'apply', type: 'action', title: 'Apply rules', assetIds: [assetId] },
+            { id: 'reupload', type: 'action', title: 'Ask for a new upload' },
+          ],
+          edges: [
+            { from: 'read', to: 'validate' },
+            { from: 'validate', to: 'apply', label: 'pass' },
+            { from: 'validate', to: 'reupload', label: 'fail' },
+          ],
+        },
+        {
+          id: 'detail',
+          entryNodeId: 'check-format',
+          nodes: [{ id: 'check-format', type: 'action', title: 'Check record format' }],
+          edges: [],
+        },
+      ],
+    },
+  }
+}
+
+/** Upload one PNG into the current workspace and return its asset identity. */
+async function uploadPng(current: Bench): Promise<string> {
+  const uploaded = await current.plaza.uploadMedia({
+    name: 'wafer.png',
+    data: PNG_BYTES.toString('base64'),
+  })
+  return uploaded.asset.assetId
+}
+
+it('stores result media with its detected format and reads it back', async () => {
+  const current = await mount()
+  const uploaded = await current.plaza.uploadMedia({ name: 'wafer.png', data: PNG_BYTES.toString('base64') })
+  expect(uploaded.asset).toMatchObject({ mimeType: 'image/png', width: 2, height: 1, byteLength: PNG_BYTES.byteLength })
+
+  const read = await current.plaza.readMedia({ assetId: uploaded.asset.assetId })
+  expect(read.data).toBe(PNG_BYTES.toString('base64'))
+  expect(read.asset).toEqual(uploaded.asset)
+})
+
+it('refuses a non-image upload, a non-base64 body, and an oversized one', async () => {
+  const current = await mount()
+  const notImage = await current.plaza
+    .uploadMedia({ name: 'notes.png', data: Buffer.from('plain text').toString('base64') })
+    .catch((error: unknown) => error)
+  expect(remoteErrorOf(notImage)).toMatchObject({ code: 'skillPlaza/unsupported-media' })
+
+  const notBase64 = await current.plaza
+    .uploadMedia({ name: 'x.png', data: 'not base64!' })
+    .catch((error: unknown) => error)
+  expect(remoteErrorOf(notBase64)).toMatchObject({ code: 'skillPlaza/unsupported-media', details: { reason: 'encoding' } })
+
+  const oversized = Buffer.concat([PNG_BYTES, Buffer.alloc(10 * 1024 * 1024)])
+  const tooLarge = await current.plaza
+    .uploadMedia({ name: 'huge.png', data: oversized.toString('base64') })
+    .catch((error: unknown) => error)
+  expect(remoteErrorOf(tooLarge)).toMatchObject({ code: 'skillPlaza/too-large' })
+})
+
+it('keeps media inside the workspace that uploaded it', async () => {
+  const current = await mount()
+  const assetId = await uploadPng(current)
+  const elsewhere = await current.plaza
+    .readMedia({ sessionId: 'other-session' as never, assetId })
+    .catch((error: unknown) => error)
+  expect(remoteErrorOf(elsewhere)).toMatchObject({ code: 'skillPlaza/not-found', details: { id: assetId } })
+})
+
+it('round-trips presentation content through save, publish, and detail', async () => {
+  const current = await mount()
+  const assetId = await uploadPng(current)
+  const draft = await createDraft(current, { ...CONTENT, presentation: presentationOf(assetId) })
+  expect(draft.presentation?.category).toBe('data analysis')
+  expect(draft.presentation?.workflow?.layers).toHaveLength(2)
+
+  const published = await current.plaza.publish({ draftId: draft.draftId, expectedRevision: 1, idempotencyKey: 'publish-p' })
+  expect(published.skill.category).toBe('data analysis')
+  expect(published.skill.coverAssetId).toBe(assetId)
+
+  const detail = await current.plaza.detail({ skillId: published.skill.skillId, version: 1 })
+  expect(detail.content.presentation?.workflow?.rootLayerId).toBe('flow')
+  expect(detail.content.presentation?.examples?.[0]?.assetId).toBe(assetId)
+  expect(detail.title).toBe(CONTENT.title)
+})
+
+it('reports the located problems that block publication', async () => {
+  const current = await mount()
+  const presentation = presentationOf('missing-asset')
+  const broken: PlazaPresentation = {
+    ...presentation,
+    workflow: {
+      rootLayerId: 'flow',
+      layers: [
+        {
+          id: 'flow',
+          entryNodeId: 'read',
+          nodes: [
+            { id: 'read', type: 'action', title: 'Read STDF' },
+            { id: 'read', type: 'action', title: 'Duplicate identity' },
+            { id: 'decide', type: 'decision', title: 'Decide' },
+          ],
+          edges: [{ from: 'read', to: 'nowhere' }, { from: 'decide', to: 'read' }],
+        },
+        { id: 'orphan', entryNodeId: 'ghost', nodes: [{ id: 'alone', type: 'action', title: 'Alone' }], edges: [] },
+      ],
+    },
+  }
+  const draft = await createDraft(current, { ...CONTENT, presentation: broken })
+  const checked = await current.plaza.check({ content: { ...CONTENT, presentation: broken } })
+  const codes = checked.issues.map(issue => issue.code)
+  expect(codes).toEqual(expect.arrayContaining([
+    'asset-missing',
+    'workflow-entry-missing',
+    'node-id-duplicate',
+    'edge-dangling',
+    'decision-unlabeled',
+    'node-unreachable',
+    'layer-unreachable',
+  ]))
+  expect(checked.issues.every(issue => issue.path !== '')).toBe(true)
+
+  const failure = await current.plaza
+    .publish({ draftId: draft.draftId, expectedRevision: 1, idempotencyKey: 'publish-broken' })
+    .catch((error: unknown) => error)
+  expect(remoteErrorOf(failure)).toMatchObject({ code: 'skillPlaza/invalid' })
+  expect((await current.plaza.catalog({})).skills).toEqual([])
+})
+
+it('accepts a complete presentation built only from workspace media', async () => {
+  const current = await mount()
+  const assetId = await uploadPng(current)
+  const content = { ...CONTENT, presentation: presentationOf(assetId) }
+  await expect(current.plaza.check({ content })).resolves.toEqual({ issues: [] })
+  const draft = await createDraft(current, content)
+  await expect(current.plaza.publish({
+    draftId: draft.draftId,
+    expectedRevision: 1,
+    idempotencyKey: 'publish-complete',
+  })).resolves.toMatchObject({ skill: { version: 1 } })
+})
+
+it('keeps an older published version intact after a newer one publishes', async () => {
+  const current = await mount()
+  const first = await createDraft(current)
+  const v1 = await current.plaza.publish({ draftId: first.draftId, expectedRevision: 1, idempotencyKey: 'publish-v1' })
+  const saved = await current.plaza.saveDraft({
+    draftId: first.draftId,
+    content: { ...CONTENT, title: 'Release comparison v2' },
+    expectedRevision: 1,
+  })
+  const v2 = await current.plaza.publish({
+    draftId: first.draftId,
+    expectedRevision: saved.draft.revision,
+    idempotencyKey: 'publish-v2',
+  })
+  expect(v2.skill.version).toBe(2)
+
+  const old = await current.plaza.detail({ skillId: v1.skill.skillId, version: 1 })
+  expect(old.title).toBe(CONTENT.title)
+  expect(old.version).toBe(1)
+  const fresh = await current.plaza.detail({ skillId: v1.skill.skillId, version: 2 })
+  expect(fresh.title).toBe('Release comparison v2')
+  const missing = await current.plaza
+    .detail({ skillId: v1.skill.skillId, version: 9 })
+    .catch((error: unknown) => error)
+  expect(remoteErrorOf(missing)).toMatchObject({ code: 'skillPlaza/not-found' })
+})
+
+it('keeps another workspace out of a detail read', async () => {
+  const current = await mount()
+  const draft = await createDraft(current)
+  const published = await current.plaza.publish({ draftId: draft.draftId, expectedRevision: 1, idempotencyKey: 'publish-iso' })
+  const failure = await current.plaza
+    .detail({ sessionId: 'other-session' as never, skillId: published.skill.skillId, version: 1 })
+    .catch((error: unknown) => error)
+  expect(remoteErrorOf(failure)).toMatchObject({ code: 'skillPlaza/not-found' })
+})
+
+it('writes the pinned version where a restarted Host still finds it', async () => {
+  const current = await mount()
+  const draft = await createDraft(current)
+  const published = await current.plaza.publish({ draftId: draft.draftId, expectedRevision: 1, idempotencyKey: 'publish-pin' })
+  await current.plaza.pin({
+    sessionId: 'session-pinned' as never,
+    skillId: published.skill.skillId,
+    version: 1,
+    slug: CONTENT.slug,
+  })
+
+  await current.stopService()
+  const ctx = new Context()
+  await ctx.plugin(Storage)
+  ctx.effect(() => ctx.storage.backend.register('reread', current.backend))
+  const facility = new DomainFacility(ctx, { backend: 'reread' })
+  try {
+    const domain = await facility.open(skillPlazaDomain)
+    const rows = [...domain.table('pins').entries()].map(([, record]) => record)
+    expect(rows).toEqual([expect.objectContaining({
+      sessionId: 'session-pinned',
+      skillId: published.skill.skillId,
+      version: 1,
+      workspace: current.workspace,
+    })])
+  } finally {
+    await facility.closeAll()
+  }
 })

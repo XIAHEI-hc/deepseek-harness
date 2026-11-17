@@ -23,13 +23,20 @@ import { renderSkillContent } from '@deepseek-ai/dsh-skill'
 import type { SkillCandidate, SkillDefinition, SkillInvocationPolicy, SkillProvider } from '@deepseek-ai/dsh-skill'
 import type { Domain } from '@deepseek-ai/dsh-storage-domain'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { admitImage } from './media.ts'
+import { checkContent, MAX_PLAZA_ASSET_BYTES, plazaPresentationSchema } from './presentation.ts'
+import type { PlazaCheckableContent } from './presentation.ts'
 import { plazaContentSchema, skillPlazaDomain } from './storage.ts'
-import type { PlazaContent, PlazaDraftRecord, PlazaJobRecord, PlazaSkillRecord, PlazaVersionRecord } from './storage.ts'
 import type {
-  PlazaCatalogValue, PlazaDraftContent, PlazaDraftView, PlazaDraftsValue,
-  PlazaGenerateRequest, PlazaGenerateValue, PlazaJobRequest, PlazaJobValue, PlazaJobView,
-  PlazaPinRequest, PlazaPinValue, PlazaPublishRequest, PlazaPublishValue, PlazaSaveDraftRequest, PlazaSaveDraftValue, PlazaSessionRequest,
-  PlazaSkillEntry,
+  PlazaContent, PlazaDraftRecord, PlazaJobRecord, PlazaMediaRecord, PlazaSkillRecord, PlazaVersionRecord,
+} from './storage.ts'
+import type {
+  PlazaCatalogValue, PlazaCheckRequest, PlazaCheckValue, PlazaDetailRequest, PlazaDetailValue,
+  PlazaDraftContent, PlazaDraftView, PlazaDraftsValue, PlazaGenerateRequest, PlazaGenerateValue,
+  PlazaJobRequest, PlazaJobValue, PlazaJobView, PlazaMediaAsset, PlazaMediaReadRequest, PlazaMediaReadValue,
+  PlazaMediaUploadRequest, PlazaMediaUploadValue, PlazaPinRequest, PlazaPinValue, PlazaPresentation,
+  PlazaPublishRequest, PlazaPublishValue, PlazaSaveDraftRequest, PlazaSaveDraftValue, PlazaSessionRequest,
+  PlazaSkillEntry, PlazaWorkflow, PlazaWorkflowNode,
 } from './types.ts'
 
 export type * from './types.ts'
@@ -61,6 +68,14 @@ function toDraftView(record: PlazaDraftRecord): PlazaDraftView {
     ...record.skillId === undefined ? {} : { skillId: record.skillId },
     revision: record.revision,
     updatedAt: record.updatedAt,
+    ...contentOf(record),
+    ...record.source === undefined ? {} : { source: { ...record.source } },
+  }
+}
+
+/** Wire-safe copy of the content fields one stored record carries. */
+function contentOf(record: PlazaContent): PlazaDraftContent {
+  return {
     title: record.title,
     slug: record.slug,
     description: record.description,
@@ -70,7 +85,50 @@ function toDraftView(record: PlazaDraftRecord): PlazaDraftView {
     verification: record.verification,
     failureHandling: record.failureHandling,
     toolDependencies: [...record.toolDependencies],
-    ...record.source === undefined ? {} : { source: { ...record.source } },
+    ...record.presentation === undefined ? {} : { presentation: clonePresentation(record.presentation) },
+  }
+}
+
+/** Deep copy of one presentation payload, keeping it plain JSON. */
+function clonePresentation(presentation: PlazaPresentation): PlazaPresentation {
+  return {
+    schemaVersion: presentation.schemaVersion,
+    ...presentation.category === undefined ? {} : { category: presentation.category },
+    ...presentation.scenarios === undefined ? {} : { scenarios: [...presentation.scenarios] },
+    ...presentation.examplePrompt === undefined ? {} : { examplePrompt: presentation.examplePrompt },
+    ...presentation.coverAssetId === undefined ? {} : { coverAssetId: presentation.coverAssetId },
+    ...presentation.examples === undefined ? {} : { examples: presentation.examples.map(example => ({ ...example })) },
+    ...presentation.workflow === undefined ? {} : { workflow: cloneWorkflow(presentation.workflow) },
+  }
+}
+
+/** Deep copy of one workflow. */
+function cloneWorkflow(workflow: PlazaWorkflow): PlazaWorkflow {
+  return {
+    rootLayerId: workflow.rootLayerId,
+    layers: workflow.layers.map(layer => ({
+      id: layer.id,
+      entryNodeId: layer.entryNodeId,
+      nodes: layer.nodes.map(node => cloneNode(node)),
+      edges: layer.edges.map(edge => ({ ...edge })),
+    })),
+  }
+}
+
+/** Deep copy of one workflow node. */
+function cloneNode(node: PlazaWorkflowNode): PlazaWorkflowNode {
+  return {
+    id: node.id,
+    type: node.type,
+    title: node.title,
+    ...node.purpose === undefined ? {} : { purpose: node.purpose },
+    ...node.inputs === undefined ? {} : { inputs: [...node.inputs] },
+    ...node.checks === undefined ? {} : { checks: [...node.checks] },
+    ...node.outputs === undefined ? {} : { outputs: [...node.outputs] },
+    ...node.verification === undefined ? {} : { verification: node.verification },
+    ...node.failureHandling === undefined ? {} : { failureHandling: node.failureHandling },
+    ...node.assetIds === undefined ? {} : { assetIds: [...node.assetIds] },
+    ...node.subflowLayerId === undefined ? {} : { subflowLayerId: node.subflowLayerId },
   }
 }
 
@@ -83,6 +141,20 @@ function toSkillEntry(record: PlazaSkillRecord): PlazaSkillEntry {
     description: record.description,
     version: record.activeVersion,
     updatedAt: record.updatedAt,
+    ...record.category === undefined ? {} : { category: record.category },
+    ...record.coverAssetId === undefined ? {} : { coverAssetId: record.coverAssetId },
+  }
+}
+
+/** Wire-safe copy of a stored image, without its bytes. */
+function toMediaAsset(record: PlazaMediaRecord): PlazaMediaAsset {
+  return {
+    assetId: record.assetId,
+    mimeType: record.mimeType,
+    width: record.width,
+    height: record.height,
+    byteLength: record.byteLength,
+    createdAt: record.createdAt,
   }
 }
 
@@ -108,7 +180,8 @@ function workspaceKey(directory: string): string {
  * @param content - validated draft content.
  * @returns the complete skill body, newest section last.
  */
-export function renderSkillBody(content: PlazaDraftContent): string {
+/** Render a stored draft as the markdown body a skill provider serves. */
+export function renderSkillBody(content: PlazaCheckableContent): string {
   const section = (heading: string, lines: readonly string[]): string[] => lines.length === 0
     ? []
     : [`## ${heading}`, ...lines, '']
@@ -127,7 +200,7 @@ export function renderSkillBody(content: PlazaDraftContent): string {
 }
 
 /** Reject content the plaza cannot store or serve. */
-function validateContent(content: PlazaDraftContent): void {
+function validateContent(content: PlazaCheckableContent): void {
   if (!SLUG_PATTERN.test(content.slug)) {
     throw new RemoteError(
       'skillPlaza/invalid',
@@ -135,6 +208,14 @@ function validateContent(content: PlazaDraftContent): void {
       { reason: 'slug' },
     )
   }
+  if (content.presentation === undefined) return
+  const parsed = plazaPresentationSchema.safeParse(content.presentation)
+  if (parsed.success) return
+  throw new RemoteError(
+    'skillPlaza/invalid',
+    `presentation content is malformed at ${parsed.error.issues.map(issue => issue.path.join('.')).join(', ')}`,
+    { reason: 'presentation' },
+  )
 }
 
 /** Fail with the plaza's not-found code. */
@@ -151,8 +232,6 @@ export class SkillPlazaService extends TypertRemoteService {
 
   private domainReady: Promise<Domain<typeof skillPlazaDomain>> | undefined
   private invalidateProvider: (() => void) | undefined
-  /** Versions the composer pinned for a Session's next explicit invocation. */
-  private readonly pins = new Map<string, { skillId: string; version: number; slug: string }>()
   /** Generation attempts in flight, keyed by workspace and idempotency key. */
   private readonly generating = new Map<string, Promise<PlazaJobRecord>>()
 
@@ -178,24 +257,32 @@ export class SkillPlazaService extends TypertRemoteService {
       const ready = this.domain()
       return async () => {
         this.domainReady = undefined
-        this.pins.clear()
         await (await ready).close()
       }
     }, 'skill-plaza: storage')
     // A composer selection binds one published version to the next task that
-    // names it. The pinned body replaces whatever the active version would
-    // have supplied, and an unavailable pin fails the step instead of quietly
-    // running a different version.
+    // names it. The binding is durable, so a Host restart between choosing a
+    // version and sending the task still injects that exact version. A binding
+    // made in another workspace is dropped instead of crossing over. The pinned
+    // body replaces whatever the active version would have supplied, and a
+    // binding whose version is gone fails the step instead of quietly running a
+    // different version.
     ctx.on('agent/pre-step', async ({ agent, signal }, next) => {
       const decision = await next()
       if (decision.kind === 'reject') return decision
-      const pin = this.pins.get(agent.id)
+      const pins = (await this.domain()).table('pins')
+      const pin = pins.get(agent.id)
       if (pin === undefined) return decision
       const pattern = new RegExp(`(^|\\s)/${pin.slug}(?=\\s|$)`)
       const invoked = decision.messages.some(message => message.source.kind === 'user'
         && message.content.some(block => block.type === 'text' && pattern.test(block.text)))
       if (!invoked) return decision
-      this.pins.delete(agent.id)
+      const workspace = workspaceKey(await this.ctx.workingDirectory.ensure(agent, signal))
+      if (workspace !== pin.workspace) {
+        await pins.delete(agent.id)
+        return decision
+      }
+      await pins.delete(agent.id)
       signal.throwIfAborted()
       const record = (await this.domain()).table('versions').get(`${pin.skillId}@${pin.version}`)
       /* v8 ignore next -- published versions are immutable; nothing in this package removes one */
@@ -312,6 +399,15 @@ export class SkillPlazaService extends TypertRemoteService {
     }
     assertRevision(request.expectedRevision, draft.revision)
     validateContent(draft)
+    const issues = checkContent(draft, this.assetsOf(domain, workspace))
+    if (issues.length > 0) {
+      const first = issues[0] as (typeof issues)[number]
+      throw new RemoteError(
+        'skillPlaza/invalid',
+        `${first.path}: ${first.detail}`,
+        { reason: first.code },
+      )
+    }
     const owner = draft.skillId === undefined
       ? this.claimSkillId(domain, workspace, draft.slug)
       : draft.skillId
@@ -329,6 +425,7 @@ export class SkillPlazaService extends TypertRemoteService {
       body: renderSkillBody(draft),
     }
     await versions.put(`${owner}@${version}`, record)
+    const presentation = draft.presentation
     const catalogRow: PlazaSkillRecord = {
       skillId: owner,
       workspace,
@@ -337,6 +434,8 @@ export class SkillPlazaService extends TypertRemoteService {
       description: draft.description,
       activeVersion: version,
       updatedAt: now,
+      ...presentation?.category === undefined ? {} : { category: presentation.category },
+      ...presentation?.coverAssetId === undefined ? {} : { coverAssetId: presentation.coverAssetId },
     }
     await domain.table('skills').put(owner, catalogRow)
     if (draft.skillId === undefined) {
@@ -457,7 +556,14 @@ export class SkillPlazaService extends TypertRemoteService {
     const skill = domain.table('skills').get(request.skillId) ?? notFound(request.skillId)
     if (skill.workspace !== workspace) notFound(request.skillId)
     const version = domain.table('versions').get(`${request.skillId}@${request.version}`) ?? notFound(`${request.skillId}@${request.version}`)
-    this.pins.set(request.sessionId, { skillId: skill.skillId, version: version.version, slug: skill.slug })
+    await domain.table('pins').put(request.sessionId, {
+      sessionId: request.sessionId,
+      workspace,
+      skillId: skill.skillId,
+      version: version.version,
+      slug: skill.slug,
+      updatedAt: new Date().toISOString(),
+    })
     return { skillId: skill.skillId, version: version.version, slug: skill.slug }
   }
 
@@ -470,6 +576,105 @@ export class SkillPlazaService extends TypertRemoteService {
   async job(request: PlazaJobRequest): Promise<PlazaJobValue> {
     const domain = await this.domain()
     return { job: toJobView(domain.table('jobs').get(request.jobId) ?? notFound(request.jobId)) }
+  }
+
+  /**
+   * Read one published version's content and presentation.
+   * @param request - Session, skill identity, and the exact version to read.
+   * @returns that version's content, never the active version's.
+   * @throws RemoteError `skillPlaza/not-found` when the skill or version is not published in the workspace.
+   */
+  @Remote
+  async detail(request: PlazaDetailRequest): Promise<PlazaDetailValue> {
+    const workspace = await this.workspaceOf(request.sessionId)
+    const domain = await this.domain()
+    const skill = this.skillOf(domain, workspace, request.skillId) ?? notFound(request.skillId)
+    const record = domain.table('versions').get(`${skill.skillId}@${request.version}`)
+    if (record === undefined || record.workspace !== workspace) {
+      notFound(`${request.skillId}@${request.version}`)
+    }
+    return {
+      skillId: skill.skillId,
+      slug: record.slug,
+      title: record.title,
+      version: record.version,
+      publishedAt: record.publishedAt,
+      content: contentOf(record),
+    }
+  }
+
+  /**
+   * Validate editor content without writing it.
+   * @param request - Session selecting the workspace, and the content to validate.
+   * @returns every located problem; an empty list means publication would be accepted.
+   */
+  @Remote
+  async check(request: PlazaCheckRequest): Promise<PlazaCheckValue> {
+    const workspace = await this.workspaceOf(request.sessionId)
+    return { issues: checkContent(request.content, this.assetsOf(await this.domain(), workspace)) }
+  }
+
+  /**
+   * Store one static image in the Session's workspace.
+   * @param request - Session, the original file name, and base64 file bytes.
+   * @returns the identity and detected facts of the stored image.
+   * @throws RemoteError `skillPlaza/unsupported-media` for a non-image, `skillPlaza/too-large` past the byte bound.
+   */
+  @Remote
+  async uploadMedia(request: PlazaMediaUploadRequest): Promise<PlazaMediaUploadValue> {
+    const workspace = await this.workspaceOf(request.sessionId)
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(request.data)) {
+      throw new RemoteError('skillPlaza/unsupported-media', 'the upload is not base64 data', { reason: 'encoding' })
+    }
+    const bytes = Buffer.from(request.data, 'base64')
+    if (bytes.byteLength > MAX_PLAZA_ASSET_BYTES) {
+      throw new RemoteError(
+        'skillPlaza/too-large',
+        `the upload is ${bytes.byteLength} bytes; the bound is ${MAX_PLAZA_ASSET_BYTES}`,
+        { limit: MAX_PLAZA_ASSET_BYTES },
+      )
+    }
+    const admission = admitImage(bytes)
+    if (!admission.ok) {
+      throw new RemoteError('skillPlaza/unsupported-media', admission.reason, { reason: admission.reason })
+    }
+    const record: PlazaMediaRecord = {
+      assetId: `asset-${randomUUID()}`,
+      workspace,
+      mimeType: admission.facts.mimeType,
+      width: admission.facts.width,
+      height: admission.facts.height,
+      byteLength: bytes.byteLength,
+      createdAt: new Date().toISOString(),
+      // Re-encode the decoded bytes so the stored value is exactly what the
+      // format check admitted, not whatever encoding the caller sent.
+      data: bytes.toString('base64'),
+    }
+    await (await this.domain()).table('media').put(record.assetId, record)
+    this.notifyChanged()
+    return { asset: toMediaAsset(record) }
+  }
+
+  /**
+   * Read one stored image from the Session's workspace.
+   * @param request - Session and asset identity.
+   * @returns the stored facts and base64 bytes.
+   * @throws RemoteError `skillPlaza/not-found` when the workspace does not hold that asset.
+   */
+  @Remote
+  async readMedia(request: PlazaMediaReadRequest): Promise<PlazaMediaReadValue> {
+    const workspace = await this.workspaceOf(request.sessionId)
+    const record = (await this.domain()).table('media').get(request.assetId)
+    if (record === undefined || record.workspace !== workspace) notFound(request.assetId)
+    return { asset: toMediaAsset(record), data: record.data }
+  }
+
+  /** Media references that resolve in one workspace. */
+  private assetsOf(domain: Domain<typeof skillPlazaDomain>, workspace: string): { has(assetId: string): boolean } {
+    const held = new Set([...domain.table('media').entries()]
+      .filter(([, record]) => record.workspace === workspace)
+      .map(([assetId]) => assetId))
+    return { has: assetId => held.has(assetId) }
   }
 
   /** Open (once) and return the plaza storage domain. */
@@ -716,7 +921,7 @@ export class SkillPlazaService extends TypertRemoteService {
 }
 
 /** Copy one content payload into stored-record fields. */
-function snapshotContent(content: PlazaDraftContent): PlazaContent {
+function snapshotContent(content: PlazaCheckableContent): PlazaContent {
   return {
     title: content.title,
     slug: content.slug,
@@ -727,6 +932,9 @@ function snapshotContent(content: PlazaDraftContent): PlazaContent {
     verification: content.verification,
     failureHandling: content.failureHandling,
     toolDependencies: [...content.toolDependencies],
+    ...content.presentation === undefined
+      ? {}
+      : { presentation: clonePresentation(content.presentation) },
   }
 }
 

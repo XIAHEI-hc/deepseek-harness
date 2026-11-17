@@ -1,6 +1,7 @@
 /**
  * Wire vocabulary for the Skills plaza: drafts, immutable published versions,
- * and the catalog the conversation composer selects from.
+ * presentation content, workspace media, and the catalog the conversation
+ * composer and the plaza pages select from.
  *
  * @module @deepseek-ai/dsh-skill-plaza
  */
@@ -21,6 +22,100 @@ export interface PlazaSkillEntry {
   readonly version: number
   /** ISO timestamp of the active version's publication. */
   readonly updatedAt: string
+  /** Optional author-chosen category the browse filter groups by. */
+  readonly category?: string
+  /** Optional workspace media asset shown as the card cover. */
+  readonly coverAssetId?: string
+}
+
+/** One result image of a skill's overview. */
+export interface PlazaExample {
+  /** Workspace media asset holding the image. */
+  readonly assetId: string
+  /** Short label naming the example. */
+  readonly title: string
+  /** Alternative text describing what the image shows. */
+  readonly alt: string
+  /** Caption rendered under the image. */
+  readonly caption: string
+}
+
+/** One node of a workflow layer. */
+export interface PlazaWorkflowNode {
+  /** Layer-unique stable node identity the editor mints once. */
+  readonly id: string
+  /** Action nodes do work; decision nodes branch on a check. */
+  readonly type: 'action' | 'decision'
+  /** Display name of the step. */
+  readonly title: string
+  /** What the step is for, in one or two sentences. */
+  readonly purpose?: string | undefined
+  /** Named inputs the step consumes. */
+  readonly inputs?: readonly string[] | undefined
+  /** Checks a decision node evaluates. */
+  readonly checks?: readonly string[] | undefined
+  /** Outputs the step produces. */
+  readonly outputs?: readonly string[] | undefined
+  /** How the step's outcome is verified. */
+  readonly verification?: string | undefined
+  /** What to do when the step cannot complete, including retries. */
+  readonly failureHandling?: string | undefined
+  /** Workspace media assets illustrating the step. */
+  readonly assetIds?: readonly string[] | undefined
+  /** Identity of the nested layer this node opens, when it has one. */
+  readonly subflowLayerId?: string | undefined
+}
+
+/** One directed edge between nodes of the same workflow layer. */
+export interface PlazaWorkflowEdge {
+  /** Source node identity in this layer. */
+  readonly from: string
+  /** Target node identity in this layer. */
+  readonly to: string
+  /** Branch condition a decision edge carries, such as "failed". */
+  readonly label?: string | undefined
+}
+
+/** One workflow layer: the top-level graph or one node's subflow. */
+export interface PlazaWorkflowLayer {
+  /** Layer identity, unique within the workflow. */
+  readonly id: string
+  /** Identity of the node execution starts at in this layer. */
+  readonly entryNodeId: string
+  /** Nodes of this layer. */
+  readonly nodes: readonly PlazaWorkflowNode[]
+  /** Directed edges between this layer's nodes. */
+  readonly edges: readonly PlazaWorkflowEdge[]
+}
+
+/**
+ * A workflow as a flat set of layers plus the root layer identity. Layers are
+ * flat rather than nested because a nested shape is recursive and the Remote
+ * codec rejects unnamed recursive payloads.
+ */
+export interface PlazaWorkflow {
+  /** Identity of the layer execution starts at. */
+  readonly rootLayerId: string
+  /** Every layer of the workflow, top level first. */
+  readonly layers: readonly PlazaWorkflowLayer[]
+}
+
+/** Optional presentation content: how the plaza shows a published version. */
+export interface PlazaPresentation {
+  /** Version of the presentation schema this content was written against. */
+  readonly schemaVersion: number
+  /** Author-chosen category the browse filter groups by. */
+  readonly category?: string | undefined
+  /** Situations the skill applies to. */
+  readonly scenarios?: readonly string[] | undefined
+  /** Example request the caller can take into the composer. */
+  readonly examplePrompt?: string | undefined
+  /** Workspace media asset shown as the card cover. */
+  readonly coverAssetId?: string | undefined
+  /** Result images shown in the overview, in author order. */
+  readonly examples?: readonly PlazaExample[] | undefined
+  /** Structured workflow shown in the execution-process view. */
+  readonly workflow?: PlazaWorkflow | undefined
 }
 
 /** Editable content shared by the plaza editor, the draft record, and the published body. */
@@ -43,6 +138,8 @@ export interface PlazaDraftContent {
   readonly failureHandling: string
   /** Tool names the skill depends on. */
   readonly toolDependencies: readonly string[]
+  /** Optional display content; absent for drafts written before it existed. */
+  readonly presentation?: PlazaPresentation
 }
 
 /** Where a draft was distilled from, retained for provenance and authorization. */
@@ -193,6 +290,126 @@ export interface PlazaJobValue {
   readonly job: PlazaJobView
 }
 
+/** Read one published version's presentation and operating content. */
+export interface PlazaDetailRequest extends PlazaSessionRequest {
+  /** Published skill identity. */
+  readonly skillId: string
+  /** Exact published version the page displays. */
+  readonly version: number
+}
+
+/** One published version as the detail pages read it. */
+export interface PlazaDetailValue {
+  /** Catalog identity of the skill this version belongs to. */
+  readonly skillId: string
+  /** Callable name of that version. */
+  readonly slug: string
+  /** Title of that version. */
+  readonly title: string
+  /** The exact version that was read. */
+  readonly version: number
+  /** ISO timestamp of that version's publication. */
+  readonly publishedAt: string
+  /** The version's complete content, including optional presentation. */
+  readonly content: PlazaDraftContent
+}
+
+/** One problem the plaza reports about draft content, located where an editor can mark it. */
+export interface PlazaIssue {
+  /** Machine-readable kind of problem. */
+  readonly code: PlazaIssueCode
+  /** Content path such as `workflow.nodes[2].id`, which the editor maps back to a control. */
+  readonly path: string
+  /** Readable reason, without product copy in any single locale. */
+  readonly detail: string
+  /** Workflow node the problem belongs to, when it belongs to one. */
+  readonly nodeId?: string
+  /** Media asset identity the problem names, when it names one. */
+  readonly assetId?: string
+}
+
+/** Kinds of content problem the plaza reports. */
+export type PlazaIssueCode =
+  | 'slug-invalid'
+  | 'title-missing'
+  | 'description-missing'
+  | 'presentation-unsupported'
+  | 'example-limit'
+  | 'asset-missing'
+  | 'workflow-root-missing'
+  | 'layer-id-duplicate'
+  | 'layer-unreachable'
+  | 'subflow-missing'
+  | 'workflow-entry-missing'
+  | 'node-id-duplicate'
+  | 'node-id-empty'
+  | 'edge-dangling'
+  | 'node-unreachable'
+  | 'decision-unlabeled'
+  | 'workflow-depth'
+  | 'node-limit'
+  | 'node-title-missing'
+  | 'node-asset-missing'
+
+/** Validate draft content or a publication candidate without writing. */
+export interface PlazaCheckRequest extends PlazaSessionRequest {
+  /** Content to validate, exactly as the editor currently holds it. */
+  readonly content: PlazaDraftContent
+}
+
+/** Located problems found in the checked content; empty means publishable. */
+export interface PlazaCheckValue {
+  /** Every problem found, ordered by content path. */
+  readonly issues: readonly PlazaIssue[]
+}
+
+/** Static image formats the plaza accepts as result media. */
+export type PlazaMediaType = 'image/png' | 'image/jpeg' | 'image/webp'
+
+/** One stored workspace image, without its bytes. */
+export interface PlazaMediaAsset {
+  /** Immutable asset identity, unique inside its workspace. */
+  readonly assetId: string
+  /** Detected format of the stored bytes. */
+  readonly mimeType: PlazaMediaType
+  /** Pixel width. */
+  readonly width: number
+  /** Pixel height. */
+  readonly height: number
+  /** Size of the stored file in bytes. */
+  readonly byteLength: number
+  /** ISO timestamp of the upload. */
+  readonly createdAt: string
+}
+
+/** Store one image in the Session's workspace. */
+export interface PlazaMediaUploadRequest extends PlazaSessionRequest {
+  /** Original file name, used only as a readability hint in diagnostics. */
+  readonly name: string
+  /** Complete file bytes, base64-encoded. */
+  readonly data: string
+}
+
+/** The stored asset an upload produced. */
+export interface PlazaMediaUploadValue {
+  /** Identity and detected facts of the stored image. */
+  readonly asset: PlazaMediaAsset
+}
+
+/** Read one stored workspace image. */
+export interface PlazaMediaReadRequest extends PlazaSessionRequest {
+  /** Asset to read. */
+  readonly assetId: string
+}
+
+/** One stored image and its bytes. */
+export interface PlazaMediaReadValue {
+  /** Identity and detected facts of the image. */
+  readonly asset: PlazaMediaAsset
+  /** Base64-encoded file bytes. */
+  readonly data: string
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Events {
     /**
@@ -206,7 +423,7 @@ declare module '@deepseek-ai/cordis' {
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
-    /** No draft, skill, or job carries that identity in this workspace. */
+    /** No draft, skill, job, or media asset carries that identity in this workspace. */
     'skillPlaza/not-found': { readonly id: string }
     /** The caller's revision is behind the stored one. */
     'skillPlaza/conflict': { readonly expected: number; readonly actual: number }
@@ -214,5 +431,9 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'skillPlaza/name-conflict': { readonly slug: string }
     /** The caller's content failed validation. */
     'skillPlaza/invalid': { readonly reason: string }
+    /** An upload is not a static image this plaza can store. */
+    'skillPlaza/unsupported-media': { readonly reason: string }
+    /** An upload or stored asset exceeds a size bound. */
+    'skillPlaza/too-large': { readonly limit: number }
   }
 }

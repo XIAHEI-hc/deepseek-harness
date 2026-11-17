@@ -60,6 +60,10 @@ export const VIEWER_ENDPOINT_CLASSES = {
   'skillPlaza/pin': 'owner-only', // a version binding belongs to the selecting owner
   'skillPlaza/generate': 'owner-only', // generation reads the owner Session log
   'skillPlaza/job': 'owner-only', // generation attempts are owner-scoped
+  'skillPlaza/detail': 'owner-only', // a published version's display content is author-scoped
+  'skillPlaza/check': 'owner-only', // validation reads the workspace media an owner uploaded
+  'skillPlaza/uploadMedia': 'owner-only', // writing workspace media is an owner action
+  'skillPlaza/readMedia': 'owner-only', // reading workspace media is author-scoped
   'skills/list': 'reader-session-read', // the page lists the skills of a visible Session
   'session/events': 'reader-session-read', // the page reads the event history of a visible Session
   'session/observeEvent': 'reader-session-read', // the page follows one visible Session's events

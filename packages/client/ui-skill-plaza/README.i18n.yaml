@@ -3,32 +3,35 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/client/ui-skill-plaza/README.md
 /:
-  en: 729a001fb27f4c6b
-  zh: f76ca6ca6a874684
+  en: 89fb99561751f8c3
+  zh: 2c9524ab34933dc4
 /deepseek-ai-dsh-client-ui-skill-plaza:
   en: d5347e363590116e
   zh: 3afa39fd9d5ef1d0
 /deepseek-ai-dsh-client-ui-skill-plaza/summary:
-  en: 75a0ce4252b3c9ad
-  zh: 6e88d1b249019d5e
+  en: 564f52abcf3220d8
+  zh: 3b6877cda4cda132
 /deepseek-ai-dsh-client-ui-skill-plaza/table-of-contents:
   en: d7fbbba70852c433
   zh: f46c0b92bc8b4ef5
 /deepseek-ai-dsh-client-ui-skill-plaza/use-this-package:
-  en: 67d55329f178fe09
-  zh: d5688d7bafeeb999
+  en: 91e9716361d4747f
+  zh: 524e5821c68c058f
 /deepseek-ai-dsh-client-ui-skill-plaza/use-this-package/surfaces:
-  en: 35abf804152a5f96
-  zh: a0845afe37b33b00
+  en: 7d94cab960a1ac54
+  zh: adf2d0d0e0974833
+/deepseek-ai-dsh-client-ui-skill-plaza/use-this-package/pages-and-state:
+  en: dbfb12aae374dd36
+  zh: 989d1ae6c8652a35
 /deepseek-ai-dsh-client-ui-skill-plaza/model-experience:
   en: 7bf52a6d39bfd6b1
-  zh: 7bf52a6d39bfd6b1
+  zh: ab6e7071a400ad11
 /deepseek-ai-dsh-client-ui-skill-plaza/model-experience/kv-cache-effect:
   en: f57418d2962c00de
-  zh: f57418d2962c00de
+  zh: 51a7e653df9c09ef
 /deepseek-ai-dsh-client-ui-skill-plaza/known-limitations-and-deferred-work:
-  en: c6170c778c7349a7
-  zh: ee161c6a5ab99c45
+  en: 818978a3548e5674
+  zh: f16c6499aa81676a
 /deepseek-ai-dsh-client-ui-skill-plaza/known-limitations-and-deferred-work/dev-note:
-  en: e67f633dc6fe7773
-  zh: 3bb0c20c93f16f98
+  en: 643abeb800d3954d
+  zh: 358864b92eb05473

@@ -3,14 +3,14 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/skill/skill-plaza/README.md
 /:
-  en: 7a63323a462e4b4d
-  zh: a465d882d7ea3e4a
+  en: fcaad635ce089c97
+  zh: 15d5420326e50895
 /deepseek-ai-dsh-skill-plaza:
   en: 260599a7af95923a
   zh: ec6f71dce9d13884
 /deepseek-ai-dsh-skill-plaza/summary:
-  en: fd0d0628abbedf1b
-  zh: 809847e3c5fce42c
+  en: fc9c36ee66b0ddb3
+  zh: 0cefaf60c7055818
 /deepseek-ai-dsh-skill-plaza/table-of-contents:
   en: 3460b3e585e0c020
   zh: 7cff0e24d2a58500
@@ -18,35 +18,41 @@
   en: 09e1abb020672326
   zh: 1b74cec35107c791
 /deepseek-ai-dsh-skill-plaza/use-this-package/what-it-stores:
-  en: 6e4d4c0581565518
-  zh: a1df8ce2667b420c
+  en: c48f5128d4d90e3d
+  zh: 3b9731a58462c87e
 /deepseek-ai-dsh-skill-plaza/use-this-package/what-the-remote-offers:
-  en: 9d91ed09baba7868
-  zh: 6f72f720e0167fa4
+  en: 249a130481daf882
+  zh: 192922e991831cdf
+/deepseek-ai-dsh-skill-plaza/use-this-package/display-content:
+  en: 78f4583b0ce08e32
+  zh: bec61efd9100669b
+/deepseek-ai-dsh-skill-plaza/use-this-package/media:
+  en: c3582cf00742b57d
+  zh: df29e27b4cd57843
 /deepseek-ai-dsh-skill-plaza/use-this-package/skill-provider:
   en: 002d7ad9c14bc7ca
-  zh: 72ef66b87f1c70ff
+  zh: c6711aa03e3db6db
 /deepseek-ai-dsh-skill-plaza/understand-the-implementation:
-  en: e53cd953ba1dbacf
-  zh: 90da6a51387a1109
+  en: 29f3d8965d80bc3e
+  zh: 89fc28e7a110f0e4
 /deepseek-ai-dsh-skill-plaza/model-experience:
   en: 215e7ba838619b7b
   zh: 215e7ba838619b7b
 /deepseek-ai-dsh-skill-plaza/model-experience/published-skill-bodies:
   en: 88942d40292941b1
-  zh: 6045cb135d272f78
+  zh: 73a0f34834b45e30
 /deepseek-ai-dsh-skill-plaza/model-experience/published-skill-bodies/what-the-model-sees:
-  en: 70e397c69323e4f1
-  zh: 1e36886af9f1b099
+  en: f64fda4b4f42996b
+  zh: 3214835d030c8a1e
 /deepseek-ai-dsh-skill-plaza/model-experience/published-skill-bodies/token-effect:
   en: eb8f9eccc1ae5994
-  zh: 5409a8f356c68703
+  zh: 87874dcbee883e3d
 /deepseek-ai-dsh-skill-plaza/model-experience/published-skill-bodies/kv-cache-effect:
-  en: 937edd83ac80e20c
-  zh: 7e4233579723dbf9
+  en: 4016e073eab8fc61
+  zh: b1e20b3d8df5f504
 /deepseek-ai-dsh-skill-plaza/known-limitations-and-deferred-work:
-  en: 0aaaaa62a6db2fac
-  zh: 2d6e29127a263a3c
+  en: 87877b0654048bb8
+  zh: 181114dd3c1fceaa
 /deepseek-ai-dsh-skill-plaza/known-limitations-and-deferred-work/dev-note:
-  en: e67f633dc6fe7773
-  zh: 3bb0c20c93f16f98
+  en: e8b5a6c7ed5fa619
+  zh: 355f6486d6697e12

@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for 2026-11-16-skill-plaza-display-content.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-11-16-skill-plaza-display-content.md
+/agent-note-skills-plaza-display-content-workspace-media-and-durable-pins:
+  en: 60b5eed3f54b21a9
+  zh: 0178ceb417f72d60
+/agent-note-skills-plaza-display-content-workspace-media-and-durable-pins/problem:
+  en: 8849c39ae9089b7c
+  zh: 9cf0a4e80ce4792e
+/agent-note-skills-plaza-display-content-workspace-media-and-durable-pins/decision:
+  en: f9ba0836897ffe6e
+  zh: 6bda54af61536f52
+/agent-note-skills-plaza-display-content-workspace-media-and-durable-pins/verification:
+  en: e3d685b78b9d7872
+  zh: d29db989fe7ac431
+/agent-note-skills-plaza-display-content-workspace-media-and-durable-pins/alternatives-considered:
+  en: 42e4d045becbf42d
+  zh: 89c90f64e02d4f6e
+/agent-note-skills-plaza-display-content-workspace-media-and-durable-pins/consequences:
+  en: b8a97f0ab75dd6c2
+  zh: 7f8ded394670686b
