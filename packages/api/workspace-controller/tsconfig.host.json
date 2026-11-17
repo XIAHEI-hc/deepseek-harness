@@ -12,7 +12,8 @@
     "src/default-workspace.ts",
     "src/directory-picker.ts",
     "src/feed.ts",
-    "src/default-directory.ts"
+    "src/default-directory.ts",
+    "src/project-context.ts"
   ],
   "references": [
     { "path": "../../util/brand" },
@@ -25,6 +26,9 @@
     { "path": "../remote-access/tsconfig.host.json" },
     { "path": "../../util/deque" },
     { "path": "../../util/native-command" },
-    { "path": "../../workspace/workspace" }
+    { "path": "../../workspace/workspace" },
+    { "path": "../../llm/llm" },
+    { "path": "../../core/agent" },
+    { "path": "../../session/working-directory" }
   ]
 }
