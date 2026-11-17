@@ -25,6 +25,7 @@ import type {
   WorkspacePinSessionRequest,
   WorkspacePinValue,
   WorkspaceRenameRequest,
+  WorkspaceSetInstructionsRequest,
   WorkspaceUnarchiveSessionRequest,
   WorkspaceUnpinSessionRequest,
   WorkspaceValue,
@@ -119,6 +120,17 @@ export class WorkspaceController extends TypertRemoteService {
   @Remote('rename')
   rename(request: WorkspaceRenameRequest): Promise<WorkspaceValue> {
     return this.commands.rename(request)
+  }
+
+  /**
+   * Replace one Workspace's project instructions. Later turns of its Sessions
+   * read the new text and record the revision they ran with.
+   * @param request - Workspace identity and replacement text.
+   * @returns the updated Workspace projection.
+   */
+  @Remote('setInstructions')
+  setInstructions(request: WorkspaceSetInstructionsRequest): Promise<WorkspaceValue> {
+    return this.commands.setInstructions(request)
   }
 
   /**

@@ -21,6 +21,10 @@ export interface WorkspaceView {
   readonly path: string
   /** User-visible title. */
   readonly title: string
+  /** Project instructions every later turn of this Workspace's Sessions reads; empty when unset. */
+  readonly instructions: string
+  /** Revision of {@link instructions}; `0` before the first save. */
+  readonly instructionsRevision: number
   /** Sessions accounted to this Workspace in manual order. */
   readonly sessionIds: readonly SessionId[]
   /** ISO-8601 creation instant. */
@@ -76,6 +80,12 @@ export interface WorkspaceCreateValue {
 export interface WorkspaceRenameRequest {
   readonly workspaceId: WorkspaceId
   readonly title: string
+}
+
+/** Replace one Workspace's project instructions. */
+export interface WorkspaceSetInstructionsRequest {
+  readonly workspaceId: WorkspaceId
+  readonly instructions: string
 }
 
 /** Workspace mutation returning the complete changed row. */

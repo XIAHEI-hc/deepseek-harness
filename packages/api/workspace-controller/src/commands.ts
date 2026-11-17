@@ -26,6 +26,7 @@ import type {
   WorkspacePinSessionRequest,
   WorkspacePinValue,
   WorkspaceRenameRequest,
+  WorkspaceSetInstructionsRequest,
   WorkspaceUnarchiveSessionRequest,
   WorkspaceUnpinSessionRequest,
   WorkspaceValue,
@@ -87,6 +88,19 @@ export class WorkspaceCommands {
         }
         await workspace.setTitle(title)
       }
+      return { workspace: workspaceView(workspace) }
+    })
+  }
+
+  /**
+   * Replace one Workspace's project instructions; later turns read the new text.
+   * @param request - Workspace identity and replacement text.
+   * @returns the updated Workspace projection, carrying the new revision.
+   */
+  setInstructions(request: WorkspaceSetInstructionsRequest): Promise<WorkspaceValue> {
+    return this.enqueue(async () => {
+      const workspace = this.requireWorkspace(request.workspaceId)
+      await workspace.setInstructions(request.instructions)
       return { workspace: workspaceView(workspace) }
     })
   }
