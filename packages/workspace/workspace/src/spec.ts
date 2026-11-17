@@ -27,6 +27,10 @@ export const workspaceRecord = z.object({
   sessionIds: z.array(sessionId),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /** Project instructions; absent on records written before the field existed. */
+  instructions: z.string().optional(),
+  /** Revision of `instructions`; a record without it has never stored instructions. */
+  instructionsRevision: z.number().int().nonnegative().optional(),
 })
 
 /** One stored workspace record, inferred from {@link workspaceRecord}. */
@@ -75,7 +79,8 @@ export type WorkspaceDomainState = z.infer<typeof workspaceDomainState>
  */
 export const workspaceDomainSpec = defineDomain({
   name: 'workspace',
-  version: 2,
+  version: 3,
+  compatibleVersions: [1, 2],
   global: {
     schema: workspaceDomainState,
     initial: { initialized: false, workspaceIds: [], archivedSessionIds: [], pinnedSessionIds: [] },

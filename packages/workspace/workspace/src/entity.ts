@@ -91,6 +91,25 @@ export class WorkspaceEntity implements Workspace {
     return this.record.title
   }
 
+  get instructions(): string {
+    return this.record.instructions ?? ''
+  }
+
+  get instructionsRevision(): number {
+    return this.record.instructionsRevision ?? 0
+  }
+
+  /**
+   * Replace the project instructions every later turn of this workspace reads.
+   * @param instructions - Replacement text; an empty string clears them.
+   * @returns the revision stamped by this save.
+   */
+  async setInstructions(instructions: string): Promise<number> {
+    const revision = this.instructionsRevision + 1
+    await this.mutate(record => ({ ...record, instructions, instructionsRevision: revision }))
+    return revision
+  }
+
   get createdAt(): string {
     return this.record.createdAt
   }
