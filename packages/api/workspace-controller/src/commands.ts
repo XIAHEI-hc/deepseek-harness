@@ -193,6 +193,13 @@ export class WorkspaceCommands {
     return { sessionId: request.sessionId, workspaceId: workspaceId ?? null }
   }
 
+  /**
+   * Hide one Session from every grouping surface, stopping its activity when
+   * the caller asks for it.
+   * @param request - Session identity and whether to stop running activity first.
+   * @returns the complete resulting archive set.
+   * @throws RemoteError `session/not-found` for an unknown Session, `workspace/session-active` when activity keeps running.
+   */
   async archiveSession(request: WorkspaceArchiveSessionRequest): Promise<WorkspaceArchiveValue> {
     try {
       await this.ctx.workspaceRegistry.archiveSession(
