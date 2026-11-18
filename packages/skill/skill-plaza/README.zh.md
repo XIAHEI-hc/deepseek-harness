@@ -110,7 +110,7 @@ kind: "package-reference"
 - **每次调用一个工作区** — 读写只解析一个工作区目录，没有跨工作区的广场视图。
 
 <a id="dev-note"></a>
-### Dev Note
+### 开发备注
 
 <details>
 <summary>维护者工作上下文——点击展开</summary>
