@@ -61,6 +61,12 @@ export interface TurnTailOwnerProps {
   turn: TurnLocation
   seq: number
   openFile: (path: string) => void
+  /**
+   * Durable identity of the Turn's closing assistant message, when it has one.
+   * An interrupted partial carries none, so an entry that addresses a message
+   * treats its absence as "this Turn has no per-message content".
+   */
+  messageId?: MessageId
 }
 
 /** Owner currency of finalized-assistant actions. */

@@ -353,12 +353,10 @@ export class WorkspaceRegistry extends Service {
   }
 
   /**
-   * The registry-global archive set: sessions hidden from every grouping
-   * surface. Archiving never touches workspace accounting — an archived
-   * session keeps its `sessionIds` slot so unarchiving restores its position.
-   * @returns the archived session ids in archive order.
+   * Project each Session is grouped under, when the account moved it out of its cwd Workspace.
+   * @param sessionId - Session whose grouping is read.
+   * @returns the Workspace it was moved to, or undefined when cwd grouping applies.
    */
-  /** Project each Session is grouped under, when the account moved it out of its cwd Workspace. */
   sessionProject(sessionId: SessionId): WorkspaceId | undefined {
     const mapped = this.requireState().sessionProjectIds[sessionId]
     return mapped === undefined ? undefined : brandString<WorkspaceId>(mapped)
@@ -379,14 +377,21 @@ export class WorkspaceRegistry extends Service {
       if (workspaceId !== undefined && !state.workspaceIds.includes(workspaceId)) {
         throw new WorkspaceMoveInvalidError(`cannot move a session into unknown workspace '${workspaceId}'`)
       }
-      const next = { ...state.sessionProjectIds }
-      if (workspaceId === undefined) delete next[sessionId]
-      else next[sessionId] = workspaceId
+      const next = Object.fromEntries(
+        Object.entries(state.sessionProjectIds).filter(([id]) => id !== sessionId),
+      )
+      if (workspaceId !== undefined) next[sessionId] = workspaceId
       if (JSON.stringify(next) === JSON.stringify(state.sessionProjectIds)) return
       await this.setState({ ...state, sessionProjectIds: next })
     })
   }
 
+  /**
+   * The registry-global archive set: sessions hidden from every grouping
+   * surface. Archiving never touches workspace accounting — an archived
+   * session keeps its `sessionIds` slot so unarchiving restores its position.
+   * @returns the archived session ids in archive order.
+   */
   get archivedSessionIds(): readonly SessionId[] {
     return this.requireState().archivedSessionIds
   }

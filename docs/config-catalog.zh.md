@@ -350,7 +350,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-api-workspace-controller`
 
 - `inject`: `remoteAccess` · `typert` · `workspaceRegistry`
-- `source`: [`packages/api/workspace-controller/src/index.ts:37`](../packages/api/workspace-controller/src/index.ts)
+- `source`: [`packages/api/workspace-controller/src/index.ts:42`](../packages/api/workspace-controller/src/index.ts)
 
 ```ts config-catalog
 /** First-use directory policy for the Host account. */
@@ -1821,6 +1821,33 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-host-authentication-desktop -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-host-authentication-gateway -->
+<a id="deepseek-aidsh-host-authentication-gateway"></a>
+
+## `@deepseek-ai/dsh-host-authentication-gateway`
+
+- `inject`: `connection` · `connection.authentication`
+- `source`: [`packages/host/authentication-gateway/src/index.ts:13`](../packages/host/authentication-gateway/src/index.ts)
+
+```ts config-catalog
+/** Deployment identity this instance accepts from its trusted proxy. */
+export interface Config {
+  /** Shared HMAC secret with the proxy; at least 32 characters. */
+  secret: string
+  /** Deployment audience the proxy signs; one audience per fleet. */
+  audience: string
+  /** The identity-provider subject this instance serves; every other subject is refused. */
+  subject: string
+  /** Header carrying the assertion; default `x-dsh-gateway-identity`. */
+  headerName: string
+  /** Accepted clock difference in seconds; default 30. */
+  clockSkewSeconds: number
+  /** Longest accepted assertion lifetime in seconds; default 300. */
+  maxLifetimeSeconds: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-host-authentication-gateway -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-host-authentication-token -->
 <a id="deepseek-aidsh-host-authentication-token"></a>

@@ -1,0 +1,259 @@
+/* Generation task card: the visible middle between the click and the draft.
+   Token-only; the card sits in the conversation column and must not compete
+   with the reply above it. */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0 2px;
+  padding: 12px 14px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.glyph {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.glyph svg {
+  width: 15px;
+  height: 15px;
+}
+
+.card[data-state='succeeded'] .glyph {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.card[data-state='failed'] .glyph,
+.card[data-state='cancelled'] .glyph {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.headings {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-s-strong-14);
+  overflow-wrap: anywhere;
+}
+
+.sub {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xs-13);
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxs-12);
+}
+
+.elapsed {
+  font-variant-numeric: tabular-nums;
+}
+
+.ghost {
+  padding: 2px 6px;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxs-12);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .ghost:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-secondary);
+  }
+}
+
+/* Stage list */
+
+.stages {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stages li {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  align-items: start;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.marker {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.marker svg {
+  width: 13px;
+  height: 13px;
+}
+
+li[data-state='done'] .marker {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+li[data-state='run'] .marker {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.stageText {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font: var(--dsw-font-xs-13);
+}
+
+.stageName {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+li[data-state='done'] .stageName,
+li[data-state='run'] .stageName {
+  color: var(--dsw-alias-label-primary);
+}
+
+.stageDetail {
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxs-12);
+  font-variant-numeric: tabular-nums;
+}
+
+.spinner {
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  corner-shape: round;
+  animation: plaza-generation-spin 900ms linear infinite;
+}
+
+.pending {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  corner-shape: round;
+  background: var(--dsw-alias-border-l3);
+}
+
+@keyframes plaza-generation-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 3s; }
+}
+
+/* Result */
+
+.result {
+  display: grid;
+  gap: 8px;
+}
+
+.description {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font: var(--dsw-font-xs-13);
+  overflow-wrap: anywhere;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  corner-shape: round;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+  font: var(--dsw-font-xxs-12);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.primary {
+  padding: 5px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-on-color);
+  font: var(--dsw-font-xs-13);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .primary:hover {
+    background: var(--dsw-alias-button-primary-hover);
+  }
+}
+
+.secondary {
+  padding: 5px 12px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-xs-13);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .secondary:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.primary:focus-visible,
+.secondary:focus-visible,
+.ghost:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+}

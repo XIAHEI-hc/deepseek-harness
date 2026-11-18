@@ -31,9 +31,10 @@ import type {
   PlazaContent, PlazaDraftRecord, PlazaJobRecord, PlazaMediaRecord, PlazaSkillRecord, PlazaVersionRecord,
 } from './storage.ts'
 import type {
-  PlazaCatalogValue, PlazaCheckRequest, PlazaCheckValue, PlazaDetailRequest, PlazaDetailValue,
-  PlazaDraftContent, PlazaDraftView, PlazaDraftsValue, PlazaGenerateRequest, PlazaGenerateValue,
-  PlazaJobRequest, PlazaJobValue, PlazaJobView, PlazaMediaAsset, PlazaMediaReadRequest, PlazaMediaReadValue,
+  PlazaCancelRequest, PlazaCancelValue, PlazaCatalogValue, PlazaCheckRequest, PlazaCheckValue,
+  PlazaDetailRequest, PlazaDetailValue,
+  PlazaDraftContent, PlazaDraftView, PlazaDraftsValue, PlazaFlowPreview, PlazaGenerateRequest, PlazaGenerateValue,
+  PlazaJobRequest, PlazaJobStage, PlazaJobValue, PlazaJobView, PlazaMediaAsset, PlazaMediaReadRequest, PlazaMediaReadValue,
   PlazaMediaUploadRequest, PlazaMediaUploadValue, PlazaPinRequest, PlazaPinValue, PlazaPresentation,
   PlazaPublishRequest, PlazaPublishValue, PlazaSaveDraftRequest, PlazaSaveDraftValue, PlazaSessionRequest,
   PlazaSkillEntry, PlazaWorkflow, PlazaWorkflowNode,
@@ -60,6 +61,9 @@ const PLAZA_INVOCATION: SkillInvocationPolicy = { modelInvocable: true, userInvo
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const MAX_HARVEST_CHARS = 8_000
 const MAX_HARVEST_MESSAGES = 6
+
+/** How often a running attempt rewrites the progress fields of its record. */
+const PROGRESS_WRITE_MS = 400
 
 /** Wire-safe copy of a stored draft. */
 function toDraftView(record: PlazaDraftRecord): PlazaDraftView {
@@ -133,7 +137,8 @@ function cloneNode(node: PlazaWorkflowNode): PlazaWorkflowNode {
 }
 
 /** Wire-safe copy of a stored catalog row. */
-function toSkillEntry(record: PlazaSkillRecord): PlazaSkillEntry {
+function toSkillEntry(record: PlazaSkillRecord, content?: PlazaDraftContent): PlazaSkillEntry {
+  const flow = flowPreviewOf(content)
   return {
     skillId: record.skillId,
     slug: record.slug,
@@ -143,6 +148,33 @@ function toSkillEntry(record: PlazaSkillRecord): PlazaSkillEntry {
     updatedAt: record.updatedAt,
     ...record.category === undefined ? {} : { category: record.category },
     ...record.coverAssetId === undefined ? {} : { coverAssetId: record.coverAssetId },
+    ...flow === undefined ? {} : { flow },
+  }
+}
+
+/** Bound one card label to what a thumbnail row can draw. */
+function shortLabel(text: string): string {
+  const trimmed = text.trim()
+  const clause = trimmed.split(/[。；;，,]/u)[0]?.trim() ?? ''
+  const label = clause === '' ? trimmed : clause
+  return label.length > 12 ? `${label.slice(0, 12)}…` : label
+}
+
+/** Derive the card's process thumbnail from the version it lists. */
+function flowPreviewOf(content: PlazaDraftContent | undefined): PlazaFlowPreview | undefined {
+  if (content === undefined) return undefined
+  const workflow = content.presentation?.workflow
+  const root = workflow?.layers.find(layer => layer.id === workflow.rootLayerId)
+  const nodes = root?.nodes ?? []
+  const steps = content.steps.filter(step => step.trim() !== '')
+  const labels = nodes.length > 0
+    ? nodes.slice(0, 4).map(node => shortLabel(node.title))
+    : steps.slice(0, 4).map(step => shortLabel(step))
+  if (labels.length === 0) return undefined
+  return {
+    labels,
+    decisions: nodes.filter(node => node.type === 'decision').length,
+    nodes: nodes.length > 0 ? nodes.length : steps.length,
   }
 }
 
@@ -165,6 +197,9 @@ function toJobView(record: PlazaJobRecord): PlazaJobView {
     status: record.status,
     attempt: record.attempt,
     updatedAt: record.updatedAt,
+    ...record.stage === undefined ? {} : { stage: record.stage },
+    ...record.chars === undefined ? {} : { chars: record.chars },
+    ...record.startedAt === undefined ? {} : { startedAt: record.startedAt },
     ...record.draftId === undefined ? {} : { draftId: record.draftId },
     ...record.error === undefined ? {} : { error: record.error },
   }
@@ -180,7 +215,6 @@ function workspaceKey(directory: string): string {
  * @param content - validated draft content.
  * @returns the complete skill body, newest section last.
  */
-/** Render a stored draft as the markdown body a skill provider serves. */
 export function renderSkillBody(content: PlazaCheckableContent): string {
   const section = (heading: string, lines: readonly string[]): string[] => lines.length === 0
     ? []
@@ -223,6 +257,12 @@ function notFound(id: string): never {
   throw new RemoteError('skillPlaza/not-found', `no plaza record "${id}"`, { id })
 }
 
+/** One attempt the Host is running, with the caller's only way to stop it. */
+interface RunningAttempt {
+  readonly controller: AbortController
+  readonly settled: Promise<PlazaJobRecord>
+}
+
 /**
  * Host owner of the Skills plaza: drafts, published versions, the catalog, and
  * the generation attempts that distill a completed turn into a draft.
@@ -232,8 +272,10 @@ export class SkillPlazaService extends TypertRemoteService {
 
   private domainReady: Promise<Domain<typeof skillPlazaDomain>> | undefined
   private invalidateProvider: (() => void) | undefined
-  /** Generation attempts in flight, keyed by workspace and idempotency key. */
-  private readonly generating = new Map<string, Promise<PlazaJobRecord>>()
+  /** Attempts being minted, keyed by workspace and idempotency key. */
+  private readonly minting = new Map<string, Promise<PlazaJobRecord>>()
+  /** Attempts still running, so a caller can stop one. */
+  private readonly running = new Map<string, RunningAttempt>()
 
   /** @param ctx - Host context carrying storage, skills, sessions, and the model registry. */
   constructor(ctx: Context) {
@@ -260,6 +302,14 @@ export class SkillPlazaService extends TypertRemoteService {
         await (await ready).close()
       }
     }, 'skill-plaza: storage')
+    // A running attempt owns a model call nobody will read once this plugin
+    // unloads, so it is stopped with the plugin rather than left writing into a
+    // closed domain.
+    ctx.effect(() => () => {
+      for (const attempt of this.running.values()) attempt.controller.abort()
+      this.running.clear()
+      this.minting.clear()
+    }, 'skill-plaza: generation attempts')
     // A composer selection binds one published version to the next task that
     // names it. The binding is durable, so a Host restart between choosing a
     // version and sending the task still injects that exact version. A binding
@@ -318,7 +368,10 @@ export class SkillPlazaService extends TypertRemoteService {
       .map(([, record]) => record)
       .filter(record => record.workspace === workspace)
       .sort((a, b) => a.slug.localeCompare(b.slug))
-      .map(toSkillEntry)
+      .map((record) => {
+        const active = domain.table('versions').get(`${record.skillId}@${record.activeVersion}`)
+        return toSkillEntry(record, active === undefined ? undefined : contentOf(active))
+      })
     return { skills }
   }
 
@@ -447,100 +500,161 @@ export class SkillPlazaService extends TypertRemoteService {
   }
 
   /**
-   * Distill a draft from one completed turn of a live Session.
+   * Start or join one attempt that distills a draft from a completed turn.
+   *
+   * The call answers as soon as the attempt record exists; the model call runs
+   * behind it and reports its stage on that record, which {@link job} reads. A
+   * repeated request joins the attempt still running, and a request after a
+   * failed or cancelled attempt starts the next attempt of the same job.
    * @param request - Session, completed turn, and idempotency key.
-   * @param signal - caller cancellation for the model call.
-   * @returns the attempt, carrying its draft when it succeeded and its reason when it failed.
+   * @param signal - cancellation for this request, not for the attempt it starts.
+   * @returns the attempt this request started or joined.
    */
   @Remote
   async generate(request: PlazaGenerateRequest, signal: AbortSignal): Promise<PlazaGenerateValue> {
     const workspace = await this.workspaceOf(request.sessionId, signal)
     const domain = await this.domain()
-    const jobs = domain.table('jobs')
-    const existing = [...jobs.entries()]
-      .map(([, record]) => record)
-      .find(record => record.idempotencyKey === request.idempotencyKey
-        && record.workspace === workspace
-        && record.turnId === request.turnId)
-    // A settled attempt answers a repeat request. A failed one is the retry
-    // signal: the next request runs the next attempt of the same job.
-    if (existing !== undefined && existing.status !== 'failed') return { job: toJobView(existing) }
-    // A repeated request while an attempt is still running joins it instead of
-    // starting a second model call.
-    const inFlightKey = `${workspace}\u0000${request.idempotencyKey}`
-    const inFlight = this.generating.get(inFlightKey)
-    if (inFlight !== undefined) return { job: toJobView(await inFlight) }
-    const attempt = this.runGeneration(request, workspace, existing, signal)
-    this.generating.set(inFlightKey, attempt)
+    const previous = this.attemptOf(domain, workspace, request)
+    // A settled attempt answers a repeat request. A failed or cancelled one is
+    // the retry signal: the next request runs the next attempt of the same job.
+    if (previous !== undefined && previous.status !== 'failed' && previous.status !== 'cancelled') {
+      return { job: toJobView(previous) }
+    }
+    // Two requests racing on one key would otherwise each mint a job, so the
+    // second waits for the first mint and joins what it starts.
+    const joinKey = `${workspace}\u0000${request.idempotencyKey}`
+    const minting = this.minting.get(joinKey)
+    if (minting !== undefined) return { job: toJobView(await minting) }
+    const started = this.startAttempt(request, workspace, previous)
+    this.minting.set(joinKey, started)
     try {
-      return { job: toJobView(await attempt) }
+      return { job: toJobView(await started) }
     } finally {
-      this.generating.delete(inFlightKey)
+      this.minting.delete(joinKey)
     }
   }
 
   /**
-   * Record and run one generation attempt.
+   * Stop one running attempt.
+   * @param request - attempt identity.
+   * @returns the attempt after it settled; a call that arrives after it settled changes nothing.
+   * @throws RemoteError `skillPlaza/not-found` when no attempt carries that identity.
+   */
+  @Remote
+  async cancel(request: PlazaCancelRequest): Promise<PlazaCancelValue> {
+    const record = (await this.domain()).table('jobs').get(request.jobId) ?? notFound(request.jobId)
+    const attempt = this.running.get(request.jobId)
+    if (attempt === undefined) return { job: toJobView(record) }
+    attempt.controller.abort()
+    return { job: toJobView(await attempt.settled) }
+  }
+
+  /** The attempt one request addresses, when the workspace already holds one. */
+  private attemptOf(
+    domain: Domain<typeof skillPlazaDomain>,
+    workspace: string,
+    request: PlazaGenerateRequest,
+  ): PlazaJobRecord | undefined {
+    return [...domain.table('jobs').entries()]
+      .map(([, record]) => record)
+      .find(record => record.idempotencyKey === request.idempotencyKey
+        && record.workspace === workspace
+        && record.turnId === request.turnId)
+  }
+
+  /**
+   * Record one attempt and start the model work behind it.
    * @param request - Session, turn, and idempotency key of the attempt.
    * @param workspace - resolved workspace directory the attempt belongs to.
-   * @param previous - failed attempt the request retries, when one exists.
-   * @param signal - caller cancellation for the model call.
-   * @returns the stored attempt after it settled.
+   * @param previous - failed or cancelled attempt this request retries, when one exists.
+   * @returns the stored attempt, already running.
    */
-  private async runGeneration(
+  private async startAttempt(
     request: PlazaGenerateRequest,
     workspace: string,
     previous: PlazaJobRecord | undefined,
+  ): Promise<PlazaJobRecord> {
+    const now = new Date().toISOString()
+    const job: PlazaJobRecord = {
+      jobId: previous?.jobId ?? `job-${randomUUID()}`,
+      workspace,
+      sessionId: request.sessionId,
+      turnId: request.turnId,
+      idempotencyKey: request.idempotencyKey,
+      status: 'running',
+      stage: 'harvest',
+      chars: 0,
+      attempt: (previous?.attempt ?? 0) + 1,
+      startedAt: now,
+      updatedAt: now,
+    }
+    await (await this.domain()).table('jobs').put(job.jobId, job)
+    const controller = new AbortController()
+    const settled = this.execute(job, request.sessionId, workspace, controller.signal)
+    this.running.set(job.jobId, { controller, settled })
+    void settled.then(
+      () => { this.running.delete(job.jobId) },
+      () => { this.running.delete(job.jobId) },
+    )
+    return job
+  }
+
+  /**
+   * Run one attempt to completion and record how it settled.
+   * @param job - the running attempt record.
+   * @param sessionId - Session whose turn the attempt distills.
+   * @param workspace - workspace directory the attempt belongs to.
+   * @param signal - this attempt's cancellation, which only the Host aborts.
+   * @returns the attempt as stored after it settled; never rejects.
+   */
+  private async execute(
+    job: PlazaJobRecord,
+    sessionId: NonNullable<PlazaSessionRequest['sessionId']>,
+    workspace: string,
     signal: AbortSignal,
   ): Promise<PlazaJobRecord> {
-    const domain = await this.domain()
-    const jobs = domain.table('jobs')
-    const now = new Date().toISOString()
-    const job: PlazaJobRecord = previous === undefined
-      ? {
-        jobId: `job-${randomUUID()}`,
-        workspace,
-        sessionId: request.sessionId,
-        turnId: request.turnId,
-        idempotencyKey: request.idempotencyKey,
-        status: 'running',
-        attempt: 1,
-        updatedAt: now,
-      }
-      : {
-        jobId: previous.jobId,
-        workspace,
-        sessionId: previous.sessionId,
-        turnId: previous.turnId,
-        idempotencyKey: previous.idempotencyKey,
-        status: 'running',
-        attempt: previous.attempt + 1,
-        updatedAt: now,
-      }
-    await jobs.put(job.jobId, job)
-    const outcome = await this.distill(request.sessionId, workspace, request.turnId, signal)
-      .then(draft => ({ ok: true as const, draft }))
-      .catch((error: unknown) => ({ ok: false as const, error }))
-    if (outcome.ok) {
-      const settled: PlazaJobRecord = {
-        ...job,
-        status: 'succeeded',
-        draftId: outcome.draft.draftId,
-        updatedAt: new Date().toISOString(),
-      }
-      await jobs.put(job.jobId, settled)
+    const jobs = (await this.domain()).table('jobs')
+    let current = job
+    let writing: Promise<void> = Promise.resolve()
+    // Progress arrives per model chunk and one record is one JSON document, so
+    // writes queue behind each other and each reports the latest snapshot.
+    const flush = (): Promise<void> => {
+      const snapshot = current
+      writing = writing.then(async () => {
+        try {
+          await jobs.put(snapshot.jobId, snapshot)
+        } catch (error: unknown) {
+          this.ctx.logger.warn(`skill-plaza: progress write failed: ${String(error)}`)
+        }
+      })
+      return writing
+    }
+    const report = (patch: Partial<PlazaJobRecord>): void => {
+      current = { ...current, ...patch, updatedAt: new Date().toISOString() }
+    }
+    const ticker = setInterval(() => { void flush() }, PROGRESS_WRITE_MS)
+    try {
+      const draft = await this.distill(sessionId, workspace, job.turnId, signal, {
+        stage: (stage) => { report({ stage }) },
+        chars: (chars) => { report({ chars }) },
+      })
+      report({ status: 'succeeded', draftId: draft.draftId, stage: undefined })
+      await flush()
       this.notifyChanged()
-      return settled
+      return current
+    } catch (error: unknown) {
+      const cancelled = signal.aborted
+      const reason = error instanceof Error ? error.message : String(error)
+      report({
+        status: cancelled ? 'cancelled' : 'failed',
+        stage: undefined,
+        error: cancelled ? 'cancelled by the caller' : reason,
+      })
+      await flush()
+      return current
+    } finally {
+      clearInterval(ticker)
     }
-    const reason = outcome.error instanceof Error ? outcome.error.message : String(outcome.error)
-    const settled: PlazaJobRecord = {
-      ...job,
-      status: 'failed',
-      error: reason,
-      updatedAt: new Date().toISOString(),
-    }
-    await jobs.put(job.jobId, settled)
-    return settled
   }
 
   /**
@@ -600,6 +714,7 @@ export class SkillPlazaService extends TypertRemoteService {
       version: record.version,
       publishedAt: record.publishedAt,
       content: contentOf(record),
+      body: record.body,
     }
   }
 
@@ -795,12 +910,21 @@ export class SkillPlazaService extends TypertRemoteService {
     }
   }
 
-  /** Distill one draft from a live Session's completed turn. */
+  /**
+   * Distill one draft from a live Session's completed turn.
+   * @param sessionId - Session holding the completed turn.
+   * @param workspace - workspace directory the draft belongs to.
+   * @param turnId - completed turn the material is bounded to.
+   * @param signal - this attempt's cancellation.
+   * @param progress - stage and character reports for the attempt record.
+   * @returns the stored draft.
+   */
   private async distill(
     sessionId: NonNullable<PlazaSessionRequest['sessionId']>,
     workspace: string,
     turnId: string,
     signal: AbortSignal,
+    progress: { stage: (stage: PlazaJobStage) => void; chars: (chars: number) => void },
   ): Promise<PlazaDraftView> {
     const agent = this.ctx.agents.get(sessionId)
     if (agent === undefined) {
@@ -812,8 +936,11 @@ export class SkillPlazaService extends TypertRemoteService {
     }
     signal.throwIfAborted()
     const route = await this.generationRoute()
-    const content = await this.draftFromModel(route, material, signal)
+    progress.stage('distill')
+    const content = await this.draftFromModel(route, material, signal, progress.chars)
+    progress.stage('check')
     validateContent(content)
+    progress.stage('save')
     const record: PlazaDraftRecord = {
       ...content,
       draftId: `draft-${randomUUID()}`,
@@ -830,18 +957,20 @@ export class SkillPlazaService extends TypertRemoteService {
    * Ask the model for one draft payload, repairing a non-JSON reply once.
    * @param route - provider and model the call uses.
    * @param material - bounded conversation material to distill.
-   * @param signal - caller cancellation for both attempts.
+   * @param signal - this attempt's cancellation, for both calls.
+   * @param onChars - receives the characters the current call produced.
    * @returns the validated draft content.
    */
   private async draftFromModel(
     route: { provider: string; model: string },
     material: string,
     signal: AbortSignal,
+    onChars: (chars: number) => void,
   ): Promise<PlazaContent> {
     const request = `${material}\n\n---\n\nReturn the distilled skill as one JSON object and nothing else.`
     const first = await this.callModel(route, [
       createUserMessage({ content: [{ type: 'text', text: request }], source: { kind: 'user' } }),
-    ], signal)
+    ], signal, onChars)
     try {
       return parseGeneratedContent(first)
     } catch (error: unknown) {
@@ -862,7 +991,7 @@ export class SkillPlazaService extends TypertRemoteService {
           }],
           source: { kind: 'user' },
         }),
-      ], signal)
+      ], signal, onChars)
       try {
         return parseGeneratedContent(repaired)
       } catch {
@@ -875,15 +1004,18 @@ export class SkillPlazaService extends TypertRemoteService {
    * Run one structured generation call and return its text.
    * @param route - provider and model the call uses.
    * @param messages - request messages for this attempt.
-   * @param signal - caller cancellation for the call.
+   * @param signal - this attempt's cancellation.
+   * @param onChars - receives the characters produced so far.
    * @returns the concatenated text blocks of the completion.
    */
   private async callModel(
     route: { provider: string; model: string },
     messages: RequestMessage[],
     signal: AbortSignal,
+    onChars: (chars: number) => void,
   ): Promise<string> {
     const assembler = new BlockAssembler()
+    let chars = 0
     for await (const chunk of this.ctx.llm.stream({
       provider: route.provider,
       model: route.model,
@@ -892,6 +1024,10 @@ export class SkillPlazaService extends TypertRemoteService {
       signal,
     })) {
       assembler.push(chunk)
+      if (chunk.type === 'text-delta') {
+        chars += chunk.text.length
+        onChars(chars)
+      }
     }
     if (assembler.finish.kind === 'error') {
       throw new Error(`the model call failed: ${assembler.finish.failure.code}`)

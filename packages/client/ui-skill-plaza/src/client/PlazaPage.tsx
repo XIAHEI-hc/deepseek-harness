@@ -13,6 +13,7 @@ import type {
 import type { SkillPlazaKey } from './locales.ts'
 import { DraftEditorPage } from './DraftEditorPage.tsx'
 import { SkillDetailPage } from './SkillDetailPage.tsx'
+import { FlowThumb } from './FlowThumb.tsx'
 import { filterCategory, categoriesOf, filterSkills } from './skill-filter.ts'
 import css from './PlazaPage.module.css'
 
@@ -42,6 +43,8 @@ export interface PlazaDetailView {
   readonly publishedAt: string
   /** The version's complete content. */
   readonly content: PlazaDraftContent
+  /** The model-facing body this version stores. */
+  readonly body: string
 }
 
 /** Outcome of one plaza mutation. */
@@ -263,6 +266,14 @@ function PlazaWorkspace(props: PlazaPageProps & {
     ? snapshot.drafts.find(draft => draft.draftId === route.draftId)
     : undefined
 
+  const createDraft = (): void => {
+    void props.save(undefined, EMPTY_CONTENT, undefined).then((result) => {
+      if (!result.ok) return
+      props.reload()
+      if (result.draft !== undefined) setRoute({ kind: 'editor', draftId: result.draft.draftId })
+    })
+  }
+
   const body = ((): ReactNode => {
     if (route.kind === 'editor') {
       if (opened === undefined) {
@@ -329,6 +340,7 @@ function PlazaWorkspace(props: PlazaPageProps & {
               onQuery={setQuery}
               onCategory={setCategory}
               onScroll={setScrollTop}
+              onCreateDraft={createDraft}
               onOpen={(entry) => {
                 setRoute({ kind: 'detail', skillId: entry.skillId, version: entry.version })
               }}
@@ -337,6 +349,7 @@ function PlazaWorkspace(props: PlazaPageProps & {
           : (
             <DraftsView
               {...workspace}
+              onCreateDraft={createDraft}
               onOpen={(draftId) => { setRoute({ kind: 'editor', draftId }) }}
             />
           )}
@@ -379,12 +392,15 @@ type BrowseProps = PlazaWorkspaceProps & {
   readonly onQuery: (query: string) => void
   readonly onCategory: (category: string | undefined) => void
   readonly onScroll: (offset: number) => void
+  readonly onCreateDraft: () => void
   readonly onOpen: (entry: PlazaSkillEntry) => void
 }
 
-/** Published skills as a filterable card grid. */
+/** Published skills as a filterable card grid with one recent process. */
 function BrowseView(props: BrowseProps): ReactNode {
   const t = props.t
+  const [busyId, setBusyId] = useState<string | undefined>(undefined)
+  const [notice, setNotice] = useState<string | undefined>(undefined)
   // The catalog's covers load once per distinct set of cover assets, not once
   // per filtered view.
   const coverKey = props.skills.map(entry => entry.coverAssetId ?? '').join('\u0000')
@@ -393,9 +409,32 @@ function BrowseView(props: BrowseProps): ReactNode {
     requestMedia(coverKey.split('\u0000').filter(assetId => assetId !== ''))
   }, [coverKey, requestMedia])
   const filtered = props.query !== '' || props.category !== undefined
+  const ordered = useMemo(
+    () => [...props.skills].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    [props.skills],
+  )
+  const featured = filtered || ordered.length < 2 ? undefined : ordered[0]
+  const rest = featured === undefined ? ordered : ordered.slice(1)
+
+  const useEntry = (entry: PlazaSkillEntry): void => {
+    setBusyId(entry.skillId)
+    setNotice(undefined)
+    void props.useInConversation({ skillId: entry.skillId, version: entry.version, slug: entry.slug })
+      .then((result) => {
+        setBusyId(undefined)
+        setNotice(result.ok
+          ? result.createdSession ? t('sessionCreated') : undefined
+          : `${t('insertFailed')}: ${result.error}`)
+      })
+  }
+
   return (
     <>
-      <PageHead title={t('panel')} hint={t('panelHint')} />
+      <PageHead
+        title={t('panel')}
+        hint={t('panelHint')}
+        action={<button type="button" className={css.button} onClick={props.onCreateDraft}>{t('newSkill')}</button>}
+      />
       <input
         className={css.search}
         type="search"
@@ -429,6 +468,47 @@ function BrowseView(props: BrowseProps): ReactNode {
             ))}
           </div>
         )}
+      {notice === undefined ? null : <p className={css.notice} role="status">{notice}</p>}
+      {featured === undefined
+        ? null
+        : (
+          <section className={css.featured} aria-label={t('featuredSkill')}>
+            <div className={css.featuredText}>
+              <p className={css.eyebrow}>
+                {featured.category === undefined || featured.category === '' ? t('panel') : featured.category}
+                <span className={css.eyebrowDot} aria-hidden="true">·</span>
+                {`${t('version')} ${featured.version}`}
+              </p>
+              <h2 className={css.featuredTitle}>{featured.title}</h2>
+              <p className={css.featuredLead}>{featured.description}</p>
+              <div className={css.featuredMeta}>
+                <span className={css.tag}>{`${featured.flow?.nodes ?? 0} ${t('processNodes')}`}</span>
+                {(featured.flow?.decisions ?? 0) === 0
+                  ? null
+                  : <span className={css.tag}>{`${featured.flow?.decisions ?? 0} ${t('decisionNodes')}`}</span>}
+                <span className={css.tag}>{`${t('version')} ${featured.version}`}</span>
+              </div>
+              <div className={css.featuredActions}>
+                <button type="button" className={css.primary} onClick={() => { props.onOpen(featured) }}>
+                  {t('viewDetail')}
+                </button>
+                <button
+                  type="button"
+                  className={css.button}
+                  disabled={busyId === featured.skillId}
+                  onClick={() => { useEntry(featured) }}
+                >
+                  {busyId === featured.skillId ? t('preparing') : t('useInChat')}
+                </button>
+              </div>
+            </div>
+            <div className={css.featuredArt}>
+              {featured.flow === undefined
+                ? null
+                : <FlowThumb variant="featured" labels={featured.flow.labels} />}
+            </div>
+          </section>
+        )}
       <div
         className={css.cards}
         ref={(node) => {
@@ -452,38 +532,53 @@ function BrowseView(props: BrowseProps): ReactNode {
                     {t('clearFilters')}
                   </button>
                 )
-                : null}
+                : (
+                  <button type="button" className={css.button} onClick={props.onCreateDraft}>{t('newSkill')}</button>
+                )}
             </div>
           )
-          : props.skills.map(entry => (
+          : rest.map(entry => (
             <SkillCard
               key={entry.skillId}
               entry={entry}
               cover={entry.coverAssetId === undefined ? undefined : props.images[entry.coverAssetId]}
               detailLabel={t('viewDetail')}
               versionLabel={t('version')}
+              decisionLabel={t('decisionNodes')}
               onOpen={() => { props.onOpen(entry) }}
             />
           ))}
+        {props.skills.length === 0
+          ? null
+          : (
+            <button type="button" className={css.newCard} onClick={props.onCreateDraft}>
+              <span className={css.newCardPlus} aria-hidden="true">＋</span>
+              <span className={css.newCardTitle}>{t('newSkill')}</span>
+              <span className={css.newCardHint}>{t('newSkillHint')}</span>
+            </button>
+          )}
       </div>
     </>
   )
 }
 
-/** One catalog card: cover, title, version, purpose, and the detail control. */
+/** One catalog card: process thumbnail, title, version, and purpose. */
 function SkillCard(props: {
   readonly entry: PlazaSkillEntry
   readonly cover: string | undefined
   readonly detailLabel: string
   readonly versionLabel: string
+  readonly decisionLabel: string
   readonly onOpen: () => void
 }): ReactNode {
   const entry = props.entry
   return (
-    <article className={props.cover === undefined ? `${css.card} ${css.cardPlain}` : css.card}>
+    <article className={css.card}>
       <button type="button" className={css.cardButton} onClick={props.onOpen}>
-        <span className={css.cardCover}>
-          {props.cover === undefined ? null : <img src={props.cover} alt="" />}
+        <span className={css.cardArt}>
+          {entry.flow === undefined
+            ? props.cover === undefined ? null : <img className={css.cardCoverImage} src={props.cover} alt="" />
+            : <FlowThumb labels={entry.flow.labels} />}
         </span>
         <span className={css.cardBody}>
           <span className={css.cardHeading}>
@@ -491,7 +586,12 @@ function SkillCard(props: {
             <span className={css.cardMeta}>{`${props.versionLabel} ${entry.version}`}</span>
           </span>
           <span className={css.cardDescription}>{entry.description}</span>
-          <span className={css.cardLink}>{props.detailLabel}</span>
+          <span className={css.cardFooter}>
+            {(entry.flow?.decisions ?? 0) === 0
+              ? null
+              : <span className={css.tag}>{`${entry.flow?.decisions ?? 0} ${props.decisionLabel}`}</span>}
+            <span className={css.cardLink}>{props.detailLabel}</span>
+          </span>
         </span>
       </button>
     </article>
@@ -500,6 +600,7 @@ function SkillCard(props: {
 
 /** Draft list view props. */
 type DraftsProps = PlazaWorkspaceProps & {
+  readonly onCreateDraft: () => void
   readonly onOpen: (draftId: string) => void
 }
 
@@ -507,26 +608,12 @@ type DraftsProps = PlazaWorkspaceProps & {
 function DraftsView(props: DraftsProps): ReactNode {
   const t = props.t
   const drafts = props.snapshot.drafts
-  const [busy, setBusy] = useState(false)
   return (
     <>
       <PageHead
         title={t('tabDrafts')}
         action={(
-          <button
-            type="button"
-            className={css.button}
-            disabled={busy}
-            onClick={() => {
-              setBusy(true)
-              void props.save(undefined, EMPTY_CONTENT, undefined).then((result) => {
-                setBusy(false)
-                if (!result.ok) return
-                if (result.draft !== undefined) props.onOpen(result.draft.draftId)
-                props.reload()
-              })
-            }}
-          >
+          <button type="button" className={css.button} onClick={props.onCreateDraft}>
             {t('newDraft')}
           </button>
         )}

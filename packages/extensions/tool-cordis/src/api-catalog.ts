@@ -3764,9 +3764,16 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote async generate(request: PlazaGenerateRequest, signal: AbortSignal): Promise<PlazaGenerateValue>',
-        description: 'Distill a draft from one completed turn of a live Session.',
-        parameters: [{ name: 'request', description: 'Session, completed turn, and idempotency key.' }, { name: 'signal', description: 'caller cancellation for the model call.' }],
-        returns: 'the attempt, carrying its draft when it succeeded and its reason when it failed.',
+        description: 'Start or join one attempt that distills a draft from a completed turn.\n\nThe call answers as soon as the attempt record exists; the model call runs behind it and reports its stage on that record, which job reads. A repeated request joins the attempt still running, and a request after a failed or cancelled attempt starts the next attempt of the same job.',
+        parameters: [{ name: 'request', description: 'Session, completed turn, and idempotency key.' }, { name: 'signal', description: 'cancellation for this request, not for the attempt it starts.' }],
+        returns: 'the attempt this request started or joined.',
+      },
+      {
+        signature: '@Remote async cancel(request: PlazaCancelRequest): Promise<PlazaCancelValue>',
+        description: 'Stop one running attempt.',
+        parameters: [{ name: 'request', description: 'attempt identity.' }],
+        returns: 'the attempt after it settled; a call that arrives after it settled changes nothing.',
+        throws: ['RemoteError `skillPlaza/not-found` when no attempt carries that identity.'],
       },
       {
         signature: '@Remote async pin(request: PlazaPinRequest): Promise<PlazaPinValue>',
@@ -3780,6 +3787,33 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Read one generation attempt.',
         parameters: [{ name: 'request', description: 'job identity.' }],
         returns: 'the attempt as stored.',
+      },
+      {
+        signature: '@Remote async detail(request: PlazaDetailRequest): Promise<PlazaDetailValue>',
+        description: 'Read one published version\'s content and presentation.',
+        parameters: [{ name: 'request', description: 'Session, skill identity, and the exact version to read.' }],
+        returns: 'that version\'s content, never the active version\'s.',
+        throws: ['RemoteError `skillPlaza/not-found` when the skill or version is not published in the workspace.'],
+      },
+      {
+        signature: '@Remote async check(request: PlazaCheckRequest): Promise<PlazaCheckValue>',
+        description: 'Validate editor content without writing it.',
+        parameters: [{ name: 'request', description: 'Session selecting the workspace, and the content to validate.' }],
+        returns: 'every located problem; an empty list means publication would be accepted.',
+      },
+      {
+        signature: '@Remote async uploadMedia(request: PlazaMediaUploadRequest): Promise<PlazaMediaUploadValue>',
+        description: 'Store one static image in the Session\'s workspace.',
+        parameters: [{ name: 'request', description: 'Session, the original file name, and base64 file bytes.' }],
+        returns: 'the identity and detected facts of the stored image.',
+        throws: ['RemoteError `skillPlaza/unsupported-media` for a non-image, `skillPlaza/too-large` past the byte bound.'],
+      },
+      {
+        signature: '@Remote async readMedia(request: PlazaMediaReadRequest): Promise<PlazaMediaReadValue>',
+        description: 'Read one stored image from the Session\'s workspace.',
+        parameters: [{ name: 'request', description: 'Session and asset identity.' }],
+        returns: 'the stored facts and base64 bytes.',
+        throws: ['RemoteError `skillPlaza/not-found` when the workspace does not hold that asset.'],
       },
     ],
   },
@@ -4902,9 +4936,21 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the durable Workspace, or undefined when first-use initialization is ineligible; creates no Session or message.',
       },
       {
+        signature: '@Remote(\'list\') list(): WorkspaceListValue',
+        description: 'Read every admitted Workspace once, for a caller that does not need the stream.',
+        parameters: [],
+        returns: 'the ordered Workspace projections this account may see.',
+      },
+      {
         signature: '@Remote(\'rename\') rename(request: WorkspaceRenameRequest): Promise<WorkspaceValue>',
         description: 'Rename one Workspace to a unique non-blank title.',
         parameters: [{ name: 'request', description: 'Workspace identity and proposed title.' }],
+        returns: 'the updated Workspace projection.',
+      },
+      {
+        signature: '@Remote(\'setInstructions\') setInstructions(request: WorkspaceSetInstructionsRequest): Promise<WorkspaceValue>',
+        description: 'Replace one Workspace\'s project instructions. Later turns of its Sessions read the new text and record the revision they ran with.',
+        parameters: [{ name: 'request', description: 'Workspace identity and replacement text.' }],
         returns: 'the updated Workspace projection.',
       },
       {
@@ -4924,6 +4970,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Move one accounted Session within a Workspace.',
         parameters: [{ name: 'request', description: 'Workspace, Session, and optional anchor identities.' }],
         returns: 'the updated Workspace projection.',
+      },
+      {
+        signature: '@Remote(\'moveSession\') moveSession(request: WorkspaceMoveSessionRequest): Promise<WorkspaceMoveSessionValue>',
+        description: 'Group one Session under a Workspace, or clear the grouping so it follows its cwd.',
+        parameters: [{ name: 'request', description: 'Session identity and the target Workspace, if any.' }],
+        returns: 'the resulting grouping.',
       },
       {
         signature: '@Remote(\'archiveSession\') archiveSession(request: WorkspaceArchiveSessionRequest): Promise<WorkspaceArchiveValue>',
@@ -5042,6 +5094,18 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Move one workspace within the durable display order, DOM-insertBefore-like. With an anchor it lands before that workspace; without one it appends.',
         parameters: [{ name: 'id', description: 'Workspace to move.' }, { name: 'beforeId', description: 'Workspace anchor; omitted appends.' }],
         returns: 'the complete committed workspace order.',
+      },
+      {
+        signature: 'sessionProject(sessionId: SessionId): WorkspaceId | undefined',
+        description: 'Project each Session is grouped under, when the account moved it out of its cwd Workspace.',
+        parameters: [{ name: 'sessionId', description: 'Session whose grouping is read.' }],
+        returns: 'the Workspace it was moved to, or undefined when cwd grouping applies.',
+      },
+      {
+        signature: 'moveSessionToWorkspace(sessionId: SessionId, workspaceId: WorkspaceId | undefined): Promise<void>',
+        description: 'Group one Session under a Workspace, or clear the grouping.',
+        parameters: [{ name: 'sessionId', description: 'Session to move; it must be known to the registry.' }, { name: 'workspaceId', description: 'Target Workspace, or undefined to fall back to cwd grouping.' }],
+        returns: 'resolution after durability.',
       },
       {
         signature: 'archiveSession(sessionId: SessionId, options: ArchiveSessionOptions = {}): Promise<void>',
@@ -8251,12 +8315,36 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface PlatformSession {\n    readonly origin: string;\n    readonly token: string;\n    readonly userId: AccountUserId | null;\n    readonly embeddedPageDist?: string;\n    readonly requestHeaders?: Readonly<Record<string, string>>;\n}',
   },
   {
+    name: 'PlazaCancelRequest',
+    declaration: 'export interface PlazaCancelRequest {\n    readonly jobId: string;\n}',
+  },
+  {
+    name: 'PlazaCancelValue',
+    declaration: 'export interface PlazaCancelValue {\n    readonly job: PlazaJobView;\n}',
+  },
+  {
     name: 'PlazaCatalogValue',
     declaration: 'export interface PlazaCatalogValue {\n    readonly skills: readonly PlazaSkillEntry[];\n}',
   },
   {
+    name: 'PlazaCheckRequest',
+    declaration: 'export interface PlazaCheckRequest extends PlazaSessionRequest {\n    readonly content: PlazaDraftContent;\n}',
+  },
+  {
+    name: 'PlazaCheckValue',
+    declaration: 'export interface PlazaCheckValue {\n    readonly issues: readonly PlazaIssue[];\n}',
+  },
+  {
+    name: 'PlazaDetailRequest',
+    declaration: 'export interface PlazaDetailRequest extends PlazaSessionRequest {\n    readonly skillId: string;\n    readonly version: number;\n}',
+  },
+  {
+    name: 'PlazaDetailValue',
+    declaration: 'export interface PlazaDetailValue {\n    readonly skillId: string;\n    readonly slug: string;\n    readonly title: string;\n    readonly version: number;\n    readonly publishedAt: string;\n    readonly content: PlazaDraftContent;\n    readonly body: string;\n}',
+  },
+  {
     name: 'PlazaDraftContent',
-    declaration: 'export interface PlazaDraftContent {\n    readonly title: string;\n    readonly slug: string;\n    readonly description: string;\n    readonly inputs: readonly string[];\n    readonly steps: readonly string[];\n    readonly outputs: readonly string[];\n    readonly verification: string;\n    readonly failureHandling: string;\n    readonly toolDependencies: readonly string[];\n}',
+    declaration: 'export interface PlazaDraftContent {\n    readonly title: string;\n    readonly slug: string;\n    readonly description: string;\n    readonly inputs: readonly string[];\n    readonly steps: readonly string[];\n    readonly outputs: readonly string[];\n    readonly verification: string;\n    readonly failureHandling: string;\n    readonly toolDependencies: readonly string[];\n    readonly presentation?: PlazaPresentation;\n}',
   },
   {
     name: 'PlazaDraftSource',
@@ -8271,6 +8359,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface PlazaDraftView extends PlazaDraftContent {\n    readonly draftId: string;\n    readonly skillId?: string;\n    readonly revision: number;\n    readonly updatedAt: string;\n    readonly source?: PlazaDraftSource;\n}',
   },
   {
+    name: 'PlazaExample',
+    declaration: 'export interface PlazaExample {\n    readonly assetId: string;\n    readonly title: string;\n    readonly alt: string;\n    readonly caption: string;\n}',
+  },
+  {
+    name: 'PlazaFlowPreview',
+    declaration: 'export interface PlazaFlowPreview {\n    readonly labels: readonly string[];\n    readonly decisions: number;\n    readonly nodes: number;\n}',
+  },
+  {
     name: 'PlazaGenerateRequest',
     declaration: 'export interface PlazaGenerateRequest {\n    readonly sessionId: SessionId;\n    readonly turnId: string;\n    readonly idempotencyKey: string;\n}',
   },
@@ -8279,12 +8375,24 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface PlazaGenerateValue {\n    readonly job: PlazaJobView;\n}',
   },
   {
+    name: 'PlazaIssue',
+    declaration: 'export interface PlazaIssue {\n    readonly code: PlazaIssueCode;\n    readonly path: string;\n    readonly detail: string;\n    readonly nodeId?: string;\n    readonly assetId?: string;\n}',
+  },
+  {
+    name: 'PlazaIssueCode',
+    declaration: 'export type PlazaIssueCode = \'slug-invalid\' | \'title-missing\' | \'description-missing\' | \'presentation-unsupported\' | \'example-limit\' | \'asset-missing\' | \'workflow-root-missing\' | \'layer-id-duplicate\' | \'layer-unreachable\' | \'subflow-missing\' | \'workflow-entry-missing\' | \'node-id-duplicate\' | \'node-id-empty\' | \'edge-dangling\' | \'node-unreachable\' | \'decision-unlabeled\' | \'workflow-depth\' | \'node-limit\' | \'node-title-missing\' | \'node-asset-missing\';',
+  },
+  {
     name: 'PlazaJobRequest',
     declaration: 'export interface PlazaJobRequest {\n    readonly jobId: string;\n}',
   },
   {
+    name: 'PlazaJobStage',
+    declaration: 'export type PlazaJobStage = \'harvest\' | \'distill\' | \'check\' | \'save\';',
+  },
+  {
     name: 'PlazaJobStatus',
-    declaration: 'export type PlazaJobStatus = \'queued\' | \'running\' | \'succeeded\' | \'failed\';',
+    declaration: 'export type PlazaJobStatus = \'queued\' | \'running\' | \'succeeded\' | \'failed\' | \'cancelled\';',
   },
   {
     name: 'PlazaJobValue',
@@ -8292,7 +8400,31 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'PlazaJobView',
-    declaration: 'export interface PlazaJobView {\n    readonly jobId: string;\n    readonly status: PlazaJobStatus;\n    readonly attempt: number;\n    readonly draftId?: string;\n    readonly error?: string;\n    readonly updatedAt: string;\n}',
+    declaration: 'export interface PlazaJobView {\n    readonly jobId: string;\n    readonly status: PlazaJobStatus;\n    readonly attempt: number;\n    readonly stage?: PlazaJobStage;\n    readonly chars?: number;\n    readonly startedAt?: string;\n    readonly draftId?: string;\n    readonly error?: string;\n    readonly updatedAt: string;\n}',
+  },
+  {
+    name: 'PlazaMediaAsset',
+    declaration: 'export interface PlazaMediaAsset {\n    readonly assetId: string;\n    readonly mimeType: PlazaMediaType;\n    readonly width: number;\n    readonly height: number;\n    readonly byteLength: number;\n    readonly createdAt: string;\n}',
+  },
+  {
+    name: 'PlazaMediaReadRequest',
+    declaration: 'export interface PlazaMediaReadRequest extends PlazaSessionRequest {\n    readonly assetId: string;\n}',
+  },
+  {
+    name: 'PlazaMediaReadValue',
+    declaration: 'export interface PlazaMediaReadValue {\n    readonly asset: PlazaMediaAsset;\n    readonly data: string;\n}',
+  },
+  {
+    name: 'PlazaMediaType',
+    declaration: 'export type PlazaMediaType = \'image/png\' | \'image/jpeg\' | \'image/webp\';',
+  },
+  {
+    name: 'PlazaMediaUploadRequest',
+    declaration: 'export interface PlazaMediaUploadRequest extends PlazaSessionRequest {\n    readonly name: string;\n    readonly data: string;\n}',
+  },
+  {
+    name: 'PlazaMediaUploadValue',
+    declaration: 'export interface PlazaMediaUploadValue {\n    readonly asset: PlazaMediaAsset;\n}',
   },
   {
     name: 'PlazaPinRequest',
@@ -8301,6 +8433,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PlazaPinValue',
     declaration: 'export interface PlazaPinValue {\n    readonly skillId: string;\n    readonly version: number;\n    readonly slug: string;\n}',
+  },
+  {
+    name: 'PlazaPresentation',
+    declaration: 'export interface PlazaPresentation {\n    readonly schemaVersion: number;\n    readonly category?: string | undefined;\n    readonly scenarios?: readonly string[] | undefined;\n    readonly examplePrompt?: string | undefined;\n    readonly coverAssetId?: string | undefined;\n    readonly examples?: readonly PlazaExample[] | undefined;\n    readonly workflow?: PlazaWorkflow | undefined;\n}',
   },
   {
     name: 'PlazaPublishRequest',
@@ -8324,7 +8460,23 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'PlazaSkillEntry',
-    declaration: 'export interface PlazaSkillEntry {\n    readonly skillId: string;\n    readonly slug: string;\n    readonly title: string;\n    readonly description: string;\n    readonly version: number;\n    readonly updatedAt: string;\n}',
+    declaration: 'export interface PlazaSkillEntry {\n    readonly skillId: string;\n    readonly slug: string;\n    readonly title: string;\n    readonly description: string;\n    readonly version: number;\n    readonly updatedAt: string;\n    readonly category?: string;\n    readonly coverAssetId?: string;\n    readonly flow?: PlazaFlowPreview;\n}',
+  },
+  {
+    name: 'PlazaWorkflow',
+    declaration: 'export interface PlazaWorkflow {\n    readonly rootLayerId: string;\n    readonly layers: readonly PlazaWorkflowLayer[];\n}',
+  },
+  {
+    name: 'PlazaWorkflowEdge',
+    declaration: 'export interface PlazaWorkflowEdge {\n    readonly from: string;\n    readonly to: string;\n    readonly label?: string | undefined;\n}',
+  },
+  {
+    name: 'PlazaWorkflowLayer',
+    declaration: 'export interface PlazaWorkflowLayer {\n    readonly id: string;\n    readonly entryNodeId: string;\n    readonly nodes: readonly PlazaWorkflowNode[];\n    readonly edges: readonly PlazaWorkflowEdge[];\n}',
+  },
+  {
+    name: 'PlazaWorkflowNode',
+    declaration: 'export interface PlazaWorkflowNode {\n    readonly id: string;\n    readonly type: \'action\' | \'decision\';\n    readonly title: string;\n    readonly purpose?: string | undefined;\n    readonly inputs?: readonly string[] | undefined;\n    readonly checks?: readonly string[] | undefined;\n    readonly outputs?: readonly string[] | undefined;\n    readonly verification?: string | undefined;\n    readonly failureHandling?: string | undefined;\n    readonly assetIds?: readonly string[] | undefined;\n    readonly subflowLayerId?: string | undefined;\n}',
   },
   {
     name: 'PluginChange',
@@ -11040,7 +11192,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'Workspace',
-    declaration: 'export interface Workspace {\n    readonly id: WorkspaceId;\n    readonly path: string;\n    readonly title: string;\n    readonly createdAt: string;\n    readonly updatedAt: string;\n    readonly sessionIds: readonly SessionId[];\n    setTitle(title: string): Promise<void>;\n    attachSession(sessionId: SessionId): Promise<void>;\n    insertSessionBefore(sessionId: SessionId, beforeSessionId?: SessionId): Promise<void>;\n    detachSession(sessionId: SessionId): Promise<void>;\n    status(): Promise<\'ok\' | \'missing-dir\'>;\n}',
+    declaration: 'export interface Workspace {\n    readonly id: WorkspaceId;\n    readonly path: string;\n    readonly title: string;\n    readonly instructions: string;\n    readonly instructionsRevision: number;\n    setInstructions(instructions: string): Promise<number>;\n    readonly createdAt: string;\n    readonly updatedAt: string;\n    readonly sessionIds: readonly SessionId[];\n    setTitle(title: string): Promise<void>;\n    attachSession(sessionId: SessionId): Promise<void>;\n    insertSessionBefore(sessionId: SessionId, beforeSessionId?: SessionId): Promise<void>;\n    detachSession(sessionId: SessionId): Promise<void>;\n    status(): Promise<\'ok\' | \'missing-dir\'>;\n}',
   },
   {
     name: 'WorkspaceArchiveSessionRequest',
@@ -11159,6 +11311,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface WorkspaceInsertSessionBeforeRequest {\n    readonly workspaceId: WorkspaceId;\n    readonly sessionId: SessionId;\n    readonly beforeSessionId?: SessionId;\n}',
   },
   {
+    name: 'WorkspaceListValue',
+    declaration: 'export interface WorkspaceListValue {\n    readonly items: readonly WorkspaceView[];\n}',
+  },
+  {
+    name: 'WorkspaceMoveSessionRequest',
+    declaration: 'export interface WorkspaceMoveSessionRequest {\n    readonly sessionId: SessionId;\n    readonly workspaceId?: WorkspaceId;\n}',
+  },
+  {
+    name: 'WorkspaceMoveSessionValue',
+    declaration: 'export interface WorkspaceMoveSessionValue {\n    readonly sessionId: SessionId;\n    readonly workspaceId: WorkspaceId | null;\n}',
+  },
+  {
     name: 'WorkspaceOrderValue',
     declaration: 'export interface WorkspaceOrderValue {\n    readonly workspaceIds: readonly WorkspaceId[];\n}',
   },
@@ -11175,6 +11339,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface WorkspaceRenameRequest {\n    readonly workspaceId: WorkspaceId;\n    readonly title: string;\n}',
   },
   {
+    name: 'WorkspaceSetInstructionsRequest',
+    declaration: 'export interface WorkspaceSetInstructionsRequest {\n    readonly workspaceId: WorkspaceId;\n    readonly instructions: string;\n}',
+  },
+  {
     name: 'WorkspaceUnarchiveSessionRequest',
     declaration: 'export interface WorkspaceUnarchiveSessionRequest {\n    readonly sessionId: SessionId;\n}',
   },
@@ -11188,7 +11356,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'WorkspaceView',
-    declaration: 'export interface WorkspaceView {\n    readonly workspaceId: WorkspaceId;\n    readonly path: string;\n    readonly title: string;\n    readonly sessionIds: readonly SessionId[];\n    readonly createdAt: string;\n    readonly updatedAt: string;\n}',
+    declaration: 'export interface WorkspaceView {\n    readonly workspaceId: WorkspaceId;\n    readonly path: string;\n    readonly title: string;\n    readonly instructions?: string;\n    readonly instructionsRevision?: number;\n    readonly sessionIds: readonly SessionId[];\n    readonly createdAt: string;\n    readonly updatedAt: string;\n}',
   },
   {
     name: 'WorktreeCleanup',

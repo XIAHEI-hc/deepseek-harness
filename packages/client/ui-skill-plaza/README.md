@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Use this plugin to give the Web client a Skills plaza. It registers a sidebar entry whose pages browse the workspace's published skills, open one exact version's overview, execution process, and usage notes, and edit a draft with its display content before publishing. It also contributes a "Generate skill" action on finalized assistant messages and a composer picker that inserts one published skill's native `/name` gesture. Every read and write goes through the `skillPlaza` Remote; the plugin holds no plaza state of its own.
+Use this plugin to give the Web client a Skills plaza. Its sidebar entry browses published skills as process thumbnails, opens one exact version as a single page — examples, an interactive process, scenarios, and the stored body — and edits a draft before publishing. It also adds a "Generate skill" action on finalized replies, the task card that shows that generation while it runs, and a composer picker that inserts one skill's native `/name` gesture. Every read and write goes through the `skillPlaza` Remote; the plugin holds the running task, not plaza records.
 
 ## Table of Contents
 
@@ -35,9 +35,14 @@ The plugin requires the `conversation`, `layout`, `locale`, `remote.skillPlaza`,
 
 | Surface | Slot | Effect |
 |---|---|---|
-| Sidebar entry and pages | `sidebar.panellist`, `main` | Browses the catalog with search and categories, opens one published version, edits and previews a draft, and publishes a version |
-| Generate action | `conversation.chat.assistant-actions` | Distills a draft from that reply's turn, then opens exactly that draft in the editor |
+| Sidebar entry and pages | `sidebar.panellist`, `main` | Browses the catalog as process thumbnails, opens one published version as one page, edits and previews a draft, and publishes a version |
+| Generate action | `conversation.chat.assistant-actions` | Starts the generation for that reply's turn, then reads as running, generated, or ready to retry |
+| Generation card | `conversation.chat.turnTail` | Paints the running attempt — stage list, characters so far, elapsed time, cancel — and the draft it produced, with one action that opens it |
 | Skill picker | `conversation.input.left` | Lists published skills, filters them by name, title, or purpose, and inserts `/name ` into the draft |
+
+A generation is one task, not one request. The action starts it, the card follows the Host's attempt record until it settles, and the plaza opens only when the user asks for the draft: completing a generation never replaces the conversation with another page. A repeated click while an attempt runs joins it, and a click after a failed or cancelled attempt starts the next attempt of the same job.
+
+Both entries read one generation store per Session, keyed by the closing message identity, so the reply's Turn and its card cannot disagree about where the attempt stands.
 
 Draft edits send the revision they were rendered from, so a second window's save surfaces as a conflict with the local content kept for copying instead of silently overwriting.
 
@@ -58,8 +63,12 @@ None; the published body is supplied by the `@deepseek-ai/dsh-skill-plaza` provi
 ## Known Limitations and Deferred Work
 
 - **The picker inserts text, not a bound reference** — a chosen skill becomes the native `/name` text, so the Host loads the version pinned for the next step, or the active version when nothing was pinned. The plaza's own pages always pin before inserting.
-- **The process editor is form-based** — nodes and labeled edges are added and edited through a form list; there is no drag-and-drop canvas authoring.
+- **Card thumbnails follow the catalog, not the graph** — each card draws the active version's root-layer labels and decision count from the catalog entry; nested layers and edge structure appear only on the detail page.
+- **The package section shows stored content, not files** — a plaza skill lives in the plaza's storage domain, so the section renders the stored model-facing body with its examples and tools; there is no directory listing or archive export.
+- **The process editor is form-based** — nodes and labeled edges are added and edited through a form list; there is no drag-and-drop canvas authoring, and the editor keeps its separate preview instead of a live one.
 - **Media upload is one image per example** — a node references one of the draft's uploaded example images rather than its own upload control.
+- **The generating task lives in this client** — the card mirrors the Host's attempt record, but the mapping from a Turn to its attempt is browser state. After a reload the card is gone; the draft it produced is still in the plaza, and starting the generation again joins the attempt still running on the Host.
+- **The running card reports progress, not the draft** — it shows the stage the Host reached and the characters the model produced, and the draft's fields appear when the attempt settles. Streaming the fields would need a partial-content contract the Host does not publish.
 - **The page reads the workspace of the mounted conversation** — opening the plaza with no conversation open addresses the Host's default directory, not a workspace the user picked.
 
 <a id="dev-note"></a>
@@ -68,6 +77,6 @@ None; the published body is supplied by the `@deepseek-ai/dsh-skill-plaza` provi
 <details>
 <summary>Working context for maintainers — click to expand</summary>
 
-Workflow layers are addressed by identity rather than by nesting, matching the Host's flat workflow payload; the process view keeps a stack of opening nodes so returning from a subflow restores the parent selection.
+Workflow layers are addressed by identity rather than by nesting, matching the Host's flat workflow payload; the process view keeps a stack of opening nodes so returning from a subflow restores the parent selection. A version without a workflow is drawn from its steps by `flow-model.ts`, which is display-only and never enters the stored content.
 
 </details>

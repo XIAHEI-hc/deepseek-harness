@@ -21,9 +21,14 @@ import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-api-remote-access/client'
 import type {
-  PlazaDraftContent, PlazaDraftView, PlazaIssue, PlazaMediaAsset, PlazaPresentation, PlazaSkillEntry,
+  PlazaDraftContent, PlazaDraftView, PlazaIssue, PlazaJobView, PlazaMediaAsset, PlazaPresentation, PlazaSkillEntry,
 } from '@deepseek-ai/dsh-skill-plaza/types'
-import { GenerateSkillButton, PlazaPanelIcon, SkillPicker, type PlazaActionResult } from './Actions.tsx'
+import {
+  GenerateSkillButton, GenerateSkillCard, PlazaPanelIcon, SkillPicker,
+  type GenerateActionFace, type GenerateCardFace,
+} from './Actions.tsx'
+import { createGenerationStore } from './generation-store.ts'
+import type { GenerationDraftSummary, GenerationTask } from './generation-store.ts'
 import {
   PlazaPage, type PlazaDetailView, type PlazaMutation, type PlazaSnapshot, type PlazaUseResult,
 } from './PlazaPage.tsx'
@@ -35,7 +40,9 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
-export type { PlazaActionResult, GenerateActionFace, SkillPickerFace } from './Actions.tsx'
+export type {
+  GenerateActionFace, GenerateActionProps, GenerateCardFace, GenerateCardProps, PlazaActionResult, SkillPickerFace,
+} from './Actions.tsx'
 export type {
   PlazaDetailView, PlazaMutation, PlazaPageFace, PlazaSnapshot, PlazaUseResult, PlazaWorkspaceProps,
 } from './PlazaPage.tsx'
@@ -53,6 +60,9 @@ export const inject = [
 const COMPOSER_WAIT_ATTEMPTS = 20
 const COMPOSER_WAIT_MS = 150
 
+/** How often a running attempt is read while its card shows it. */
+const PROGRESS_POLL_MS = 700
+
 /** Wait one turn of the event loop; used only while a created session mounts. */
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => { setTimeout(resolve, ms) })
@@ -66,6 +76,9 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-skill-plaza: dictionaries')
   const t = ctx.locale.bind(NS)
   const plaza = ctx.remote.skillPlaza
+  // One generation store per Session: the action starts a task and the card
+  // below the reply paints it, so both entries must see the same instance.
+  const generation = createGenerationStore()
   // The plaza page is a root panel, so it addresses the workspace of the
   // Session whose conversation surfaces are mounted. Conversation entry
   // registration runs per Session and records the active one here; without a
@@ -109,6 +122,7 @@ export function apply(ctx: ClientContext): void {
       version: value.version,
       publishedAt: value.publishedAt,
       content: value.content,
+      body: value.body,
     }
   }
 
@@ -166,21 +180,176 @@ export function apply(ctx: ClientContext): void {
       : { ok: false, error: failureText(result.error), ...result.error.code === 'skillPlaza/conflict' ? { conflict: true } : {} }
   }
 
-  const generate = async (sessionId: SessionId, messageId: string): Promise<PlazaActionResult> => {
-    activeSessionId = sessionId
-    const result = await plaza.generate({
+  /**
+   * Attempt state the card paints, from one Host attempt record.
+   * @param job - attempt as the Host reported it.
+   * @param startedAt - browser clock reading taken when the task started.
+   * @returns the task the store holds.
+   */
+  const taskOf = (job: PlazaJobView, startedAt: number): GenerationTask => ({
+    status: job.status === 'queued' ? 'running' : job.status,
+    attempt: job.attempt,
+    jobId: job.jobId,
+    startedAt,
+    ...job.stage === undefined ? {} : { stage: job.stage },
+    ...job.chars === undefined ? {} : { chars: job.chars },
+    ...job.error === undefined ? {} : { error: job.error },
+  })
+
+  /**
+   * Summarize one draft for the result card.
+   * @param draft - the draft the attempt produced.
+   * @returns the fields the card shows.
+   */
+  const summaryOf = (draft: PlazaDraftView): GenerationDraftSummary => ({
+    draftId: draft.draftId,
+    title: draft.title,
+    description: draft.description,
+    slug: draft.slug,
+    revision: draft.revision,
+    steps: draft.steps.length,
+    tools: draft.toolDependencies.length,
+    ...draft.presentation?.category === undefined ? {} : { category: draft.presentation.category },
+  })
+
+  /** Store actions the entries of one Session write through. */
+  type GenerationActions = {
+    setTask: (messageId: string, task: GenerationTask) => void
+    clearTask: (messageId: string) => void
+  }
+
+  /** One attempt this client is following, so a second click joins it. */
+  interface GenerationRun {
+    jobId?: string
+    readonly startedAt: number
+    /** Whether the caller stopped following this attempt. */
+    readonly stopped: () => boolean
+    /** Stop following it; the caller settles the task itself. */
+    readonly stop: () => void
+  }
+
+  const generationRuns = new Map<string, GenerationRun>()
+  const runKey = (sessionId: SessionId, messageId: string): string => `${sessionId}\u0000${messageId}`
+
+  /**
+   * Follow one attempt to its outcome and mirror it into the store.
+   * @param sessionId - Session whose turn is distilled.
+   * @param messageId - the Turn's closing assistant message.
+   * @param actions - the Session's generation store actions.
+   * @param run - the client's record of this attempt.
+   */
+  const driveGeneration = async (
+    sessionId: SessionId,
+    messageId: string,
+    actions: GenerationActions,
+    run: GenerationRun,
+  ): Promise<void> => {
+    const started = await plaza.generate({
       sessionId,
       turnId: messageId,
       idempotencyKey: `generate-${sessionId}-${messageId}`,
     })
-    if (!result.ok) return { ok: false, error: failureText(result.error) }
-    if (result.value.job.status !== 'succeeded') {
-      return { ok: false, error: result.value.job.error ?? result.value.job.status }
+    if (run.stopped()) return
+    if (!started.ok) {
+      actions.setTask(messageId, {
+        status: 'failed', attempt: 1, startedAt: run.startedAt, error: failureText(started.error),
+      })
+      return
     }
-    // A succeeded attempt names its draft; the page opens exactly that one.
-    pendingDraftId = result.value.job.draftId
+    run.jobId = started.value.job.jobId
+    let job = started.value.job
+    actions.setTask(messageId, taskOf(job, run.startedAt))
+    // The card shows a running attempt by reading the durable record, so a
+    // reloaded tab that starts the same request joins what this one follows.
+    while (!run.stopped() && (job.status === 'running' || job.status === 'queued')) {
+      await delay(PROGRESS_POLL_MS)
+      if (run.stopped()) return
+      const read = await plaza.job({ jobId: job.jobId })
+      if (!read.ok) {
+        actions.setTask(messageId, {
+          status: 'failed', attempt: job.attempt, jobId: job.jobId,
+          startedAt: run.startedAt, error: failureText(read.error),
+        })
+        return
+      }
+      job = read.value.job
+      if (job.status === 'running' || job.status === 'queued') actions.setTask(messageId, taskOf(job, run.startedAt))
+    }
+    if (run.stopped()) return
+    if (job.status !== 'succeeded') {
+      actions.setTask(messageId, taskOf(job, run.startedAt))
+      return
+    }
+    const drafts = await loadDrafts().catch(() => undefined)
+    const draft = drafts?.find(row => row.draftId === job.draftId)
+    actions.setTask(messageId, {
+      ...taskOf(job, run.startedAt),
+      ...draft === undefined ? {} : { draft: summaryOf(draft) },
+    })
+  }
+
+  /**
+   * Start the generation of one Turn, unless this client already follows it.
+   * @param sessionId - Session whose turn is distilled.
+   * @param messageId - the Turn's closing assistant message.
+   * @param actions - the Session's generation store actions.
+   */
+  const startGeneration = (sessionId: SessionId, messageId: string, actions: GenerationActions): void => {
+    const key = runKey(sessionId, messageId)
+    if (generationRuns.has(key)) return
+    activeSessionId = sessionId
+    let stopped = false
+    const run: GenerationRun = {
+      startedAt: Date.now(),
+      stopped: () => stopped,
+      stop: () => { stopped = true },
+    }
+    generationRuns.set(key, run)
+    // The card appears on the click, before the Host has answered.
+    actions.setTask(messageId, {
+      status: 'running', attempt: 1, startedAt: run.startedAt, stage: 'harvest', chars: 0,
+    })
+    void driveGeneration(sessionId, messageId, actions, run)
+      .catch(() => undefined)
+      .finally(() => { generationRuns.delete(key) })
+  }
+
+  /**
+   * Stop one attempt this client follows, and record how it settled.
+   * @param sessionId - Session whose turn is distilled.
+   * @param messageId - the Turn's closing assistant message.
+   * @param actions - the Session's generation store actions.
+   */
+  const cancelGeneration = async (
+    sessionId: SessionId,
+    messageId: string,
+    actions: GenerationActions,
+  ): Promise<void> => {
+    const key = runKey(sessionId, messageId)
+    const run = generationRuns.get(key)
+    if (run === undefined) return
+    run.stop()
+    generationRuns.delete(key)
+    if (run.jobId === undefined) {
+      actions.clearTask(messageId)
+      return
+    }
+    const cancelled = await plaza.cancel({ jobId: run.jobId })
+    actions.setTask(messageId, cancelled.ok
+      ? taskOf(cancelled.value.job, run.startedAt)
+      : { status: 'failed', attempt: 1, startedAt: run.startedAt, error: failureText(cancelled.error) })
+  }
+
+  /**
+   * Open the plaza on one draft.
+   * @param sessionId - Session whose workspace holds the draft.
+   * @param draftId - draft the editor route opens.
+   */
+  const openDraft = (sessionId: SessionId, draftId: string): void => {
+    activeSessionId = sessionId
+    pendingDraftId = draftId
     notifyLocally()
-    return { ok: true }
+    ctx.layout.selectPanel(PANEL_ID)
   }
 
   /** Compose the invocation text: the user's own draft first, then the call, then any example. */
@@ -286,11 +455,25 @@ export function apply(ctx: ClientContext): void {
     id: 'skill-plaza-generate',
     order: 40,
     locale: NS,
-    inject: (sessionId: SessionId) => ({
-      generate: (messageId: string) => generate(sessionId, messageId),
-      openPlaza: () => { ctx.layout.selectPanel(PANEL_ID) },
+    store: generation,
+    inject: (sessionId: SessionId, actions): GenerateActionFace => ({
+      start: (messageId) => { startGeneration(sessionId, messageId, actions) },
+      openDraft: (draftId) => { openDraft(sessionId, draftId) },
     }),
   }, GenerateSkillButton))
+
+  ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
+    name: 'conversation.chat.turnTail',
+    id: 'skill-plaza-generation',
+    order: 40,
+    locale: NS,
+    store: generation,
+    inject: (sessionId: SessionId, actions): GenerateCardFace => ({
+      cancel: (messageId) => { void cancelGeneration(sessionId, messageId, actions) },
+      retry: (messageId) => { startGeneration(sessionId, messageId, actions) },
+      openDraft: (draftId) => { openDraft(sessionId, draftId) },
+    }),
+  }, GenerateSkillCard))
 
   ctx.slots.inject('conversation.input.left', () => ctx.slots.register({
     name: 'conversation.input.left',

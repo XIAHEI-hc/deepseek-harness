@@ -57,6 +57,24 @@ interface Bench {
 
 let bench: Bench | undefined
 
+/**
+ * Await the attempt one `generate` call started.
+ *
+ * `generate` answers while the attempt is still running, so a spec that asserts
+ * how it settled reads the record until it stops running.
+ * @param plaza - plaza service under test.
+ * @param jobId - attempt started by the call.
+ * @returns the settled attempt.
+ */
+async function waitForSettlement(plaza: SkillPlazaService, jobId: string) {
+  for (let attempt = 0; attempt < 400; attempt += 1) {
+    const { job } = await plaza.job({ jobId })
+    if (job.status !== 'running' && job.status !== 'queued') return job
+    await new Promise(resolve => setTimeout(resolve, 2))
+  }
+  throw new Error(`attempt ${jobId} did not settle`)
+}
+
 /** Mount the plaza over real storage, skills, and working directory. */
 async function mount(): Promise<Bench> {
   const ctx = new Context()
@@ -171,7 +189,10 @@ it('publishes an immutable version and makes it the catalog entry', async () => 
     idempotencyKey: 'publish-1-again',
   })
   expect(repeated.skill.version).toBe(1)
-  expect((await current.plaza.catalog({})).skills).toEqual([published.skill])
+  expect((await current.plaza.catalog({})).skills).toEqual([{
+    ...published.skill,
+    flow: { labels: ['read the cha…', 'tabulate bot…', 'compute delt…'], decisions: 0, nodes: 3 },
+  }])
 })
 
 it('serves the published body through the skill registry', async () => {
@@ -223,15 +244,17 @@ it('pins one published version and refuses an unpublished one', async () => {
 
 it('records a generation failure on the attempt instead of producing a draft', async () => {
   const current = await mount()
-  const generated = await current.plaza.generate({
+  const started = await current.plaza.generate({
     sessionId: 'missing-session' as never,
     turnId: 'turn-1',
     idempotencyKey: 'generate-1',
   }, new AbortController().signal)
+  expect(started.job).toMatchObject({ status: 'running', attempt: 1 })
 
-  expect(generated.job).toMatchObject({ status: 'failed', attempt: 1 })
-  expect(generated.job.error).toContain('not live')
-  expect((await current.plaza.job({ jobId: generated.job.jobId })).job).toEqual(generated.job)
+  const settled = await waitForSettlement(current.plaza, started.job.jobId)
+  expect(settled).toMatchObject({ status: 'failed', attempt: 1 })
+  expect(settled.error).toContain('not live')
+  expect((await current.plaza.job({ jobId: settled.jobId })).job).toEqual(settled)
 })
 
 it('reports an unknown Session when the session-query service is absent', async () => {
@@ -393,6 +416,7 @@ it('round-trips presentation content through save, publish, and detail', async (
   expect(detail.content.presentation?.workflow?.rootLayerId).toBe('flow')
   expect(detail.content.presentation?.examples?.[0]?.assetId).toBe(assetId)
   expect(detail.title).toBe(CONTENT.title)
+  expect(detail.body).toBe(renderSkillBody({ ...CONTENT, presentation: presentationOf(assetId) }))
 })
 
 it('reports the located problems that block publication', async () => {

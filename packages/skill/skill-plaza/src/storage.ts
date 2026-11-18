@@ -84,9 +84,14 @@ export const jobRecordSchema = z.object({
   sessionId: z.string().min(1),
   turnId: z.string().min(1),
   idempotencyKey: z.string().min(1),
-  status: z.enum(['queued', 'running', 'succeeded', 'failed']),
+  status: z.enum(['queued', 'running', 'succeeded', 'failed', 'cancelled']),
   attempt: z.number().int().positive(),
   updatedAt: z.string(),
+  // Progress fields are absent on attempts written before a running attempt
+  // reported them, and on every settled attempt.
+  stage: z.enum(['harvest', 'distill', 'check', 'save']).optional(),
+  chars: z.number().int().nonnegative().optional(),
+  startedAt: z.string().optional(),
   draftId: z.string().optional(),
   error: z.string().optional(),
 })

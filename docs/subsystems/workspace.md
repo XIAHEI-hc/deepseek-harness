@@ -382,11 +382,25 @@ Host service backing the generated `ctx.remote.workspace` namespace.
 @Remote('initializeDefault') async initializeDefault(signal: AbortSignal): Promise<WorkspaceValue | undefined>
 
 /**
+ * Read every admitted Workspace once, for a caller that does not need the stream.
+ * @returns the ordered Workspace projections this account may see.
+ */
+@Remote('list') list(): WorkspaceListValue
+
+/**
  * Rename one Workspace to a unique non-blank title.
  * @param request - Workspace identity and proposed title.
  * @returns the updated Workspace projection.
  */
 @Remote('rename') rename(request: WorkspaceRenameRequest): Promise<WorkspaceValue>
+
+/**
+ * Replace one Workspace's project instructions. Later turns of its Sessions
+ * read the new text and record the revision they ran with.
+ * @param request - Workspace identity and replacement text.
+ * @returns the updated Workspace projection.
+ */
+@Remote('setInstructions') setInstructions(request: WorkspaceSetInstructionsRequest): Promise<WorkspaceValue>
 
 /**
  * Remove one Workspace registration while retaining files and Sessions.
@@ -408,6 +422,13 @@ Host service backing the generated `ctx.remote.workspace` namespace.
  * @returns the updated Workspace projection.
  */
 @Remote('insertSessionBefore') insertSessionBefore(request: WorkspaceInsertSessionBeforeRequest): Promise<WorkspaceValue>
+
+/**
+ * Group one Session under a Workspace, or clear the grouping so it follows its cwd.
+ * @param request - Session identity and the target Workspace, if any.
+ * @returns the resulting grouping.
+ */
+@Remote('moveSession') moveSession(request: WorkspaceMoveSessionRequest): Promise<WorkspaceMoveSessionValue>
 
 /**
  * Hide one known Session from Workspace grouping surfaces.
@@ -595,6 +616,21 @@ delete(id: WorkspaceId): Promise<boolean>
  * @returns the complete committed workspace order.
  */
 insertBefore(id: WorkspaceId, beforeId?: WorkspaceId): Promise<readonly WorkspaceId[]>
+
+/**
+ * Project each Session is grouped under, when the account moved it out of its cwd Workspace.
+ * @param sessionId - Session whose grouping is read.
+ * @returns the Workspace it was moved to, or undefined when cwd grouping applies.
+ */
+sessionProject(sessionId: SessionId): WorkspaceId | undefined
+
+/**
+ * Group one Session under a Workspace, or clear the grouping.
+ * @param sessionId - Session to move; it must be known to the registry.
+ * @param workspaceId - Target Workspace, or undefined to fall back to cwd grouping.
+ * @returns resolution after durability.
+ */
+moveSessionToWorkspace(sessionId: SessionId, workspaceId: WorkspaceId | undefined): Promise<void>
 
 /**
  * Archive one session durably. The session must exist (live or in session

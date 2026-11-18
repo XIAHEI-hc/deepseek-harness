@@ -1,11 +1,12 @@
 /**
- * Skill plaza comparison views over the real Host and the built Web client.
+ * Skill plaza process views over the real Host and the built Web client.
  *
  * Seeds the shipped `skillPlaza` service the way the editor writes: one result
  * image through the media entry, one published version with display content,
- * and one published version without it. The spec then reads the three surfaces
- * the prototypes describe and writes one screenshot per surface, plus a narrow
- * viewport pass.
+ * and one published version without it. The spec then reads the surfaces the
+ * redesign describes — the process thumbnails, the single detail page, a
+ * selected process node, the full page with its package section, and a narrow
+ * viewport pass — and writes one screenshot per surface.
  */
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -171,6 +172,13 @@ it('renders the plaza browse, overview, and process node surfaces', async () => 
   const image = await waferMap()
   const uploaded = await plaza.uploadMedia({ name: 'wafer-map.png', data: image.toString('base64') })
 
+  const legacy = await plaza.saveDraft({ content: LEGACY_CONTENT })
+  await plaza.publish({
+    draftId: legacy.draft.draftId,
+    expectedRevision: legacy.draft.revision,
+    idempotencyKey: 'seed-legacy',
+  })
+
   const stdf = await plaza.saveDraft({ content: stdfContent(uploaded.asset.assetId) })
   const published = await plaza.publish({
     draftId: stdf.draft.draftId,
@@ -178,12 +186,6 @@ it('renders the plaza browse, overview, and process node surfaces', async () => 
     idempotencyKey: 'seed-stdf',
   })
   expect(published.skill.version).toBe(1)
-  const legacy = await plaza.saveDraft({ content: LEGACY_CONTENT })
-  await plaza.publish({
-    draftId: legacy.draft.draftId,
-    expectedRevision: legacy.draft.revision,
-    idempotencyKey: 'seed-legacy',
-  })
 
   mkdirSync(SHOTS, { recursive: true })
   const browser = await chromium.launch()
@@ -198,20 +200,23 @@ it('renders the plaza browse, overview, and process node surfaces', async () => 
   await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
 
   await page.getByText('技能广场', { exact: true }).first().click()
-  await expect.poll(() => page.getByRole('button', { name: /STDF 批次异常分析/ }).count()).toBe(1)
-  await expect.poll(() => page.locator('img[src^="data:image/png"]').count()).toBeGreaterThan(0)
+  await expect.poll(() => page.getByRole('region', { name: '推荐技能' }).count()).toBe(1)
+  await expect.poll(() => page.locator('svg[role="img"]').count()).toBeGreaterThan(0)
   await page.screenshot({ path: `${SHOTS}/skill-plaza-01-browse.png` })
 
-  await page.getByRole('button', { name: /STDF 批次异常分析/ }).click()
+  await page.getByRole('button', { name: '查看详情', exact: true }).click()
   await expect.poll(() => page.getByRole('heading', { level: 1, name: 'STDF 批次异常分析' }).count()).toBe(1)
   await expect.poll(() => page.getByText('/stdf-anomaly', { exact: false }).count()).toBeGreaterThan(0)
   await expect.poll(() => page.getByAltText(/晶圆图上以琥珀色突出异常 Die/).count()).toBe(1)
   await page.screenshot({ path: `${SHOTS}/skill-plaza-02-overview.png` })
 
-  await page.getByRole('tab', { name: '执行流程' }).click()
   await page.getByRole('button', { name: '文件校验', exact: true }).click()
   await expect.poll(() => page.getByText('记录格式', { exact: true }).count()).toBeGreaterThan(0)
   await page.screenshot({ path: `${SHOTS}/skill-plaza-03-workflow-node.png` })
+
+  await page.setViewportSize({ width: 1440, height: 2400 })
+  await expect.poll(() => page.getByText('技能正文').count()).toBe(1)
+  await page.screenshot({ path: `${SHOTS}/skill-plaza-05-detail-tall.png` })
 
   await page.setViewportSize({ width: 768, height: 900 })
   await expect.poll(() => page.getByRole('button', { name: '文件校验', exact: true }).count()).toBe(1)

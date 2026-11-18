@@ -59,6 +59,7 @@ export const VIEWER_ENDPOINT_CLASSES = {
   'skillPlaza/publish': 'owner-only', // publishing an immutable version is an owner action
   'skillPlaza/pin': 'owner-only', // a version binding belongs to the selecting owner
   'skillPlaza/generate': 'owner-only', // generation reads the owner Session log
+  'skillPlaza/cancel': 'owner-only', // stopping an attempt touches the owner's running model call
   'skillPlaza/job': 'owner-only', // generation attempts are owner-scoped
   'skillPlaza/detail': 'owner-only', // a published version's display content is author-scoped
   'skillPlaza/check': 'owner-only', // validation reads the workspace media an owner uploaded

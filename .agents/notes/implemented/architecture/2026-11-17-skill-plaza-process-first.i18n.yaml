@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for 2026-11-17-skill-plaza-process-first.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-11-17-skill-plaza-process-first.md
+/agent-note-a-process-first-skills-plaza:
+  en: 48858b3f23293801
+  zh: 42a76ed2dfddba0b
+/agent-note-a-process-first-skills-plaza/problem:
+  en: 2198351f09cc2b3d
+  zh: 4d1760a46c7482bf
+/agent-note-a-process-first-skills-plaza/decision:
+  en: 954ab474622f2670
+  zh: e53d1c0a11d020bd
+/agent-note-a-process-first-skills-plaza/verification:
+  en: c020551ca71ce436
+  zh: a2ea35cb81b0cafd
+/agent-note-a-process-first-skills-plaza/alternatives-considered:
+  en: fefe2d4f579d17be
+  zh: 81074cfb256446ac
+/agent-note-a-process-first-skills-plaza/consequences:
+  en: 3eb7bca5e1f191a6
+  zh: 8743c84ac7b14bff

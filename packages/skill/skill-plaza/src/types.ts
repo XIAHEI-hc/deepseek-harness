@@ -8,6 +8,16 @@
 
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
+/** Short flow labels a catalog card draws as its process thumbnail. */
+export interface PlazaFlowPreview {
+  /** Node labels in execution order, already shortened for a card. */
+  readonly labels: readonly string[]
+  /** How many of those nodes branch on a check. */
+  readonly decisions: number
+  /** How many nodes the active version's root layer or steps hold. */
+  readonly nodes: number
+}
+
 /** One published plaza skill as the browser lists it. */
 export interface PlazaSkillEntry {
   /** Durable skill identity; stable across published versions. */
@@ -26,6 +36,8 @@ export interface PlazaSkillEntry {
   readonly category?: string
   /** Optional workspace media asset shown as the card cover. */
   readonly coverAssetId?: string
+  /** Process thumbnail derived from the active version, when it has one. */
+  readonly flow?: PlazaFlowPreview
 }
 
 /** One result image of a skill's overview. */
@@ -142,7 +154,7 @@ export interface PlazaDraftContent {
   readonly presentation?: PlazaPresentation
 }
 
-/** Where a draft was distilled from, retained for provenance and authorization. */
+/** Where a draft was distilled from, retained for authorization and audit. */
 export interface PlazaDraftSource {
   /** Session the material came from. */
   readonly sessionId: string
@@ -160,12 +172,18 @@ export interface PlazaDraftView extends PlazaDraftContent {
   readonly revision: number
   /** ISO timestamp of the last save. */
   readonly updatedAt: string
-  /** Provenance of a distilled draft. */
+  /** Source turn of a distilled draft. */
   readonly source?: PlazaDraftSource
 }
 
 /** Status of one generation attempt. */
-export type PlazaJobStatus = 'queued' | 'running' | 'succeeded' | 'failed'
+export type PlazaJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
+
+/**
+ * Stage one running attempt reports, in the order it reaches them. A caller
+ * renders the steps it has not reached yet as pending, from `stage` alone.
+ */
+export type PlazaJobStage = 'harvest' | 'distill' | 'check' | 'save'
 
 /** One generation attempt as the plaza generation view reads it. */
 export interface PlazaJobView {
@@ -175,6 +193,12 @@ export interface PlazaJobView {
   readonly status: PlazaJobStatus
   /** Attempt counter, incremented by an explicit retry. */
   readonly attempt: number
+  /** Stage a running attempt reached; absent once the attempt settled. */
+  readonly stage?: PlazaJobStage
+  /** Characters the model had produced when the attempt last reported. */
+  readonly chars?: number
+  /** ISO timestamp the attempt started. */
+  readonly startedAt?: string
   /** Draft produced by a succeeded attempt. */
   readonly draftId?: string
   /** Readable reason a failed attempt produced no draft. */
@@ -250,9 +274,24 @@ export interface PlazaGenerateRequest {
   readonly idempotencyKey: string
 }
 
-/** One generation attempt. */
+/**
+ * One generation attempt. The call returns as soon as the attempt exists, not
+ * when it settles; callers read progress with {@link PlazaJobRequest}.
+ */
 export interface PlazaGenerateValue {
-  /** Attempt created or recovered by this request. */
+  /** Attempt started by this request, or the attempt a repeated request joined. */
+  readonly job: PlazaJobView
+}
+
+/** Stop one running attempt. */
+export interface PlazaCancelRequest {
+  /** Attempt to stop. */
+  readonly jobId: string
+}
+
+/** The attempt after a cancellation request. */
+export interface PlazaCancelValue {
+  /** Attempt as stored; a call that arrives after it settled returns it unchanged. */
   readonly job: PlazaJobView
 }
 
@@ -312,6 +351,8 @@ export interface PlazaDetailValue {
   readonly publishedAt: string
   /** The version's complete content, including optional presentation. */
   readonly content: PlazaDraftContent
+  /** The model-facing body this version stores, exactly as the skill tool reads it. */
+  readonly body: string
 }
 
 /** One problem the plaza reports about draft content, located where an editor can mark it. */

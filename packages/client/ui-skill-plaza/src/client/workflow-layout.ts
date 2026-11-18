@@ -15,13 +15,24 @@ import type {
 } from '@deepseek-ai/dsh-skill-plaza/types'
 
 /** Fixed node box sizes, in layout units. */
-const ACTION_WIDTH = 190
-const ACTION_HEIGHT = 58
-const DECISION_WIDTH = 218
-const DECISION_HEIGHT = 76
+const ACTION_WIDTH = 200
+const ACTION_HEIGHT = 96
+const COMPACT_HEIGHT = 56
+const DECISION_WIDTH = 220
+const DECISION_HEIGHT = 96
 const COLUMN_GAP = 28
-const ROW_GAP = 54
+const ROW_GAP = 48
 const PADDING = 24
+
+/** Box dimensions of one node: a step with details gets room for them. */
+function boxOf(node: PlazaWorkflowNode): { width: number; height: number } {
+  if (node.type === 'decision') return { width: DECISION_WIDTH, height: DECISION_HEIGHT }
+  const detailed = (node.purpose ?? '') !== ''
+    || (node.inputs ?? []).length > 0
+    || (node.checks ?? []).length > 0
+    || (node.outputs ?? []).length > 0
+  return { width: ACTION_WIDTH, height: detailed ? ACTION_HEIGHT : COMPACT_HEIGHT }
+}
 
 /** One node placed in layer coordinates. */
 export interface PlacedNode {
@@ -61,12 +72,23 @@ export interface WorkflowLayout {
   readonly edges: readonly PlacedEdge[]
 }
 
-/** Read one layer by identity. */
+/**
+ * Read one layer by identity.
+ * @param workflow - workflow holding the layers.
+ * @param layerId - layer to read.
+ * @returns the layer, or undefined when the workflow has none with that identity.
+ */
 export function layerOf(workflow: PlazaWorkflow, layerId: string): PlazaWorkflowLayer | undefined {
   return workflow.layers.find(layer => layer.id === layerId)
 }
 
-/** Replace one layer, keeping the others in order. */
+/**
+ * Replace one layer, keeping the others in order.
+ * @param workflow - workflow whose layer is replaced.
+ * @param layerId - identity of the layer to replace.
+ * @param next - the replacement layer.
+ * @returns a new workflow with that layer swapped.
+ */
 export function replaceLayer(
   workflow: PlazaWorkflow,
   layerId: string,
@@ -78,7 +100,12 @@ export function replaceLayer(
   }
 }
 
-/** Mint a workflow layer identity that no layer uses yet. */
+/**
+ * Mint a workflow layer identity that no layer uses yet.
+ * @param workflow - workflow the identity must not collide with.
+ * @param base - prefix of the minted identity.
+ * @returns an unused `<base>-<n>` identity.
+ */
 export function mintLayerId(workflow: PlazaWorkflow, base = 'subflow'): string {
   const taken = new Set(workflow.layers.map(layer => layer.id))
   let counter = 1
@@ -86,7 +113,11 @@ export function mintLayerId(workflow: PlazaWorkflow, base = 'subflow'): string {
   return `${base}-${counter}`
 }
 
-/** Mint a node identity that its layer does not use yet. */
+/**
+ * Mint a node identity that its layer does not use yet.
+ * @param layer - layer the identity must not collide with.
+ * @returns an unused `node-<n>` identity.
+ */
 export function mintNodeId(layer: PlazaWorkflowLayer): string {
   const taken = new Set(layer.nodes.map(node => node.id))
   let counter = taken.size + 1
@@ -94,7 +125,12 @@ export function mintNodeId(layer: PlazaWorkflowLayer): string {
   return `node-${counter}`
 }
 
-/** Append one empty layer and return its identity with the new workflow. */
+/**
+ * Append one empty layer.
+ * @param workflow - workflow the layer is appended to.
+ * @param base - prefix of the minted layer identity.
+ * @returns the extended workflow and the identity of the new layer.
+ */
 export function appendLayer(
   workflow: PlazaWorkflow,
   base = 'subflow',
@@ -109,7 +145,12 @@ export function appendLayer(
   }
 }
 
-/** Remove one layer and every layer reachable only through it. */
+/**
+ * Remove one layer and every layer reachable only through it.
+ * @param workflow - workflow to prune.
+ * @param layerId - layer to remove; the root layer is kept.
+ * @returns the pruned workflow.
+ */
 export function removeLayerTree(workflow: PlazaWorkflow, layerId: string): PlazaWorkflow {
   if (layerId === workflow.rootLayerId) return workflow
   const doomed = new Set<string>()
@@ -135,7 +176,12 @@ export function removeLayerTree(workflow: PlazaWorkflow, layerId: string): Plaza
   }
 }
 
-/** The node trail from the root layer down to one layer, when it is reachable. */
+/**
+ * Read the node trail from the root layer down to one layer.
+ * @param workflow - workflow the layers belong to.
+ * @param layerId - layer the trail ends at.
+ * @returns the layers on the way with the node that opens each one, or undefined when the layer is unreachable.
+ */
 export function layerTrail(
   workflow: PlazaWorkflow,
   layerId: string,
@@ -175,24 +221,22 @@ export function layoutWorkflow(layer: PlazaWorkflowLayer): WorkflowLayout {
   const widest = Math.max(...[...rows.values()].map(nodes => nodes.length), 1)
   const rowWidth = widest * ACTION_WIDTH + (widest - 1) * COLUMN_GAP
   const placed = new Map<string, PlacedNode>()
-  for (const [row, peers] of [...rows.entries()].sort((a, b) => a[0] - b[0])) {
-    const rowContentWidth = peers.reduce((total, peer) => total
-      + (peer.type === 'decision' ? DECISION_WIDTH : ACTION_WIDTH), 0)
+  let cursorY = PADDING
+  for (const [, peers] of [...rows.entries()].sort((a, b) => a[0] - b[0])) {
+    const boxes = peers.map(boxOf)
+    const rowContentWidth = boxes.reduce((total, box) => total + box.width, 0)
       + Math.max(peers.length - 1, 0) * COLUMN_GAP
-    let cursor = PADDING + (rowWidth - rowContentWidth) / 2
-    for (const node of peers) {
-      const width = node.type === 'decision' ? DECISION_WIDTH : ACTION_WIDTH
-      const height = node.type === 'decision' ? DECISION_HEIGHT : ACTION_HEIGHT
-      placed.set(node.id, {
-        node,
-        x: cursor,
-        y: PADDING + row * (ACTION_HEIGHT + ROW_GAP),
-        width,
-        height,
-      })
-      cursor += width + COLUMN_GAP
-    }
+    const rowHeight = Math.max(...boxes.map(box => box.height))
+    let cursorX = PADDING + (rowWidth - rowContentWidth) / 2
+    peers.forEach((node, index) => {
+      const box = boxes[index]
+      if (box === undefined) return
+      placed.set(node.id, { node, x: cursorX, y: cursorY, width: box.width, height: box.height })
+      cursorX += box.width + COLUMN_GAP
+    })
+    cursorY += rowHeight + ROW_GAP
   }
+  const totalHeight = rows.size === 0 ? PADDING * 2 : cursorY - ROW_GAP + PADDING
   const edges: PlacedEdge[] = []
   for (const edge of layer.edges) {
     const from = placed.get(edge.from)
@@ -217,9 +261,7 @@ export function layoutWorkflow(layer: PlazaWorkflowLayer): WorkflowLayout {
       labelY: sideways ? start.y - from.height / 2 - 6 : (start.y + end.y) / 2,
     })
   }
-  const height = PADDING * 2 + [...rows.keys()].length * ACTION_HEIGHT
-    + Math.max([...rows.keys()].length - 1, 0) * ROW_GAP
-  return { width: PADDING * 2 + rowWidth, height, nodes: [...placed.values()], edges }
+  return { width: PADDING * 2 + rowWidth, height: totalHeight, nodes: [...placed.values()], edges }
 }
 
 /** Longest-path row index for every reachable node; unreachable nodes sit on row zero. */

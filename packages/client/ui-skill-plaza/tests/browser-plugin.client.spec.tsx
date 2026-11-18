@@ -10,7 +10,7 @@ import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import type { StoredEntry } from '@deepseek-ai/dsh-client-ui-slots'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { PlazaDraftContent, PlazaMediaAsset, PlazaSkillEntry } from '@deepseek-ai/dsh-skill-plaza/types'
-import { GenerateSkillButton, SkillPicker } from '../src/client/Actions.tsx'
+import { GenerateSkillButton, GenerateSkillCard, SkillPicker } from '../src/client/Actions.tsx'
 import { PlazaPage } from '../src/client/PlazaPage.tsx'
 import { apply, inject, PANEL_ID } from '../src/client/index.ts'
 import { NS } from '../src/client/locales.ts'
@@ -87,8 +87,35 @@ interface PageFace {
 }
 
 interface ActionFace {
-  readonly generate: (messageId: string) => Promise<{ ok: boolean; error?: string }>
-  readonly openPlaza: () => void
+  readonly start: (messageId: string) => void
+  readonly openDraft: (draftId: string) => void
+}
+
+interface CardFace {
+  readonly cancel: (messageId: string) => void
+  readonly retry: (messageId: string) => void
+  readonly openDraft: (draftId: string) => void
+}
+
+/** Store actions one entry's inject factory receives, recorded for assertions. */
+interface RecordedTasks {
+  readonly tasks: Map<string, { status: string; error?: string; draft?: { draftId: string } }>
+  readonly actions: {
+    setTask: (messageId: string, task: { status: string; error?: string; draft?: { draftId: string } }) => void
+    clearTask: (messageId: string) => void
+  }
+}
+
+/** Collect the tasks one Session's entries write. */
+function recorded(): RecordedTasks {
+  const tasks = new Map<string, { status: string; error?: string; draft?: { draftId: string } }>()
+  return {
+    tasks,
+    actions: {
+      setTask: (messageId, task) => { tasks.set(messageId, task) },
+      clearTask: (messageId) => { tasks.delete(messageId) },
+    },
+  }
 }
 
 interface PickerFace {
@@ -110,6 +137,7 @@ interface Faces {
 function provideFaces(ctx: Context, over: {
   pin?: () => Promise<unknown>
   generate?: () => Promise<unknown>
+  job?: () => Promise<unknown>
   drafts?: () => Promise<unknown>
   catalog?: () => Promise<unknown>
   detail?: () => Promise<unknown>
@@ -127,6 +155,7 @@ function provideFaces(ctx: Context, over: {
       'sidebar.panellist': { kind: 'list', scope: 'root' },
       main: { kind: 'keyed', scope: 'root' },
       'conversation.chat.assistant-actions': { kind: 'list', scope: 'session' },
+      'conversation.chat.turnTail': { kind: 'list', scope: 'session' },
       'conversation.input.left': { kind: 'list', scope: 'session' },
     },
   } as never, () => null)
@@ -201,6 +230,14 @@ function provideFaces(ctx: Context, over: {
       ok: true as const,
       value: { job: { jobId: 'job-1', status: 'succeeded', attempt: 1, updatedAt: DRAFT.updatedAt } },
     })),
+    cancel: vi.fn((request: { jobId: string }) => Promise.resolve({
+      ok: true as const,
+      value: {
+        job: {
+          jobId: request.jobId, status: 'cancelled', attempt: 1, updatedAt: DRAFT.updatedAt,
+        },
+      },
+    })),
   }
   new TestRemote(ctx, { skillPlaza: plaza })
   return { slots, dictionaries, input, selectPanel, createSession, openSession, plaza }
@@ -231,7 +268,7 @@ function entryOf(faces: Faces, slot: string): StoredEntry {
  * @param args - owner arguments the slot passes to the factory.
  * @returns the injected face.
  */
-function faceOf<T>(entry: StoredEntry, take: (face: T) => T, ...args: string[]): T {
+function faceOf<T>(entry: StoredEntry, take: (face: T) => T, ...args: unknown[]): T {
   const injected = entry.inject?.(...args as never[])
   expect(injected).toBeDefined()
   return take(injected as T)
@@ -292,18 +329,24 @@ describe('ui-skill-plaza apply', () => {
     expect((await pageOf(faces).load()).workspaceKey).toBe('session-9')
   })
 
-  it('hands the generated draft to the page exactly once', async () => {
+  it('follows the attempt to its draft and opens that draft on request', async () => {
     const { faces } = await bench()
-    const action = faceOf<ActionFace>(entryOf(faces, 'conversation.chat.assistant-actions'), face => face, 'session-1')
-    await expect(action.generate('message-1')).resolves.toEqual({ ok: true })
+    const store = recorded()
+    const action = faceOf<ActionFace>(
+      entryOf(faces, 'conversation.chat.assistant-actions'), face => face, 'session-1', store.actions,
+    )
+    action.start('message-1')
+    await vi.waitFor(() => { expect(store.tasks.get('message-1')?.status).toBe('succeeded') })
+    expect(store.tasks.get('message-1')?.draft?.draftId).toBe(DRAFT.draftId)
+
+    action.openDraft(DRAFT.draftId)
     expect((await pageOf(faces).load()).pendingDraftId).toBe(DRAFT.draftId)
+    expect(faces.selectPanel).toHaveBeenCalledWith(PANEL_ID)
     pageOf(faces).consumePendingDraft()
     expect((await pageOf(faces).load()).pendingDraftId).toBeUndefined()
-    action.openPlaza()
-    expect(faces.selectPanel).toHaveBeenCalledWith(PANEL_ID)
   })
 
-  it('reports a failed generation through the action face', async () => {
+  it('reports a failed attempt on the task instead of a draft', async () => {
     const { faces } = await bench({
       generate: () => Promise.resolve({
         ok: true as const,
@@ -312,9 +355,41 @@ describe('ui-skill-plaza apply', () => {
         },
       }),
     })
-    const face = faceOf<ActionFace>(entryOf(faces, 'conversation.chat.assistant-actions'), face => face, 'session-1')
-    await expect(face.generate('message-1')).resolves.toEqual({ ok: false, error: 'model unavailable' })
+    const store = recorded()
+    const action = faceOf<ActionFace>(
+      entryOf(faces, 'conversation.chat.assistant-actions'), face => face, 'session-1', store.actions,
+    )
+    action.start('message-1')
+    await vi.waitFor(() => {
+      expect(store.tasks.get('message-1')).toMatchObject({ status: 'failed', error: 'model unavailable' })
+    })
     expect((await pageOf(faces).load()).pendingDraftId).toBeUndefined()
+  })
+
+  it('registers the task card under the turn tail and stops the attempt through it', async () => {
+    const running = {
+      jobId: 'job-3', status: 'running' as const, attempt: 1, stage: 'distill' as const, chars: 12,
+      updatedAt: DRAFT.updatedAt,
+    }
+    const { faces } = await bench({
+      generate: () => Promise.resolve({ ok: true as const, value: { job: running } }),
+      job: () => Promise.resolve({ ok: true as const, value: { job: { ...running, chars: 40 } } }),
+    })
+    const entry = entryOf(faces, 'conversation.chat.turnTail')
+    expect(entry.component).toBe(GenerateSkillCard)
+
+    const store = recorded()
+    const card = faceOf<CardFace>(entry, face => face, 'session-1', store.actions)
+    const action = faceOf<ActionFace>(
+      entryOf(faces, 'conversation.chat.assistant-actions'), face => face, 'session-1', store.actions,
+    )
+    action.start('message-1')
+    await vi.waitFor(() => {
+      expect(store.tasks.get('message-1')).toMatchObject({ status: 'running', stage: 'distill' })
+    })
+    card.cancel('message-1')
+    await vi.waitFor(() => { expect(store.tasks.get('message-1')?.status).toBe('cancelled') })
+    expect(faces.plaza.cancel).toHaveBeenCalledWith({ jobId: 'job-3' })
   })
 
   it('pins the displayed version and writes the invoke text into the draft', async () => {
@@ -474,15 +549,18 @@ describe('ui-skill-plaza apply', () => {
     await expect(face.catalog()).rejects.toThrow('gateway/internal: offline')
   })
 
-  it('notifies subscribers that a generation produced a draft, until they unsubscribe', async () => {
+  it('notifies subscribers when a finished draft is opened, until they unsubscribe', async () => {
     const { faces } = await bench()
     const listener = vi.fn()
     const off = pageOf(faces).subscribe(listener)
-    const action = faceOf<ActionFace>(entryOf(faces, 'conversation.chat.assistant-actions'), face => face, 'session-1')
-    await action.generate('message-1')
+    const store = recorded()
+    const action = faceOf<ActionFace>(
+      entryOf(faces, 'conversation.chat.assistant-actions'), face => face, 'session-1', store.actions,
+    )
+    action.openDraft(DRAFT.draftId)
     expect(listener).toHaveBeenCalled()
     off()
-    expect((await pageOf(faces).load()).pendingDraftId).toBeDefined()
+    expect((await pageOf(faces).load()).pendingDraftId).toBe(DRAFT.draftId)
   })
 
   it('registers the generate action before the picker in their slots', async () => {

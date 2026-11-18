@@ -304,12 +304,25 @@ Host owner of the Skills plaza: drafts, published versions, the catalog, and the
 @Remote async publish(request: PlazaPublishRequest): Promise<PlazaPublishValue>
 
 /**
- * Distill a draft from one completed turn of a live Session.
+ * Start or join one attempt that distills a draft from a completed turn.
+ *
+ * The call answers as soon as the attempt record exists; the model call runs
+ * behind it and reports its stage on that record, which {@link job} reads. A
+ * repeated request joins the attempt still running, and a request after a
+ * failed or cancelled attempt starts the next attempt of the same job.
  * @param request - Session, completed turn, and idempotency key.
- * @param signal - caller cancellation for the model call.
- * @returns the attempt, carrying its draft when it succeeded and its reason when it failed.
+ * @param signal - cancellation for this request, not for the attempt it starts.
+ * @returns the attempt this request started or joined.
  */
 @Remote async generate(request: PlazaGenerateRequest, signal: AbortSignal): Promise<PlazaGenerateValue>
+
+/**
+ * Stop one running attempt.
+ * @param request - attempt identity.
+ * @returns the attempt after it settled; a call that arrives after it settled changes nothing.
+ * @throws RemoteError `skillPlaza/not-found` when no attempt carries that identity.
+ */
+@Remote async cancel(request: PlazaCancelRequest): Promise<PlazaCancelValue>
 
 /**
  * Bind one published version to a Session's next explicit invocation.
@@ -325,6 +338,37 @@ Host owner of the Skills plaza: drafts, published versions, the catalog, and the
  * @returns the attempt as stored.
  */
 @Remote async job(request: PlazaJobRequest): Promise<PlazaJobValue>
+
+/**
+ * Read one published version's content and presentation.
+ * @param request - Session, skill identity, and the exact version to read.
+ * @returns that version's content, never the active version's.
+ * @throws RemoteError `skillPlaza/not-found` when the skill or version is not published in the workspace.
+ */
+@Remote async detail(request: PlazaDetailRequest): Promise<PlazaDetailValue>
+
+/**
+ * Validate editor content without writing it.
+ * @param request - Session selecting the workspace, and the content to validate.
+ * @returns every located problem; an empty list means publication would be accepted.
+ */
+@Remote async check(request: PlazaCheckRequest): Promise<PlazaCheckValue>
+
+/**
+ * Store one static image in the Session's workspace.
+ * @param request - Session, the original file name, and base64 file bytes.
+ * @returns the identity and detected facts of the stored image.
+ * @throws RemoteError `skillPlaza/unsupported-media` for a non-image, `skillPlaza/too-large` past the byte bound.
+ */
+@Remote async uploadMedia(request: PlazaMediaUploadRequest): Promise<PlazaMediaUploadValue>
+
+/**
+ * Read one stored image from the Session's workspace.
+ * @param request - Session and asset identity.
+ * @returns the stored facts and base64 bytes.
+ * @throws RemoteError `skillPlaza/not-found` when the workspace does not hold that asset.
+ */
+@Remote async readMedia(request: PlazaMediaReadRequest): Promise<PlazaMediaReadValue>
 ```
 
 Source: [`packages/skill/skill-plaza/src/index.ts`](../../packages/skill/skill-plaza/src/index.ts)

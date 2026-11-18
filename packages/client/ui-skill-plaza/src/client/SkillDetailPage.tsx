@@ -1,16 +1,20 @@
 /**
- * One published version's detail pages: the overview of results and
- * requirements, the execution process, and the usage notes. Reading, the
- * displayed content, and "use in conversation" all address the same version,
- * which the caller passes in.
+ * One published version's detail page. It reads as one document: the result
+ * gallery, the process, the scenarios, and the stored body are sections of the
+ * same page rather than tabs, and the process view is the primary surface.
  *
- * The body is exported separately so the draft editor previews with exactly
- * this rendering instead of a second implementation.
+ * Reading, the displayed content, and "use in conversation" all address the
+ * same version, which the caller passes in. The body is exported separately so
+ * the draft editor previews with exactly this rendering instead of a second
+ * implementation.
  */
-import { useEffect, useState, type ReactNode } from 'react'
-import type { PlazaDraftContent, PlazaSkillEntry } from '@deepseek-ai/dsh-skill-plaza/types'
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import type {
+  PlazaDraftContent, PlazaExample, PlazaSkillEntry,
+} from '@deepseek-ai/dsh-skill-plaza/types'
 import { FailurePanel, type PlazaWorkspaceProps } from './PlazaPage.tsx'
 import { WorkflowView } from './WorkflowView.tsx'
+import { displayFlow, flowStats } from './flow-model.ts'
 import css from './PlazaPage.module.css'
 
 /** Props of the detail route. */
@@ -22,9 +26,6 @@ export type SkillDetailPageProps = PlazaWorkspaceProps & {
   /** Return to the catalog. */
   readonly onBack: () => void
 }
-
-/** Versions the detail route can show. */
-type Tab = 'overview' | 'workflow' | 'usage'
 
 /** Readable text of a host or transport failure. */
 function messageOf(failure: unknown): string {
@@ -50,7 +51,14 @@ export function assetIdsOf(content: PlazaDraftContent): string[] {
 export function SkillDetailPage(props: SkillDetailPageProps): ReactNode {
   const t = props.t
   const [detail, setDetail] = useState<
-    { content: PlazaDraftContent; slug: string; title: string; version: number; publishedAt: string } | undefined
+    {
+      content: PlazaDraftContent
+      slug: string
+      title: string
+      version: number
+      publishedAt: string
+      body: string
+    } | undefined
   >(undefined)
   const [failure, setFailure] = useState<string | undefined>(undefined)
   const [busy, setBusy] = useState(false)
@@ -121,6 +129,7 @@ export function SkillDetailPage(props: SkillDetailPageProps): ReactNode {
         updatedAt: detail.publishedAt,
       }}
       content={detail.content}
+      body={detail.body}
       publishedAt={detail.publishedAt}
       preview={false}
       busy={busy}
@@ -139,6 +148,8 @@ export interface SkillDetailBodyProps {
   readonly entry: PlazaSkillEntry
   /** Content of that version. */
   readonly content: PlazaDraftContent
+  /** Stored model-facing body, absent for a draft that was never published. */
+  readonly body?: string
   /** ISO timestamp of publication, absent for a draft preview. */
   readonly publishedAt?: string
   /** Whether this renders unsaved editor content. */
@@ -162,13 +173,33 @@ export interface SkillDetailBodyProps {
 /** Render one version without reading anything. */
 export function SkillDetailBody(props: SkillDetailBodyProps): ReactNode {
   const t = props.t
-  const [tab, setTab] = useState<Tab>('overview')
   const [lightbox, setLightbox] = useState<string | undefined>(undefined)
+  const [activeExample, setActiveExample] = useState(0)
+  const [copied, setCopied] = useState(false)
+  const flowRef = useRef<HTMLElement>(null)
+  const resultsRef = useRef<HTMLElement>(null)
+  const scenariosRef = useRef<HTMLElement>(null)
+  const packageRef = useRef<HTMLElement>(null)
   const content = props.content
   const presentation = content.presentation
   const examples = presentation?.examples ?? []
-  const [activeExample, setActiveExample] = useState(0)
-  const workflow = presentation?.workflow
+  const scenarios = presentation?.scenarios ?? []
+  const flow = displayFlow(content)
+  const stats = flowStats(content)
+  const examplePrompt = presentation?.examplePrompt
+  const hasExample = examplePrompt !== undefined && examplePrompt !== ''
+
+  const copyExample = (): void => {
+    if (examplePrompt === undefined) return
+    void navigator.clipboard.writeText(examplePrompt).then(
+      () => { setCopied(true) },
+      () => { setCopied(false) },
+    )
+  }
+
+  const jump = (target: RefObject<HTMLElement | null>): void => {
+    target.current?.scrollIntoView({ block: 'start' })
+  }
 
   return (
     <div className={css.detail}>
@@ -181,99 +212,176 @@ export function SkillDetailBody(props: SkillDetailBodyProps): ReactNode {
           : <button type="button" className={css.link} onClick={props.onClosePreview}>{t('closePreview')}</button>}
         {props.preview ? <span className={css.draftBadge}>{t('draftPreview')}</span> : null}
       </div>
-      <header className={css.detailHead}>
-        <div className={css.detailHeadText}>
+
+      <header className={hasExample ? css.hero : css.heroSolo}>
+        <div className={css.heroText}>
+          <p className={css.eyebrow}>
+            {presentation?.category === undefined || presentation.category === ''
+              ? t('panel')
+              : presentation.category}
+            <span className={css.eyebrowDot} aria-hidden="true">·</span>
+            {`${t('version')} ${props.entry.version}`}
+          </p>
           <h1 className={css.detailTitle}>{props.entry.title}</h1>
-          <p className={css.hint}>{content.description}</p>
+          <p className={css.lead}>{content.description}</p>
           <p className={css.detailMeta}>
             <span className={css.versionChip}>{`${t('version')} ${props.entry.version}`}</span>
-            <span>{`${t('callName')} /${props.entry.slug}`}</span>
+            <span className={css.metaMono}>{`/${props.entry.slug}`}</span>
             {props.publishedAt === undefined
               ? null
               : <span>{`${t('publishedAt')} ${props.publishedAt.slice(0, 10)}`}</span>}
+            <span>{`${stats.nodes} ${t('processNodes')} · ${t('needsInput')} ${content.inputs.length} · ${t('willOutput')} ${content.outputs.length}`}</span>
           </p>
-        </div>
-        <button
-          type="button"
-          className={css.primary}
-          disabled={props.busy || props.preview}
-          onClick={() => { props.onUse() }}
-        >
-          {props.busy ? t('preparing') : t('useInChat')}
-        </button>
-      </header>
-      {props.notice === undefined ? null : <p className={css.notice} role="status">{props.notice}</p>}
-      <div className={css.tabs} role="tablist" aria-label={props.entry.title}>
-        <TabButton id="overview" label={t('detailOverview')} current={tab} onSelect={setTab} />
-        <TabButton id="workflow" label={t('detailWorkflow')} current={tab} onSelect={setTab} />
-        <TabButton id="usage" label={t('detailUsage')} current={tab} onSelect={setTab} />
-      </div>
-      {tab === 'overview'
-        ? (
-          <div className={css.overview}>
-            <section className={css.examples} aria-label={t('resultExamples')}>
-              <h2 className={css.sectionTitle}>{t('resultExamples')}</h2>
-              {examples.length === 0
-                ? <p className={css.empty}>{t('noExamples')}</p>
-                : (
-                  <ExampleGallery
-                    examples={examples}
-                    active={activeExample}
-                    images={props.images}
-                    onSelect={setActiveExample}
-                    onEnlarge={setLightbox}
-                    t={t}
-                  />
-                )}
-            </section>
-            <aside className={css.facts}>
-              <Facts title={t('scenarios')} lines={presentation?.scenarios} />
-              <Facts title={t('needsInput')} lines={content.inputs} />
-              <Facts title={t('willOutput')} lines={content.outputs} />
-              <Facts title={t('toolDependencies')} lines={content.toolDependencies} />
-            </aside>
-          </div>
-        )
-        : null}
-      {tab === 'workflow'
-        ? (
-          <WorkflowView
-            t={t}
-            workflow={workflow}
-            steps={content.steps}
-            images={props.images}
-            requestMedia={props.requestMedia}
-          />
-        )
-        : null}
-      {tab === 'usage'
-        ? (
-          <div className={css.usage}>
-            <Facts title={t('preparation')} lines={content.steps} ordered />
-            <Facts title={t('expectedResult')} lines={content.outputs} />
-            {content.verification === '' ? null : <Article title={t('howToVerify')} body={content.verification} />}
-            {content.failureHandling === ''
-              ? null
-              : <Article title={t('commonFailures')} body={content.failureHandling} />}
-          </div>
-        )
-        : null}
-      {presentation?.examplePrompt === undefined || props.preview
-        ? null
-        : (
-          <div className={css.tryRow}>
-            <span className={css.tryLabel}>{t('exampleRequest')}</span>
-            <p className={css.tryPrompt}>{presentation.examplePrompt}</p>
+          <div className={css.heroActions}>
             <button
               type="button"
-              className={css.button}
-              disabled={props.busy}
-              onClick={() => { props.onUse(presentation.examplePrompt) }}
+              className={css.primary}
+              disabled={props.busy || props.preview}
+              onClick={() => { props.onUse() }}
             >
-              {t('useExample')}
+              {props.busy ? t('preparing') : t('useInChat')}
             </button>
+            {hasExample
+              ? (
+                <button type="button" className={css.button} onClick={copyExample}>
+                  {copied ? t('copied') : t('copyExample')}
+                </button>
+              )
+              : null}
           </div>
+          {props.notice === undefined ? null : <p className={css.notice} role="status">{props.notice}</p>}
+        </div>
+        {hasExample
+          ? (
+            <aside className={css.heroAside}>
+              <span className={css.asideLabel}>{t('exampleRequest')}</span>
+              <p className={css.asideQuote}>{examplePrompt}</p>
+              <button
+                type="button"
+                className={css.button}
+                disabled={props.busy || props.preview}
+                onClick={() => { props.onUse(examplePrompt) }}
+              >
+                {t('useExample')}
+              </button>
+            </aside>
+          )
+          : null}
+      </header>
+
+      <div className={css.pipeline}>
+        <div className={css.pipelineSeg}>
+          <span className={css.pipelineLabel}>{t('needsInput')}</span>
+          <span className={css.pipelineValue}>{joinOrDash(content.inputs, t('noneYet'))}</span>
+        </div>
+        <span className={css.pipelineArrow} aria-hidden="true">→</span>
+        <div className={css.pipelineSeg}>
+          <span className={css.pipelineLabel}>{t('detailWorkflow')}</span>
+          <span className={css.pipelineValue}>
+            {`${stats.nodes} ${t('processNodes')}`}
+            {stats.decisions === 0 ? '' : ` · ${stats.decisions} ${t('decisionNodes')}`}
+            {stats.loops === 0 ? '' : ` · ${stats.loops} ${t('loopEdges')}`}
+          </span>
+        </div>
+        <span className={css.pipelineArrow} aria-hidden="true">→</span>
+        <div className={css.pipelineSeg}>
+          <span className={css.pipelineLabel}>{t('willOutput')}</span>
+          <span className={css.pipelineValue}>{joinOrDash(content.outputs, t('noneYet'))}</span>
+        </div>
+      </div>
+
+      <nav className={css.secNav} aria-label={t('sectionNav')}>
+        {scenarios.length === 0
+          ? null
+          : <button type="button" className={css.secNavItem} onClick={() => { jump(scenariosRef) }}>{t('scenarios')}</button>}
+        <button type="button" className={css.secNavItem} onClick={() => { jump(flowRef) }}>{t('detailWorkflow')}</button>
+        <button type="button" className={css.secNavItem} onClick={() => { jump(resultsRef) }}>{t('resultExamples')}</button>
+        {props.body === undefined
+          ? null
+          : <button type="button" className={css.secNavItem} onClick={() => { jump(packageRef) }}>{t('packageSection')}</button>}
+      </nav>
+
+      {scenarios.length === 0
+        ? null
+        : (
+          <section className={css.block} ref={scenariosRef} aria-label={t('scenarios')}>
+            <div className={css.blockHead}>
+              <h2 className={css.sectionTitle}>{t('scenarios')}</h2>
+            </div>
+            <div className={css.scenarioGrid}>
+              {scenarios.map((scenario, index) => (
+                <div key={`${index}-${scenario}`} className={css.scenarioCard}>
+                  <span className={css.scenarioIndex}>{index + 1}</span>
+                  <p>{scenario}</p>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
+
+      <section className={css.block} ref={flowRef} aria-label={t('detailWorkflow')}>
+        <div className={css.blockHead}>
+          <h2 className={css.sectionTitle}>{t('detailWorkflow')}</h2>
+          <p className={css.blockHint}>{t('workflowHint')}</p>
+        </div>
+        <WorkflowView
+          t={t}
+          workflow={flow?.workflow}
+          steps={content.steps}
+          synthesized={flow?.synthesized === true}
+          images={props.images}
+          requestMedia={props.requestMedia}
+        />
+      </section>
+
+      <section className={css.block} ref={resultsRef} aria-label={t('resultExamples')}>
+        <div className={css.blockHead}>
+          <h2 className={css.sectionTitle}>{t('resultExamples')}</h2>
+        </div>
+        {examples.length === 0
+          ? <p className={css.empty}>{t('noExamples')}</p>
+          : (
+            <div className={css.resultsGrid}>
+              <ExampleGallery
+                examples={examples}
+                active={activeExample}
+                images={props.images}
+                onSelect={setActiveExample}
+                onEnlarge={setLightbox}
+                t={t}
+              />
+              <div className={css.resultNotes}>
+                <Facts title={t('howToVerify')} lines={content.verification === '' ? [] : [content.verification]} />
+                <Facts title={t('commonFailures')} lines={content.failureHandling === '' ? [] : [content.failureHandling]} />
+              </div>
+            </div>
+          )}
+      </section>
+
+      {props.body === undefined
+        ? null
+        : (
+          <section className={css.block} ref={packageRef} aria-label={t('packageSection')}>
+            <div className={css.blockHead}>
+              <h2 className={css.sectionTitle}>{t('packageSection')}</h2>
+              <p className={css.blockHint}>{t('packageHint')}</p>
+            </div>
+            <div className={css.packageGrid}>
+              <aside className={css.packageFacts}>
+                <Facts title={t('toolDependencies')} lines={content.toolDependencies} />
+                <Facts title={t('needsInput')} lines={content.inputs} />
+              </aside>
+              <div className={css.bodyPanel}>
+                <div className={css.bodyHead}>
+                  <span className={css.bodyTitle}>{t('bodyTitle')}</span>
+                  <span className={css.bodyFlag}>{t('bodyReadOnly')}</span>
+                </div>
+                <SkillBody body={props.body} />
+              </div>
+            </div>
+          </section>
+        )}
+
       {lightbox === undefined
         ? null
         : (
@@ -288,29 +396,14 @@ export function SkillDetailBody(props: SkillDetailBodyProps): ReactNode {
   )
 }
 
-/** One tab control. */
-function TabButton(props: {
-  readonly id: Tab
-  readonly label: string
-  readonly current: Tab
-  readonly onSelect: (tab: Tab) => void
-}): ReactNode {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={props.current === props.id}
-      className={css.tab}
-      onClick={() => { props.onSelect(props.id) }}
-    >
-      {props.label}
-    </button>
-  )
+/** Join a list for one line, or state that the version names none. */
+function joinOrDash(items: readonly string[], empty: string): string {
+  return items.length === 0 ? empty : items.join(' · ')
 }
 
 /** Result images with a caption, alternative text, and an enlarge control. */
 function ExampleGallery(props: {
-  readonly examples: NonNullable<PlazaDraftContent['presentation']>['examples']
+  readonly examples: readonly PlazaExample[]
   readonly active: number
   readonly images: PlazaWorkspaceProps['images']
   readonly onSelect: (index: number) => void
@@ -318,7 +411,7 @@ function ExampleGallery(props: {
   readonly t: PlazaWorkspaceProps['t']
 }): ReactNode {
   const t = props.t
-  const examples = props.examples ?? []
+  const examples = props.examples
   const index = Math.min(props.active, examples.length - 1)
   const example = examples[index]
   if (example === undefined) return null
@@ -394,26 +487,32 @@ function Lightbox(props: {
 /** One titled fact list; renders nothing when every line is empty. */
 function Facts(props: {
   readonly title: string
-  readonly lines: readonly string[] | undefined
-  readonly ordered?: boolean
+  readonly lines: readonly string[]
 }): ReactNode {
-  const lines = (props.lines ?? []).filter(line => line.trim() !== '')
+  const lines = props.lines.filter(line => line.trim() !== '')
   if (lines.length === 0) return null
-  const items = lines.map((line, index) => <li key={`${index}-${line}`}>{line}</li>)
   return (
     <section className={css.factBlock}>
       <h3 className={css.factTitle}>{props.title}</h3>
-      {props.ordered === true ? <ol className={css.factList}>{items}</ol> : <ul className={css.factList}>{items}</ul>}
+      <ul className={css.factList}>
+        {lines.map((line, index) => <li key={`${index}-${line}`}>{line}</li>)}
+      </ul>
     </section>
   )
 }
 
-/** One titled prose block. */
-function Article(props: { readonly title: string; readonly body: string }): ReactNode {
+/** Read-only rendering of the stored model-facing body. */
+function SkillBody({ body }: { readonly body: string }): ReactNode {
   return (
-    <section className={css.factBlock}>
-      <h3 className={css.factTitle}>{props.title}</h3>
-      <p className={css.prose}>{props.body}</p>
-    </section>
+    <div className={css.skillBody}>
+      {body.split('\n').map((line, index) => {
+        if (line.startsWith('# ')) return <h3 key={index} className={css.bodyH1}>{line.slice(2)}</h3>
+        if (line.startsWith('## ')) return <h4 key={index} className={css.bodyH2}>{line.slice(3)}</h4>
+        if (line.startsWith('- ')) return <p key={index} className={css.bodyItem}>{`• ${line.slice(2)}`}</p>
+        if (/^\d+\.\s/.test(line)) return <p key={index} className={css.bodyItem}>{line}</p>
+        if (line.trim() === '') return null
+        return <p key={index} className={css.bodyText}>{line}</p>
+      })}
+    </div>
   )
 }

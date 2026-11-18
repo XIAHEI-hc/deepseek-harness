@@ -1,14 +1,15 @@
 // @vitest-environment jsdom
 
 import type { ComponentProps } from 'react'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import type {
   PlazaDraftContent, PlazaDraftView, PlazaMediaAsset, PlazaSkillEntry,
 } from '@deepseek-ai/dsh-skill-plaza/types'
-import { GenerateSkillButton, PlazaPanelIcon, SkillPicker } from '../src/client/Actions.tsx'
+import { GenerateSkillButton, GenerateSkillCard, PlazaPanelIcon, SkillPicker } from '../src/client/Actions.tsx'
+import type { GenerationTask } from '../src/client/generation-store.ts'
 import { PlazaPage } from '../src/client/PlazaPage.tsx'
 import { zh } from '../src/client/locales.ts'
 
@@ -99,6 +100,20 @@ const SKILL: PlazaSkillEntry = {
   coverAssetId: 'asset-wafer',
 }
 
+/** The stored model-facing body the detail page reads for its package section. */
+const BODY = [
+  '# STDF 批次异常分析',
+  '',
+  '定位异常 Die，输出 Wafer Map 和异常清单。',
+  '',
+  '## Inputs',
+  '- STDF 文件',
+  '',
+  '## Steps',
+  '1. 读取 STDF 文件并检查格式。',
+  '',
+].join('\n')
+
 /** The same skill listed without a cover image. */
 const SKILL_NO_COVER: PlazaSkillEntry = {
   skillId: SKILL.skillId,
@@ -135,6 +150,15 @@ const ASSET: PlazaMediaAsset = {
 type PageView = typeof PlazaPage
 type ActionView = typeof GenerateSkillButton
 type PickerView = typeof SkillPicker
+type CardView = typeof GenerateSkillCard
+
+/** Tasks one render sees, keyed by the Turn's message identity. */
+type TaskFixture = Record<string, GenerationTask | undefined>
+
+/** Selector stub standing in for the framework-bound store hook. */
+function useStoreOf(tasks: TaskFixture): unknown {
+  return (selector: (state: { tasks: TaskFixture }) => unknown) => selector({ tasks })
+}
 
 /** Render the page with every injected face stubbed and the framework seats cast. */
 function renderPage(over: Partial<ComponentProps<PageView>> = {}) {
@@ -148,6 +172,7 @@ function renderPage(over: Partial<ComponentProps<PageView>> = {}) {
       version: SKILL.version,
       publishedAt: '2026-11-16T00:00:00.000Z',
       content: CONTENT,
+      body: BODY,
     }),
     media: () => Promise.resolve('data:image/png;base64,AAA'),
     upload: () => Promise.resolve(ASSET),
@@ -163,15 +188,60 @@ function renderPage(over: Partial<ComponentProps<PageView>> = {}) {
 }
 
 /** Render the finalized-assistant action. */
-function renderAction(over: Partial<ComponentProps<ActionView>> = {}) {
+function renderAction(over: Partial<ComponentProps<ActionView>> = {}, tasks: TaskFixture = {}) {
   const props: Partial<ComponentProps<ActionView>> = {
     t,
     messageId: 'message-1' as never,
-    generate: () => Promise.resolve({ ok: true }),
-    openPlaza: vi.fn(),
+    useStore: useStoreOf(tasks) as never,
+    actions: {} as never,
+    start: vi.fn(),
+    openDraft: vi.fn(),
     ...over,
   }
   return render(<GenerateSkillButton {...props as ComponentProps<ActionView>} />)
+}
+
+/** Render the generation card of one Turn. */
+function renderCard(over: Partial<ComponentProps<CardView>> = {}, tasks: TaskFixture = {}) {
+  const props: Partial<ComponentProps<CardView>> = {
+    t,
+    turn: 1 as never,
+    seq: 1,
+    openFile: vi.fn(),
+    messageId: 'message-1' as never,
+    useStore: useStoreOf(tasks) as never,
+    actions: {} as never,
+    cancel: vi.fn(),
+    retry: vi.fn(),
+    openDraft: vi.fn(),
+    ...over,
+  }
+  return render(<GenerateSkillCard {...props as ComponentProps<CardView>} />)
+}
+
+/** One running task fixture. */
+function runningTask(over: Partial<GenerationTask> = {}): GenerationTask {
+  return { status: 'running', attempt: 1, startedAt: Date.now(), stage: 'distill', chars: 880, ...over }
+}
+
+/** One finished task fixture. */
+function finishedTask(over: Partial<GenerationTask> = {}): GenerationTask {
+  return {
+    status: 'succeeded',
+    attempt: 1,
+    startedAt: Date.now(),
+    draft: {
+      draftId: 'draft-1',
+      title: '发布前指标对比',
+      description: '对比两个发布版本的发布前指标。',
+      slug: 'release-metrics-compare',
+      revision: 1,
+      steps: 4,
+      tools: 1,
+      category: '研发效能',
+    },
+    ...over,
+  }
 }
 
 /** Render the composer picker. */
@@ -219,6 +289,71 @@ describe('skills plaza page', () => {
     expect(document.querySelector('img')).toBeNull()
   })
 
+  it('presents the most recently updated skill as a process feature', async () => {
+    const older: PlazaSkillEntry = {
+      ...SKILL,
+      skillId: 'skill-0',
+      slug: 'csv-convert',
+      title: 'CSV 转换校验',
+      description: '把表格转成标准 CSV。',
+      updatedAt: '2026-11-10T00:00:00.000Z',
+      category: '办公文档',
+    }
+    renderPage({
+      load: () => Promise.resolve({ workspaceKey: 'ws', drafts: [], skills: [older, SKILL] }),
+    })
+    const featured = await screen.findByRole('region', { name: '推荐技能' })
+    expect(within(featured).getByText(SKILL.title)).toBeTruthy()
+    expect(within(featured).getByRole('button', { name: '查看详情' })).toBeTruthy()
+    expect(screen.getByText(older.title)).toBeTruthy()
+  })
+
+  it('binds the featured skill without opening its page', async () => {
+    const useInConversation = vi.fn().mockResolvedValue({ ok: true, createdSession: false })
+    const older: PlazaSkillEntry = {
+      ...SKILL,
+      skillId: 'skill-0',
+      slug: 'csv-convert',
+      title: 'CSV 转换校验',
+      updatedAt: '2026-11-10T00:00:00.000Z',
+    }
+    renderPage({
+      load: () => Promise.resolve({ workspaceKey: 'ws', drafts: [], skills: [older, SKILL] }),
+      useInConversation,
+    })
+    const featured = await screen.findByRole('region', { name: '推荐技能' })
+    fireEvent.click(within(featured).getByRole('button', { name: '在对话中使用' }))
+    await waitFor(() => {
+      expect(useInConversation).toHaveBeenCalledWith({
+        skillId: SKILL.skillId,
+        version: SKILL.version,
+        slug: SKILL.slug,
+      })
+    })
+  })
+
+  it('reports a featured use that created a conversation and one that was refused', async () => {
+    const older: PlazaSkillEntry = {
+      ...SKILL,
+      skillId: 'skill-0',
+      slug: 'csv-convert',
+      title: 'CSV 转换校验',
+      updatedAt: '2026-11-10T00:00:00.000Z',
+    }
+    const useInConversation = vi.fn()
+      .mockResolvedValueOnce({ ok: true, createdSession: true })
+      .mockResolvedValueOnce({ ok: false, error: 'skillPlaza/not-found: gone' })
+    renderPage({
+      load: () => Promise.resolve({ workspaceKey: 'ws', drafts: [], skills: [older, SKILL] }),
+      useInConversation,
+    })
+    const featured = await screen.findByRole('region', { name: '推荐技能' })
+    fireEvent.click(within(featured).getByRole('button', { name: '在对话中使用' }))
+    expect(await screen.findByText('已新建会话，调用指令已插入输入框。')).toBeTruthy()
+    fireEvent.click(within(featured).getByRole('button', { name: '在对话中使用' }))
+    expect(await screen.findByText(/没能插入调用指令/)).toBeTruthy()
+  })
+
   it('filters by query and category and clears both', async () => {
     const other: PlazaSkillEntry = {
       ...SKILL,
@@ -251,6 +386,7 @@ describe('skills plaza page', () => {
       version: SKILL.version,
       publishedAt: '2026-11-16T00:00:00.000Z',
       content: CONTENT,
+      body: BODY,
     })
     await openDetail({ detail })
     expect(detail).toHaveBeenCalledWith(SKILL.skillId, SKILL.version)
@@ -273,7 +409,6 @@ describe('skills plaza page', () => {
 
   it('selects a process node and shows its checks and failure handling', async () => {
     await openDetail()
-    fireEvent.click(screen.getByRole('tab', { name: '执行流程' }))
     const node = await screen.findByRole('button', { name: '文件校验' })
     fireEvent.click(node)
     expect(node.getAttribute('aria-pressed')).toBe('true')
@@ -284,9 +419,14 @@ describe('skills plaza page', () => {
     expect(screen.getByText('失败')).toBeTruthy()
   })
 
+  it('states when the selected node has no further notes', async () => {
+    await openDetail()
+    fireEvent.click(screen.getByRole('button', { name: '读取 STDF' }))
+    expect(screen.getByText('这个节点没有补充说明。')).toBeTruthy()
+  })
+
   it('opens a subflow, then returns with the parent node still selected', async () => {
     await openDetail()
-    fireEvent.click(screen.getByRole('tab', { name: '执行流程' }))
     fireEvent.click(await screen.findByRole('button', { name: '文件校验' }))
     fireEvent.click(screen.getByRole('button', { name: '展开子流程' }))
     expect(await screen.findByRole('button', { name: '检查记录格式' })).toBeTruthy()
@@ -300,12 +440,11 @@ describe('skills plaza page', () => {
 
   it('lists the process nodes as an equivalent reading order', async () => {
     await openDetail()
-    fireEvent.click(screen.getByRole('tab', { name: '执行流程' }))
     const rows = await screen.findAllByRole('button', { name: /读取 STDF|执行规则|提示重新上传/ })
     expect(rows.length).toBeGreaterThanOrEqual(3)
   })
 
-  it('falls back to the operating steps when the version has no workflow', async () => {
+  it('falls back to a flow derived from the operating steps', async () => {
     await openDetail({
       detail: () => Promise.resolve({
         skillId: SKILL.skillId,
@@ -314,17 +453,17 @@ describe('skills plaza page', () => {
         version: SKILL.version,
         publishedAt: '2026-11-16T00:00:00.000Z',
         content: BARE_CONTENT,
+        body: '# STDF 批次异常分析\n',
       }),
     })
-    fireEvent.click(screen.getByRole('tab', { name: '执行流程' }))
-    expect(await screen.findByText('读取 STDF 文件并检查格式。')).toBeTruthy()
-    expect(screen.getByText('这个版本没有结构化流程，按执行步骤展示。')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: '读取 STDF 文件并检查格式。' })).toBeTruthy()
+    expect(screen.getByText('流程图由执行步骤自动生成；补上结构化流程后可以表达分支。')).toBeTruthy()
   })
 
-  it('shows the usage notes of the version being read', async () => {
+  it('reads the stored body and verification of the version being shown', async () => {
     await openDetail()
-    fireEvent.click(screen.getByRole('tab', { name: '使用说明' }))
-    expect(await screen.findByText('对通过校验的输入执行异常判定规则。')).toBeTruthy()
+    expect(await screen.findByText('技能正文')).toBeTruthy()
+    expect(screen.getByText('只读 · 发布后不可修改')).toBeTruthy()
     expect(screen.getByText('核对批次与晶圆编号。')).toBeTruthy()
     expect(screen.getByText('文件校验失败则保留错误原因。')).toBeTruthy()
   })
@@ -468,14 +607,71 @@ describe('skills plaza page', () => {
     expect(await screen.findByText(SKILL.title)).toBeTruthy()
   })
 
-  it('keeps the generated action and picker behaviour', async () => {
-    const generate = vi.fn(() => Promise.resolve({ ok: false as const, error: 'model unavailable' }))
-    const openPlaza = vi.fn()
-    renderAction({ generate, openPlaza })
+  it('starts a generation from the action', () => {
+    const start = vi.fn()
+    renderAction({ start })
     fireEvent.click(screen.getByRole('button', { name: '生成 Skill' }))
-    expect(await screen.findByText(/生成失败/)).toBeTruthy()
-    expect(openPlaza).not.toHaveBeenCalled()
+    expect(start).toHaveBeenCalledWith('message-1')
+  })
 
+  it('shows a running generation on the action and keeps it disabled', () => {
+    renderAction({}, { 'message-1': runningTask() })
+    const button = screen.getByRole('button', { name: '正在生成…' })
+    expect(button.hasAttribute('disabled')).toBe(true)
+  })
+
+  it('opens the finished draft from the action', () => {
+    const openDraft = vi.fn()
+    renderAction({ openDraft }, { 'message-1': finishedTask() })
+    fireEvent.click(screen.getByRole('button', { name: '已生成 · 查看' }))
+    expect(openDraft).toHaveBeenCalledWith('draft-1')
+  })
+
+  it('renders nothing for a turn that never started a generation', () => {
+    const view = renderCard()
+    expect(view.container.firstChild).toBeNull()
+  })
+
+  it('paints the stages a running task reached and the characters so far', () => {
+    renderCard({ messageId: 'message-1' as never }, { 'message-1': runningTask() })
+    expect(screen.getByText('正在把这个回复提炼成技能')).toBeTruthy()
+    expect(screen.getByText('读取这一轮对话')).toBeTruthy()
+    const stages = screen.getAllByRole('listitem')
+    expect(stages[0]?.getAttribute('data-state')).toBe('done')
+    expect(stages[1]?.getAttribute('data-state')).toBe('run')
+    expect(stages[2]?.getAttribute('data-state')).toBe('wait')
+    expect(screen.getByText('模型正在写 · 880 字')).toBeTruthy()
+  })
+
+  it('stops a running task from its card', () => {
+    const cancel = vi.fn()
+    renderCard({ cancel }, { 'message-1': runningTask() })
+    fireEvent.click(screen.getByRole('button', { name: '取消' }))
+    expect(cancel).toHaveBeenCalledWith('message-1')
+  })
+
+  it('summarizes the draft a finished task produced', () => {
+    const openDraft = vi.fn()
+    renderCard({ openDraft }, { 'message-1': finishedTask() })
+    expect(screen.getByText('发布前指标对比')).toBeTruthy()
+    expect(screen.getByText('研发效能')).toBeTruthy()
+    expect(screen.getByText('4 步')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '打开技能广场' }))
+    expect(openDraft).toHaveBeenCalledWith('draft-1')
+  })
+
+  it('offers a retry after a failed task and names the reason', () => {
+    const retry = vi.fn()
+    renderCard({ retry }, {
+      'message-1': { status: 'failed', attempt: 1, startedAt: Date.now(), error: 'model unavailable' },
+    })
+    expect(screen.getByText('生成失败')).toBeTruthy()
+    expect(screen.getByText('model unavailable')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '重试' }))
+    expect(retry).toHaveBeenCalledWith('message-1')
+  })
+
+  it('keeps the picker behaviour', async () => {
     const pick = vi.fn()
     const picker = renderPicker({ pick })
     const summary = picker.container.querySelector('summary')

@@ -4,7 +4,7 @@
  */
 import { Context } from '@deepseek-ai/cordis'
 import { agentEvents, type Agent, type PreStepDecision } from '@deepseek-ai/dsh-agent'
-import { createUserMessage, type ContentBlock, type UserMessage } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, type UserMessage } from '@deepseek-ai/dsh-llm'
 import { unsupportedInbox, unsupportedModel } from '@deepseek-ai/dsh-agent-loop-testkit'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { SESSION_FORMAT_VERSION, Session, type SessionId } from '@deepseek-ai/dsh-session'
@@ -22,6 +22,32 @@ const WORKSPACE = '/workspace/pre-step'
 
 /** Prompt text each simulated model call received, in call order. */
 const streamedPrompts: string[] = []
+
+/** How long a spec waits for a started attempt to settle. */
+const SETTLE_ATTEMPTS = 400
+const SETTLE_INTERVAL_MS = 2
+
+/**
+ * Start one attempt and await the record it settles into.
+ *
+ * `generate` answers while the attempt is still running, so every assertion
+ * about a generated draft reads the record through `job` instead.
+ * @param plaza - the plaza service under test.
+ * @param request - Session, turn, and idempotency key of the attempt.
+ * @returns the settled attempt.
+ */
+async function generateSettled(
+  plaza: SkillPlazaService,
+  request: Parameters<SkillPlazaService['generate']>[0],
+): Promise<{ job: Awaited<ReturnType<SkillPlazaService['job']>>['job'] }> {
+  const started = await plaza.generate(request, new AbortController().signal)
+  for (let attempt = 0; attempt < SETTLE_ATTEMPTS; attempt += 1) {
+    const { job } = await plaza.job({ jobId: started.job.jobId })
+    if (job.status !== 'running' && job.status !== 'queued') return { job }
+    await new Promise(resolve => setTimeout(resolve, SETTLE_INTERVAL_MS))
+  }
+  throw new Error(`attempt ${started.job.jobId} did not settle`)
+}
 
 const CONTENT: PlazaDraftContent = {
   title: 'Release metric comparison',
@@ -102,6 +128,8 @@ async function mount(options: {
   failure?: string
   finishError?: string
   replies?: readonly string[]
+  /** Keep the model call open until the attempt is aborted, for cancellation specs. */
+  stall?: boolean
 } = {}): Promise<Bench> {
   const ctx = new Context()
   const agent = fakeAgent(options.messages ?? ['/release-metrics-compare compare two releases'])
@@ -125,12 +153,21 @@ async function mount(options: {
   const selection = 'defaultSelection' in options ? options.defaultSelection : { provider: 'mock', model: 'mock' }
   ctx.provide('agentDefaultModel', { currentSelection: () => selection } as never)
   ctx.provide('llm', {
-    stream: async function* (request: { messages?: readonly { content?: readonly { type?: string; text?: string }[] }[] }) {
+    stream: async function* (request: {
+      messages?: readonly { content?: readonly { type?: string; text?: string }[] }[]
+      signal?: AbortSignal
+    }) {
       streamedPrompts.push((request.messages ?? [])
         .flatMap(message => message.content ?? [])
         .map(block => block.text ?? '')
         .join('\n'))
       if (options.failure !== undefined) throw options.failure
+      if (options.stall === true) {
+        yield { type: 'block-start', index: 0, blockType: 'text' }
+        yield { type: 'text-delta', index: 0, text: '{"title":"half a dra' }
+        await aborted(request.signal)
+        throw new Error('the model call was aborted')
+      }
       const reply = replies[Math.min(replyIndex, replies.length - 1)] ?? ''
       replyIndex += 1
       yield { type: 'block-start', index: 0, blockType: 'text' }
@@ -172,6 +209,13 @@ async function mount(options: {
 }
 
 let mounted: Bench | undefined
+
+/** Resolve when the signal aborts, including when it already has. */
+function aborted(signal: AbortSignal | undefined): Promise<void> {
+  if (signal === undefined) return new Promise(() => {})
+  if (signal.aborted) return Promise.resolve()
+  return new Promise((resolve) => { signal.addEventListener('abort', () => { resolve() }, { once: true }) })
+}
 
 afterEach(async () => {
   await mounted?.close()
@@ -221,7 +265,7 @@ async function step(bench: Bench, messages: UserMessage[], inner: UserMessage[])
 function injectedText(decision: PreStepDecision): string {
   if (decision.kind !== 'enter') return ''
   return decision.messages
-    .flatMap(message => message.content as readonly ContentBlock[])
+    .flatMap(message => message.content)
     .filter(block => block.type === 'text')
     .map(block => block.type === 'text' ? block.text : '')
     .join('\n')
@@ -272,11 +316,11 @@ it('leaves the step alone when nothing is pinned', async () => {
 
 it('distills a draft from the claimed conversation when the model answers with JSON', async () => {
   const bench = await mount({ messages: ['read the release file and compare two entries'] })
-  const generated = await bench.plaza.generate({
-    sessionId: bench.agent.id as never,
+  const generated = await generateSettled(bench.plaza, {
+    sessionId: bench.agent.id,
     turnId: 'turn-1',
     idempotencyKey: 'generate-success',
-  }, new AbortController().signal)
+  })
 
   expect(generated.job).toMatchObject({ status: 'succeeded', attempt: 1 })
   const draftId = generated.job.draftId ?? ''
@@ -294,8 +338,8 @@ it('joins a second identical request to the attempt already running', async () =
     idempotencyKey: 'generate-concurrent',
   }
   const [first, second] = await Promise.all([
-    bench.plaza.generate(request, new AbortController().signal),
-    bench.plaza.generate(request, new AbortController().signal),
+    generateSettled(bench.plaza, request),
+    generateSettled(bench.plaza, request),
   ])
 
   expect(first.job.jobId).toBe(second.job.jobId)
@@ -307,11 +351,11 @@ it('joins a second identical request to the attempt already running', async () =
 it('bounds the distilled material at the reply the entry belongs to', async () => {
   const bench = await mount({ messages: ['EARLY-TURN material', 'LATER-TURN material'] })
   const early = bench.agent.session.deriveMessages()[0]
-  const generated = await bench.plaza.generate({
-    sessionId: bench.agent.id as never,
+  const generated = await generateSettled(bench.plaza, {
+    sessionId: bench.agent.id,
     turnId: early?.id ?? '',
     idempotencyKey: 'generate-bounded',
-  }, new AbortController().signal)
+  })
 
   expect(generated.job.status).toBe('succeeded')
   expect(streamedPrompts.at(-1)).toContain('EARLY-TURN')
@@ -325,17 +369,17 @@ it('retries a failed attempt on the next identical request', async () => {
     turnId: 'turn-retry',
     idempotencyKey: 'generate-retry',
   }
-  const first = await bench.plaza.generate(request, new AbortController().signal)
+  const first = await generateSettled(bench.plaza, request)
   expect(first.job).toMatchObject({ status: 'failed', attempt: 1 })
   await bench.close()
   mounted = undefined
 
   const retried = await mount({ replies: ['still not json', JSON.stringify(GENERATED)] })
-  const second = await retried.plaza.generate({
-    sessionId: retried.agent.id as never,
+  const second = await generateSettled(retried.plaza, {
+    sessionId: retried.agent.id,
     turnId: 'turn-retry',
     idempotencyKey: 'generate-retry',
-  }, new AbortController().signal)
+  })
   expect(second.job.status).toBe('succeeded')
   expect(second.job.attempt).toBe(1)
 })
@@ -347,19 +391,19 @@ it('increments the attempt when the same job is retried', async () => {
     turnId: 'turn-retry-same-store',
     idempotencyKey: 'generate-retry-same-store',
   }
-  const first = await bench.plaza.generate(request, new AbortController().signal)
+  const first = await generateSettled(bench.plaza, request)
   expect(first.job).toMatchObject({ status: 'failed', attempt: 1 })
-  const second = await bench.plaza.generate(request, new AbortController().signal)
+  const second = await generateSettled(bench.plaza, request)
   expect(second.job).toMatchObject({ jobId: first.job.jobId, status: 'failed', attempt: 2 })
 })
 
 it('repairs one non-JSON reply instead of failing the attempt', async () => {
   const bench = await mount({ replies: ['Sure! Here is the method you asked about.', JSON.stringify(GENERATED)] })
-  const generated = await bench.plaza.generate({
-    sessionId: bench.agent.id as never,
+  const generated = await generateSettled(bench.plaza, {
+    sessionId: bench.agent.id,
     turnId: 'turn-repair',
     idempotencyKey: 'generate-repair',
-  }, new AbortController().signal)
+  })
   expect(generated.job.status).toBe('succeeded')
   const drafts = (await bench.plaza.drafts({})).drafts
   expect(drafts[0]).toMatchObject({ slug: GENERATED.slug })
@@ -367,11 +411,11 @@ it('repairs one non-JSON reply instead of failing the attempt', async () => {
 
 it('records a model reply that is not a draft payload as a failure', async () => {
   const bench = await mount({ reply: 'I cannot produce JSON right now.' })
-  const generated = await bench.plaza.generate({
-    sessionId: bench.agent.id as never,
+  const generated = await generateSettled(bench.plaza, {
+    sessionId: bench.agent.id,
     turnId: 'turn-2',
     idempotencyKey: 'generate-invalid',
-  }, new AbortController().signal)
+  })
 
   expect(generated.job.status).toBe('failed')
   expect(generated.job.error).toContain('without a JSON object')
@@ -379,11 +423,11 @@ it('records a model reply that is not a draft payload as a failure', async () =>
 
 it('reports a model route that does not exist', async () => {
   const bench = await mount({ defaultSelection: undefined })
-  const generated = await bench.plaza.generate({
-    sessionId: bench.agent.id as never,
+  const generated = await generateSettled(bench.plaza, {
+    sessionId: bench.agent.id,
     turnId: 'turn-3',
     idempotencyKey: 'generate-no-route',
-  }, new AbortController().signal)
+  })
   expect(generated.job.status).toBe('failed')
   expect(generated.job.error).toContain('no model route')
 })
@@ -477,8 +521,8 @@ it('returns the stored attempt for a sequential repeat request', async () => {
     turnId: 'turn-repeat',
     idempotencyKey: 'generate-repeat',
   }
-  const first = await bench.plaza.generate(request, new AbortController().signal)
-  const second = await bench.plaza.generate(request, new AbortController().signal)
+  const first = await generateSettled(bench.plaza, request)
+  const second = await generateSettled(bench.plaza, request)
   expect(second.job.jobId).toBe(first.job.jobId)
   expect((await bench.plaza.drafts({})).drafts).toHaveLength(1)
 })
@@ -515,7 +559,7 @@ it('reports that a Session cannot be inspected without the query service', async
   const facility = new DomainFacility(ctx, { backend: 'fixture' })
   ctx.provide('storageDomain', facility)
   const fiber = await ctx.plugin(SkillPlazaService)
-  const failure = await ctx.skillPlaza.drafts({ sessionId: agent.id as never }).catch((error: unknown) => error)
+  const failure = await ctx.skillPlaza.drafts({ sessionId: agent.id }).catch((error: unknown) => error)
   expect(remoteErrorOf(failure)).toMatchObject({ code: 'gateway/internal' })
   await fiber.dispose()
   await facility.closeAll()
@@ -540,53 +584,53 @@ it('passes a rejecting inner decision through untouched', async () => {
 
 it('reports a failed model call as a failed attempt', async () => {
   const bench = await mount({ finishError: 'PROVIDER_UNAVAILABLE' })
-  const generated = await bench.plaza.generate({
-    sessionId: bench.agent.id as never,
+  const generated = await generateSettled(bench.plaza, {
+    sessionId: bench.agent.id,
     turnId: 'turn-finish-error',
     idempotencyKey: 'generate-finish-error',
-  }, new AbortController().signal)
+  })
   expect(generated.job.status).toBe('failed')
   expect(generated.job.error).toContain('the model call failed')
 })
 
 it('reports a non-Error model failure as text', async () => {
   const bench = await mount({ failure: 'stream exploded' })
-  const generated = await bench.plaza.generate({
-    sessionId: bench.agent.id as never,
+  const generated = await generateSettled(bench.plaza, {
+    sessionId: bench.agent.id,
     turnId: 'turn-throw',
     idempotencyKey: 'generate-throw',
-  }, new AbortController().signal)
+  })
   expect(generated.job.status).toBe('failed')
   expect(generated.job.error).toContain('stream exploded')
 })
 
 it('reports invalid JSON and an incomplete payload separately', async () => {
   const invalid = await mount({ reply: '{not json}' })
-  const first = await invalid.plaza.generate({
-    sessionId: invalid.agent.id as never,
+  const first = await generateSettled(invalid.plaza, {
+    sessionId: invalid.agent.id,
     turnId: 'turn-invalid-json',
     idempotencyKey: 'generate-invalid-json',
-  }, new AbortController().signal)
+  })
   expect(first.job.error).toContain('invalid JSON')
   await invalid.close()
   mounted = undefined
 
   const incomplete = await mount({ reply: '{"title":"only a title"}' })
-  const second = await incomplete.plaza.generate({
-    sessionId: incomplete.agent.id as never,
+  const second = await generateSettled(incomplete.plaza, {
+    sessionId: incomplete.agent.id,
     turnId: 'turn-incomplete',
     idempotencyKey: 'generate-incomplete',
-  }, new AbortController().signal)
+  })
   expect(second.job.error).toContain('incomplete')
 })
 
 it('refuses to generate from a Session holding no material', async () => {
   const bench = await mount({ messages: [] })
-  const generated = await bench.plaza.generate({
-    sessionId: bench.agent.id as never,
+  const generated = await generateSettled(bench.plaza, {
+    sessionId: bench.agent.id,
     turnId: 'turn-empty',
     idempotencyKey: 'generate-empty',
-  }, new AbortController().signal)
+  })
   expect(generated.job).toMatchObject({ status: 'failed' })
   expect(generated.job.error).toContain('no completed reply')
 })
@@ -617,11 +661,11 @@ it('falls back to the first advertised model route', async () => {
   const facility = new DomainFacility(ctx, { backend: 'fixture' })
   ctx.provide('storageDomain', facility)
   const fiber = await ctx.plugin(SkillPlazaService)
-  const generated = await ctx.skillPlaza.generate({
-    sessionId: agent.id as never,
+  const generated = await generateSettled(ctx.skillPlaza, {
+    sessionId: agent.id,
     turnId: 'turn-fallback',
     idempotencyKey: 'generate-fallback',
-  }, new AbortController().signal)
+  })
   expect(generated.job.status).toBe('succeeded')
   await fiber.dispose()
   await facility.closeAll()
@@ -649,7 +693,7 @@ it('reads the working directory from the projection when the header has none', a
   const facility = new DomainFacility(ctx, { backend: 'fixture' })
   ctx.provide('storageDomain', facility)
   const fiber = await ctx.plugin(SkillPlazaService)
-  const saved = await ctx.skillPlaza.saveDraft({ sessionId: agent.id as never, content: CONTENT })
+  const saved = await ctx.skillPlaza.saveDraft({ sessionId: agent.id, content: CONTENT })
   expect(saved.draft.slug).toBe(CONTENT.slug)
   await fiber.dispose()
   await facility.closeAll()
@@ -673,7 +717,7 @@ it('falls back to the host default directory when the Session reports none', asy
   const facility = new DomainFacility(ctx, { backend: 'fixture' })
   ctx.provide('storageDomain', facility)
   const fiber = await ctx.plugin(SkillPlazaService)
-  await ctx.skillPlaza.saveDraft({ sessionId: agent.id as never, content: CONTENT })
+  await ctx.skillPlaza.saveDraft({ sessionId: agent.id, content: CONTENT })
   expect((await ctx.skillPlaza.drafts({})).drafts).toHaveLength(1)
   await fiber.dispose()
   await facility.closeAll()
@@ -709,11 +753,11 @@ it('skips a provider whose model listing fails', async () => {
   const facility = new DomainFacility(ctx, { backend: 'fixture' })
   ctx.provide('storageDomain', facility)
   const fiber = await ctx.plugin(SkillPlazaService)
-  const generated = await ctx.skillPlaza.generate({
-    sessionId: agent.id as never,
+  const generated = await generateSettled(ctx.skillPlaza, {
+    sessionId: agent.id,
     turnId: 'turn-skip-provider',
     idempotencyKey: 'generate-skip-provider',
-  }, new AbortController().signal)
+  })
   expect(generated.job.status).toBe('succeeded')
   await fiber.dispose()
   await facility.closeAll()
@@ -750,16 +794,54 @@ it('reports a workspace mismatch as not-found instead of leaking a record', asyn
   expect(remoteErrorOf(failure)).toMatchObject({ code: 'skillPlaza/not-found' })
 })
 
-it('aborts the generation when the caller cancels', async () => {
-  const bench = await mount()
-  const controller = new AbortController()
-  controller.abort()
-  const generated = await bench.plaza.generate({
-    sessionId: bench.agent.id as never,
+it('cancels a running attempt and records it as cancelled', async () => {
+  const bench = await mount({ stall: true })
+  const started = await bench.plaza.generate({
+    sessionId: bench.agent.id,
     turnId: 'turn-4',
     idempotencyKey: 'generate-aborted',
-  }, controller.signal)
-  expect(generated.job.status).toBe('failed')
+  }, new AbortController().signal)
+  expect(started.job.status).toBe('running')
+
+  const cancelled = await bench.plaza.cancel({ jobId: started.job.jobId })
+  expect(cancelled.job).toMatchObject({ status: 'cancelled', attempt: 1 })
+  expect(cancelled.job.stage).toBeUndefined()
+  expect((await bench.plaza.drafts({})).drafts).toEqual([])
+})
+
+it('reports the stage and characters of a running attempt', async () => {
+  const bench = await mount({ stall: true })
+  const started = await bench.plaza.generate({
+    sessionId: bench.agent.id,
+    turnId: 'turn-progress',
+    idempotencyKey: 'generate-progress',
+  }, new AbortController().signal)
+
+  let running = started.job
+  for (let attempt = 0; attempt < SETTLE_ATTEMPTS && (running.chars ?? 0) === 0; attempt += 1) {
+    await new Promise(resolve => setTimeout(resolve, SETTLE_INTERVAL_MS))
+    running = (await bench.plaza.job({ jobId: started.job.jobId })).job
+  }
+  expect(running).toMatchObject({ status: 'running', stage: 'distill' })
+  expect(running.chars).toBeGreaterThan(0)
+  await bench.plaza.cancel({ jobId: started.job.jobId })
+})
+
+it('leaves a settled attempt untouched when a cancellation arrives late', async () => {
+  const bench = await mount()
+  const generated = await generateSettled(bench.plaza, {
+    sessionId: bench.agent.id,
+    turnId: 'turn-late-cancel',
+    idempotencyKey: 'generate-late-cancel',
+  })
+  const late = await bench.plaza.cancel({ jobId: generated.job.jobId })
+  expect(late.job.status).toBe('succeeded')
+})
+
+it('reports an unknown attempt identity when cancelling', async () => {
+  const bench = await mount()
+  const failure = await bench.plaza.cancel({ jobId: 'job-missing' }).catch((error: unknown) => error)
+  expect(remoteErrorOf(failure)).toMatchObject({ code: 'skillPlaza/not-found' })
 })
 
 it('refuses a second draft that reuses the callable name after publication', async () => {

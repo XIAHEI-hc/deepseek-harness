@@ -47,8 +47,9 @@ Six durable tables in the `skill_plaza` storage domain: drafts (mutable, `revisi
 | `skillPlaza/check` | Located problems that would block publication, without writing |
 | `skillPlaza/publish` | Validate, then write an immutable version and make it active; a repeated publish of the same draft revision returns the version it produced |
 | `skillPlaza/pin` | Bind one published version to the Session's next explicit invocation |
-| `skillPlaza/generate` | Distill a draft from a live Session's completed turn through the configured model |
-| `skillPlaza/job` | Read one generation attempt |
+| `skillPlaza/generate` | Start — or join — an attempt that distills a draft from a live Session's completed turn; the call answers while the attempt runs |
+| `skillPlaza/cancel` | Stop one running attempt and return the record it settled into |
+| `skillPlaza/job` | Read one generation attempt, including the stage and character count a running one reports |
 | `skillPlaza/uploadMedia` | Store one PNG, JPEG, or WebP in the workspace |
 | `skillPlaza/readMedia` | Read one stored image from the workspace |
 
@@ -77,7 +78,7 @@ Drafts move forward under optimistic concurrency: `saveDraft` compares `expected
 
 Publication validates the whole display payload against the workspace's media: duplicate node identities, a missing entry node, dangling edges, unreachable nodes and layers, unlabeled decision branches, unresolvable assets, and the size bounds are reported as `PlazaIssue`s with a content path. `check` returns those same issues without writing, so an editor can mark them before the attempt.
 
-Generation runs the configured model route synchronously and records the attempt before and after the call. A failure stores a readable reason on the job and produces no draft, so a retry starts from a clean attempt. Slug collisions are refused at publication with `skillPlaza/name-conflict`; the check reads the workspace's catalog, not the caller's list.
+Generation records an attempt before the model call and answers the caller immediately; the call itself runs behind the record, which reports the stage it reached (`harvest`, `distill`, `check`, `save`) and the characters the model produced. A repeated request while an attempt runs joins it instead of starting a second model call, and a request after a failed or cancelled attempt runs the next attempt of the same job. `cancel` aborts that model call and stores `cancelled`; a call that arrives after the attempt settled returns it unchanged. A failure stores a readable reason on the job and produces no draft, so a retry starts from a clean attempt. Slug collisions are refused at publication with `skillPlaza/name-conflict`; the check reads the workspace's catalog, not the caller's list.
 
 A version binding is written to the `pins` table when a caller pins a version, and consumed by the `agent/pre-step` handler of the next step that names the slug. Persisting it is what makes a selection survive a Host restart; the handler also drops a binding whose workspace no longer matches, so a plaza read in one workspace cannot inject into a conversation in another.
 
@@ -99,7 +100,8 @@ A new published version changes the body a later invocation injects; earlier too
 
 ## Known Limitations and Deferred Work
 
-- **Generation is synchronous** — `generate` runs the model call inside the Remote request and records the attempt around it; a repeat request joins the attempt already running. There is no durable queue, so a Host restart during a generation loses that attempt and the caller must request a new one.
+- **An attempt outlives its request but not the Host** — `generate` answers at once and the model call runs in the Host process. A Host restart during a generation loses that attempt; the stored record still reports the last stage it reached, and the caller requests a new one. There is no durable queue.
+- **Cancellation stops the call, not the record** — `cancel` aborts the model call and settles the attempt as `cancelled`; the job, its stage history, and its attempt counter stay readable.
 - **The distilled material ends at the clicked reply** — generation bounds the conversation at that reply's message identity; an identity the Session no longer holds falls back to the last messages.
 - **Media lives in the storage domain** — images are base64 in the `media` table rather than files beside the Domain, so one entry costs its encoded size in the domain document that the backend rewrites. A per-record layout or a blob store is the change to make before images routinely reach the 10 MiB bound.
 - **Media has no deletion path** — an uploaded image is never removed, which is what keeps an older published version readable after its draft changes; the cost is that abandoned uploads stay.

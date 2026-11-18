@@ -1,10 +1,12 @@
 /**
- * The execution-process view: one workflow layer drawn from its edges, the
- * selected node's details beside it, and an equivalent node list below so a
- * narrow screen or a keyboard reaches the same information as a pointer.
+ * The process view: one workflow layer drawn from its edges, the selected
+ * node's details beside it, and an equivalent node list below so a narrow
+ * screen or a keyboard reaches the same information as a pointer.
  *
  * Selection is remembered per depth, so opening a subflow and coming back
- * leaves the parent node selected.
+ * leaves the parent node selected. A flow derived from the operating steps is
+ * drawn the same way and marked as derived, so an author can tell the two
+ * apart without a second view.
  */
 import { useMemo, useState, type ReactNode } from 'react'
 import type {
@@ -26,6 +28,8 @@ export interface WorkflowViewProps {
   readonly workflow: PlazaWorkflow | undefined
   /** The version's operating steps, shown when no workflow exists. */
   readonly steps: readonly string[]
+  /** Whether the workflow was derived from the steps for display. */
+  readonly synthesized?: boolean
   /** Loaded images by asset identity. */
   readonly images: PlazaWorkspaceProps['images']
   /** Request images this view shows. */
@@ -42,6 +46,15 @@ function layerFor(workflow: PlazaWorkflow, stack: readonly PlazaWorkflowNode[]):
     layer = next
   }
   return layer
+}
+
+/** The counts one node card states, without repeating its prose. */
+function nodeChips(t: PlazaWorkspaceProps['t'], node: PlazaWorkflowNode): readonly string[] {
+  const chips: string[] = []
+  if ((node.inputs ?? []).length > 0) chips.push(`${t('nodeInputs')} ${(node.inputs ?? []).length}`)
+  if ((node.checks ?? []).length > 0) chips.push(`${t('nodeChecks')} ${(node.checks ?? []).length}`)
+  if ((node.outputs ?? []).length > 0) chips.push(`${t('nodeOutputs')} ${(node.outputs ?? []).length}`)
+  return chips
 }
 
 /** Render the process view. */
@@ -71,33 +84,43 @@ export function WorkflowView(props: WorkflowViewProps): ReactNode {
   const selectedId = selected[depth] ?? layer.entryNodeId
   const node = layer.nodes.find(item => item.id === selectedId)
   const select = (id: string): void => { setSelected({ ...selected, [depth]: id }) }
+  const atRoot = stack.length === 0
 
   return (
     <div className={css.flow}>
-      <nav className={css.breadcrumb} aria-label={t('workflowRoot')}>
-        <button type="button" className={css.breadcrumbLink} onClick={() => { setStack([]) }}>
-          {t('workflowRoot')}
-        </button>
-        {stack.map((via, index) => (
-          <span key={`${via.id}-${index}`} className={css.breadcrumbStep}>
-            <span aria-hidden="true">/</span>
-            <button
-              type="button"
-              className={css.breadcrumbLink}
-              onClick={() => { setStack(stack.slice(0, index + 1)) }}
-            >
-              {via.title}
-            </button>
-          </span>
-        ))}
-        {stack.length === 0
+      <div className={css.flowBar}>
+        {atRoot
           ? null
           : (
-            <button type="button" className={css.link} onClick={() => { setStack(stack.slice(0, -1)) }}>
-              {t('backToParent')}
-            </button>
+            <nav className={css.breadcrumb} aria-label={t('workflowRoot')}>
+              <button type="button" className={css.breadcrumbLink} onClick={() => { setStack([]) }}>
+                {t('workflowRoot')}
+              </button>
+              {stack.map((via, index) => (
+                <span key={`${via.id}-${index}`} className={css.breadcrumbStep}>
+                  <span aria-hidden="true">/</span>
+                  <button
+                    type="button"
+                    className={css.breadcrumbLink}
+                    onClick={() => { setStack(stack.slice(0, index + 1)) }}
+                  >
+                    {via.title}
+                  </button>
+                </span>
+              ))}
+              <button type="button" className={css.link} onClick={() => { setStack(stack.slice(0, -1)) }}>
+                {t('backToParent')}
+              </button>
+            </nav>
           )}
-      </nav>
+        <span className={css.legend} aria-hidden="true">
+          <span><i className={css.legendAction} />{t('nodeTypeAction')}</span>
+          <span><i className={css.legendDecision} />{t('nodeTypeDecision')}</span>
+        </span>
+      </div>
+      {props.synthesized === true
+        ? <p className={css.derivedHint}>{t('flowDerivedHint')}</p>
+        : null}
       <div className={css.flowGrid}>
         <div className={css.canvasFrame}>
           <div className={css.canvasTools}>
@@ -152,23 +175,43 @@ export function WorkflowView(props: WorkflowViewProps): ReactNode {
                     </g>
                   ))}
                 </svg>
-                {layout.nodes.map(placed => (
-                  <button
-                    key={placed.node.id}
-                    type="button"
-                    className={placed.node.type === 'decision' ? css.decision : css.actionNode}
-                    aria-pressed={placed.node.id === selectedId}
-                    style={{
-                      left: placed.x,
-                      top: placed.y,
-                      width: placed.width,
-                      height: placed.height,
-                    }}
-                    onClick={() => { select(placed.node.id) }}
-                  >
-                    <span className={css.nodeText}>{placed.node.title}</span>
-                  </button>
-                ))}
+                {layout.nodes.map((placed, index) => {
+                  const chips = nodeChips(t, placed.node)
+                  return (
+                    <button
+                      key={placed.node.id}
+                      type="button"
+                      aria-label={placed.node.title}
+                      className={placed.node.type === 'decision' ? css.decision : css.actionNode}
+                      aria-pressed={placed.node.id === selectedId}
+                      style={{
+                        left: placed.x,
+                        top: placed.y,
+                        width: placed.width,
+                        height: placed.height,
+                      }}
+                      onClick={() => { select(placed.node.id) }}
+                    >
+                      <span className={css.nodeTop}>
+                        <span className={css.nodeIndex}>{index + 1}</span>
+                        {placed.node.subflowLayerId === undefined
+                          ? null
+                          : <span className={css.nodeSubflow}>{t('subflowBadge')}</span>}
+                        <span className={css.nodeKind}>
+                          {t(placed.node.type === 'decision' ? 'nodeTypeDecision' : 'nodeTypeAction')}
+                        </span>
+                      </span>
+                      <span className={css.nodeTitle}>{placed.node.title}</span>
+                      {chips.length === 0
+                        ? null
+                        : (
+                          <span className={css.nodeChips}>
+                            {chips.map(chip => <span key={chip}>{chip}</span>)}
+                          </span>
+                        )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -191,7 +234,7 @@ export function WorkflowView(props: WorkflowViewProps): ReactNode {
       <section className={css.nodeListBlock} aria-label={t('nodeList')}>
         <h3 className={css.factTitle}>{t('nodeList')}</h3>
         <ul className={css.nodeList}>
-          {layer.nodes.map(item => (
+          {layer.nodes.map((item, index) => (
             <li key={item.id}>
               <button
                 type="button"
@@ -199,9 +242,10 @@ export function WorkflowView(props: WorkflowViewProps): ReactNode {
                 aria-pressed={item.id === selectedId}
                 onClick={() => { select(item.id) }}
               >
+                <span className={css.nodeIndex}>{index + 1}</span>
                 <span className={css.nodeListTitle}>{item.title}</span>
                 <span className={css.itemMeta}>
-                  {item.type === 'decision' ? t('nodeTypeDecision') : t('nodeTypeAction')}
+                  {t(item.type === 'decision' ? 'nodeTypeDecision' : 'nodeTypeAction')}
                 </span>
                 {item.subflowLayerId === undefined ? null : <span className={css.itemMeta}>{t('openSubflow')}</span>}
               </button>
@@ -234,6 +278,9 @@ function NodeDetails(props: {
   return (
     <div className={css.nodeDetail}>
       <h3 className={css.nodeDetailTitle}>{node.title}</h3>
+      {rows.length === 0 && assetIds.length === 0
+        ? <p className={css.empty}>{t('nodeNoDetails')}</p>
+        : null}
       {rows.map(row => (
         <section key={row.label} className={css.factBlock}>
           <h4 className={css.factTitle}>{row.label}</h4>

@@ -16,15 +16,15 @@ Status: implemented
 
 **草稿以乐观并发推进，版本只追加。** `saveDraft` 与 `publish` 都比较调用方修订号与已存修订号，不一致时抛出带双方数值的 `skillPlaza/conflict`。发布先写版本记录（`skillId@version`，正文冻结），再写目录行，最后给草稿打 `skillId`；对同一草稿修订重复发布会返回它已产生的版本，而不是再造一个。调用名被其他技能占用时以 `skillPlaza/name-conflict` 拒绝。
 
-**生成是一次 Host 侧结构化调用，不是第二个 agent loop。** `skillPlaza/generate` 先记录任务，取活动 Session 派生消息的尾部，用配置的默认路由按 JSON 合约调用，校验回复并存成草稿；模型或校验失败时把可读原因写进任务且不产生草稿。源 Session 的日志不会被写入。
+**生成是一次 Host 侧结构化调用，不是第二个 agent loop。** `skillPlaza/generate` 先记录任务，取活动 Session 派生消息的尾部，用配置的默认路由按 JSON 合约调用，校验回复并存成草稿；模型或校验失败时把可读原因写进任务且不产生草稿。调用在记录下这次尝试时就返回，模型跑在它后面，因此这次尝试是客户端跟随的任务，而不是它干等的请求（[可见任务笔记](2026-11-17-skill-generation-task.zh.md)）。源 Session 的日志不会被写入。
 
 **选择即绑定：一次选择把一个已发布版本钉到下一个指名它的任务。** `skillPlaza/pin` 为会话记录 `{skillId, version}`；广场自己的 `agent/pre-step` 监听器（`prepend` 注册）在既有 `/slug` 注入之后运行，名称匹配时丢弃那次注入，读取被钉版本的已存正文，再追加一条 `skill-invocation` 来源带 `version` 与 `provider` 的注入。被钉版本不存在时该步骤失败，而不会重新按名称解析。钉住状态存在 Host 内存里，因为持久化的逐消息引用需要新增 `SessionPromptRequest` 字段与来源成员；但被钉住的结果本身是持久化的。
 
-**客户端是三处贡献，而不是分叉输入框。** `sidebar.panellist` + `main` 承载广场页与编辑器，`conversation.chat.assistant-actions` 在完成的回复上提供生成入口，`conversation.input.left` 提供把原生 `/slug` 文本经对话输入门面写进草稿的选择器。页面是无会话的根面板，因此插件从对话注册里记录活动 Session 并按它的工作区读写；没有 Session 时读 Host 默认目录。
+**客户端是四处贡献，而不是分叉输入框。** `sidebar.panellist` + `main` 承载广场页与编辑器，`conversation.chat.assistant-actions` 在完成的回复上提供生成入口，`conversation.chat.turnTail` 承载显示这次生成的任务卡，`conversation.input.left` 提供把原生 `/slug` 文本经对话输入门面写进草稿的选择器。入口与卡片读同一个按会话划分、以回复消息标识为键的存储。页面是无会话的根面板，因此插件从对话注册里记录活动 Session 并按它的工作区读写；没有 Session 时读 Host 默认目录。
 
 ## Evidence
 
-目标检出：分支 `master`，提交 `39163dd30f`，仓库版本 `0.2.2-rc.3`，Windows，源码构建的 `dsh web` 配合 `DeepSeek-V4.1-Flash`，工作区 `D:\Vibe_coding\dsh-plaza-demo`。广场自身的持久记录位于 `/storages/skill_plaza.json`。
+目标检出：仓库版本 `0.2.2-rc.3`，Windows，源码构建的 `dsh web` 配合 `DeepSeek-V4.1-Flash`，工作区 `D:\Vibe_coding\dsh-plaza-demo`。广场自身的持久记录位于 `/storages/skill_plaza.json`。
 
 1. 一轮问答通过读取 `releases.md` 回答了指标对比（一次模型请求、三步、真实工具调用）。
 2. 「生成 Skill」把该轮提炼成草稿 `draft-bedb3ec4…`，调用名 `compare-release-metrics-from-markdown`，修订号 1，落在该会话的工作区。
@@ -37,7 +37,7 @@ Status: implemented
 
 | 编号 | 结果 | 证据 |
 |---|---|---|
-| A01 | 通过 | 真实运行中广场直接打开了该回复产出的草稿 |
+| A01 | 通过（单测） | 该回复的卡片报告这次尝试，入口打开客户端被告知的那份草稿（`browser-plugin.client.spec.tsx`）；广场不再被自动进入 |
 | A02 | 通过 | 生成以被点击回复的消息身份为界截取素材，而分叉会话自带独立日志，因此其他分支的内容无法进入（plaza-pre-step.spec.ts） |
 | A03 | 通过 | 回复完成前不存在该入口：空会话与流式回复都不渲染生成入口，这由槽位契约保证 |
 | A04 | 通过 | 第二个相同请求会加入正在运行的那次尝试，只产生一个任务与一个草稿；入口在忙时也会禁用（plaza-pre-step.spec.ts） |

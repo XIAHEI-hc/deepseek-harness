@@ -1,0 +1,25 @@
+# Bilingual-pair consistency record for 2026-11-17-skill-generation-task.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-11-17-skill-generation-task.md
+/agent-note-skill-generation-is-a-visible-task:
+  en: fc744f1ca752c191
+  zh: bcaf9e2fd401d746
+/agent-note-skill-generation-is-a-visible-task/problem:
+  en: 7dd5ee89f66a2579
+  zh: 220c449fb02f9d39
+/agent-note-skill-generation-is-a-visible-task/decision:
+  en: ce3db3601d7db93f
+  zh: 33a3bf5f27ae46e0
+/agent-note-skill-generation-is-a-visible-task/testing:
+  en: 05427ec3eb402b78
+  zh: d7d8140ff23f1d8e
+/agent-note-skill-generation-is-a-visible-task/alternatives-considered:
+  en: 7e443f5d6e8f267e
+  zh: 70b2239086ac170c
+/agent-note-skill-generation-is-a-visible-task/consequences:
+  en: abe1daa272d84952
+  zh: 8a2d7fbfbf9cbd4b
+/agent-note-skill-generation-is-a-visible-task/what-this-record-does-not-claim:
+  en: 9c2f5070f45c1f6f
+  zh: 80c74242a525cf09
