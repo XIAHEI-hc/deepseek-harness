@@ -7,7 +7,7 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
-## 摘要
+## 概述
 
 当一个 DSH 实例由网关持有——每个账号一个实例、绑定私有网卡、只能经已完成浏览器认证的网关访问——使用本包。网关为每个请求签发一条身份声明；本包用共享密钥、部署受众和该实例服务的唯一主体校验它，然后把请求作为唯一的 owner Peer 放行。浏览器 Cookie 和启动 token 都不参与，因为浏览器根本无法直连监听端口。每个请求都重新认证，因此网关一旦停止签发，访问立即结束，无需改动实例进程。
 
@@ -18,7 +18,7 @@ kind: "package-reference"
 - [延伸阅读](#further-exploration)
 - [模型体验](#model-experience)
 - [已知限制与后续工作](#known-limitations-and-deferred-work)
-- [开发者注记](#dev-note)
+- [开发备注](#dev-note)
 
 -----
 
@@ -83,7 +83,7 @@ kind: "package-reference"
 - 除 `exp` 之外没有重放窗口；被截获的声明在过期前仍可使用。请把 `maxLifetimeSeconds` 设短，并只在私有网络内转发。
 
 <a id="dev-note"></a>
-### 开发者注记
+### 开发备注
 
 <details>
 <summary>维护者工作上下文——点击展开</summary>
