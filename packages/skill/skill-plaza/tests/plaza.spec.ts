@@ -11,7 +11,8 @@ import { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
 import { remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
 import { afterEach, expect, it } from 'vitest'
 import { MemoryMediaPool, MemoryStorageBackend } from '../../../storage/storage-domain/tests/helpers/memory-backend.ts'
-import SkillPlazaService, { PLAZA_PROVIDER, renderSkillBody } from '../src/index.ts'
+import SkillPlazaService from '../src/index.ts'
+import { renderSkillBody } from '../src/body.ts'
 import { skillPlazaDomain } from '../src/storage.ts'
 import type { PlazaDraftContent, PlazaPresentation } from '../src/types.ts'
 
@@ -201,7 +202,7 @@ it('serves the published body through the skill registry', async () => {
   await current.plaza.publish({ draftId: draft.draftId, expectedRevision: 1, idempotencyKey: 'publish-registry' })
 
   const listed = await current.ctx.skills.list({ cwd: current.workspace })
-  expect(listed.map(skill => ({ name: skill.name, provider: skill.provider }))).toEqual([{ name: CONTENT.slug, provider: PLAZA_PROVIDER }])
+  expect(listed.map(skill => ({ name: skill.name, provider: skill.provider }))).toEqual([{ name: CONTENT.slug, provider: 'skill-plaza' }])
 
   const loaded = await current.ctx.skills.get(CONTENT.slug, { cwd: current.workspace })
   expect(loaded?.content).toBe(renderSkillBody(CONTENT))

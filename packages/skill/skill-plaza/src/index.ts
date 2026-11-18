@@ -24,6 +24,7 @@ import type { SkillCandidate, SkillDefinition, SkillInvocationPolicy, SkillProvi
 import type { Domain } from '@deepseek-ai/dsh-storage-domain'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { admitImage } from './media.ts'
+import { renderSkillBody } from './body.ts'
 import { checkContent, MAX_PLAZA_ASSET_BYTES, plazaPresentationSchema } from './presentation.ts'
 import type { PlazaCheckableContent } from './presentation.ts'
 import { plazaContentSchema, skillPlazaDomain } from './storage.ts'
@@ -50,10 +51,10 @@ declare module '@deepseek-ai/cordis' {
 }
 
 /** Provider name under which plaza skills enter the merged skill catalog. */
-export const PLAZA_PROVIDER = 'skill-plaza'
+const PLAZA_PROVIDER = 'skill-plaza'
 
 /** Precedence rank: below runtime registrations, above bundled and local files. */
-export const PLAZA_SKILL_RANK = 400
+const PLAZA_SKILL_RANK = 400
 
 /** Invocation controls every published plaza skill carries. */
 const PLAZA_INVOCATION: SkillInvocationPolicy = { modelInvocable: true, userInvocable: true }
@@ -208,29 +209,6 @@ function toJobView(record: PlazaJobRecord): PlazaJobView {
 /** Normalize one workspace directory into the plaza's storage key. */
 function workspaceKey(directory: string): string {
   return resolvePath(directory)
-}
-
-/**
- * Render a stored draft as the markdown body a skill provider serves.
- * @param content - validated draft content.
- * @returns the complete skill body, newest section last.
- */
-export function renderSkillBody(content: PlazaCheckableContent): string {
-  const section = (heading: string, lines: readonly string[]): string[] => lines.length === 0
-    ? []
-    : [`## ${heading}`, ...lines, '']
-  return [
-    `# ${content.title}`,
-    '',
-    content.description,
-    '',
-    ...section('Inputs', content.inputs.map(input => `- ${input}`)),
-    ...section('Steps', content.steps.map((step, index) => `${index + 1}. ${step}`)),
-    ...section('Expected outputs', content.outputs.map(output => `- ${output}`)),
-    ...section('Verification', content.verification === '' ? [] : [content.verification]),
-    ...section('Failure handling', content.failureHandling === '' ? [] : [content.failureHandling]),
-    ...section('Tool dependencies', content.toolDependencies.map(tool => `- \`${tool}\``)),
-  ].join('\n').trimEnd() + '\n'
 }
 
 /** Reject content the plaza cannot store or serve. */
