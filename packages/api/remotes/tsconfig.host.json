@@ -94,6 +94,9 @@
     },
     {
       "path": "../../web/web"
+    },
+    {
+      "path": "../../skill/skill-plaza"
     }
   ]
 }
