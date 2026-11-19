@@ -1826,13 +1826,27 @@ export interface Config {
 ## `@deepseek-ai/dsh-host-authentication-gateway`
 
 - `inject`: `connection` · `connection.authentication`
-- `source`: [`packages/host/authentication-gateway/src/index.ts:13`](../packages/host/authentication-gateway/src/index.ts)
+- `source`: [`packages/host/authentication-gateway/src/index.ts:33`](../packages/host/authentication-gateway/src/index.ts)
 
 ```ts config-catalog
 /** Deployment identity this instance accepts from its trusted proxy. */
 export interface Config {
-  /** Shared HMAC secret with the proxy; at least 32 characters. */
-  secret: string
+  /** Signature algorithm for version 2 assertions; default `hmac-sha256`. */
+  algorithm?: AssertionAlgorithm
+  /** Shared HMAC secret with the proxy; required for `hmac-sha256`, at least 32 characters. */
+  secret?: string
+  /** PEM Ed25519 public key text the proxy signs with; used for `ed25519`. */
+  publicKey?: string
+  /** Path to a PEM Ed25519 public key; used for `ed25519` when `publicKey` is absent. */
+  publicKeyFile?: string
+  /** Signing key id version 2 assertions must carry; every other `kid` is refused. */
+  keyId?: string
+  /** Issuer version 2 assertions must carry; every other `iss` is refused. */
+  issuer?: string
+  /** Runtime generation version 2 assertions must carry; every other `gen` is refused. */
+  generation?: number
+  /** Seconds each accepted version 2 assertion id stays remembered; default `0` disables replay rejection. */
+  replayWindowSeconds?: number
   /** Deployment audience the proxy signs; one audience per fleet. */
   audience: string
   /** The identity-provider subject this instance serves; every other subject is refused. */
@@ -1844,6 +1858,9 @@ export interface Config {
   /** Longest accepted assertion lifetime in seconds; default 300. */
   maxLifetimeSeconds: number
 }
+
+/** Signature algorithm a gateway signs assertions with. */
+export type AssertionAlgorithm = 'hmac-sha256' | 'ed25519'
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-host-authentication-gateway -->
 
