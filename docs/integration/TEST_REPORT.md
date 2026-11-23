@@ -15,6 +15,7 @@ Records commands and results actually executed; unexecuted items are explicitly 
 | `pnpm exec vitest run packages/client/ui-theme/tests` | PASS | 24 files, 183 tests: the new stylesheet satisfies radius, hairline, elevation, focus-ring, corner-shape, and scrollbar gates |
 | `pnpm exec vitest run packages/integration/tool-integration/tests` | PASS | 2 files, 8 tests: capability header, discovery, bounded reads, job start/status, API errors, allowlist, and persisted session markers |
 | `pnpm exec vitest run services/platform/tests/admin.integration.spec.ts` | PASS | 2 tests: disabled status is inert; ready status reports zero metadata counts |
+| `bash deploy/scripts/verify-integration-release.sh` on a synthetic bundle | PASS | checksums, required assets, disabled-by-default env, and both JSON registries |
 | `pnpm run test:gui` (full suite) | RUN_FAIL (environment) | 9/14127 failed: 6 were new-stylesheet rule violations (fixed; `ui-theme` re-run passed), 3 are unrelated host conditions (symlink EPERM, secret-mask timeout, pnpm pack timeout) |
 
 ## 2. Fusion unit/contract coverage

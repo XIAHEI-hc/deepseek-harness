@@ -95,6 +95,7 @@ GET  /api/integration/audit?jobId=...
 - 模型工具：`packages/integration/tool-integration` 提供发现、快照、隔离 Job、状态与产物工具；平台向每用户 Runtime 注入短生命周期 HMAC 能力，Gateway 无需浏览器 Session 即可解析。
 - 会话撤销：运行时 token 会按当前权限版本复验；注销、禁用或权限变化后，Job reaper 会取消运行中的容器。
 - 融合工具 guard：`/fusion` 在首个动作前标记会话，其 `tools/pre-execute` 会拒绝 Shell、MCP、PTY、SSH、子 Agent、Schedule、浏览器与动态插件工具；首次 `integration_*` 调用也会标记会话。
+- 离线发布：`make-integration-release.sh` 打包镜像 tar、注册表样例、Job Dockerfile、默认关闭的 env 模板与校验和；`verify-integration-release.sh` 验证发布包。
 
 尚未完成、不得声称生产可用：
 

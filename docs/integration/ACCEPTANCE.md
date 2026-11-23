@@ -39,7 +39,7 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 | F8-01 | Analysis job image builds from `deploy/integration/job/Dockerfile` | BLOCKED | local Docker build could not resolve `python:3.12-alpine` (registry egress timeout) |
 | F8-02 | Backup covers fusion metadata and snapshots | RUN_PASS (design) | `backup.sh` archives `management/`, which contains `integration/`; target-machine rehearsal not run |
 | F8-03 | Upgrade/rollback preserves native users and fusion data | NOT_RUN | reuses existing scripts; no target-machine fusion rehearsal |
-| F8-04 | Offline release with the fusion job image | NOT_RUN | no release bundle produced |
+| F8-04 | Offline release bundle structure keeps fusion disabled by default | RUN_PASS | synthetic bundle passed `verify-integration-release.sh`; image build remains F8-01 |
 | F8-05 | Target-machine seven-day run | BLOCKED | no target machine window |
 | F8-06 | Read-only fusion admin status reports state and counts | RUN_PASS | `admin.integration.spec.ts` |
 

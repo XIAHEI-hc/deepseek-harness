@@ -95,6 +95,7 @@ Actual commands and results are in [TEST_REPORT.md](TEST_REPORT.md); per-gate st
 - Model tools: `packages/integration/tool-integration` exposes discovery, snapshot, isolated-job, status, and artifact tools; the platform injects a short-lived HMAC capability into the per-user runtime and the gateway resolves it without a browser session.
 - Session revocation: runtime tokens are re-checked against the current permission version, and the job reaper cancels a running container after logout, disable, or permission change.
 - Fusion tool guard: `/fusion` marks a session before the first action, and its `tools/pre-execute` guard then denies shell, MCP, PTY, SSH, subagent, Schedule, browser, and dynamic-plugin tools; the first `integration_*` call also marks the session.
+- Offline release: `make-integration-release.sh` packages the image tar, registry examples, job Dockerfile, disabled-by-default env template, and checksums; `verify-integration-release.sh` validates the bundle.
 
 Not complete, and must not be claimed production-ready:
 

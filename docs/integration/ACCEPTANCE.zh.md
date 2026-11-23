@@ -39,7 +39,7 @@
 | F8-01 | 从 `deploy/integration/job/Dockerfile` 构建分析镜像 | BLOCKED | 本地 Docker 构建无法解析 `python:3.12-alpine`（registry 出口超时） |
 | F8-02 | 备份覆盖融合元数据与快照 | RUN_PASS（设计） | `backup.sh` 打包 `management/`，其中包含 `integration/`；目标机演练未执行 |
 | F8-03 | 升级/回滚保留原生用户与融合数据 | NOT_RUN | 复用现有脚本；尚无目标机融合演练 |
-| F8-04 | 含融合分析镜像的离线发布 | NOT_RUN | 未产出发布包 |
+| F8-04 | 离线发布包结构保持融合默认关闭 | RUN_PASS | 合成发布包通过 `verify-integration-release.sh`；镜像构建仍见 F8-01 |
 | F8-05 | 目标机七天运行 | BLOCKED | 无目标机窗口 |
 | F8-06 | 只读融合管理状态报告状态与计数 | RUN_PASS | `admin.integration.spec.ts` |
 

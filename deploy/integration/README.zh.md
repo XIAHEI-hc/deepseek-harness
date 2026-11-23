@@ -61,6 +61,16 @@ docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin int
 
 输出 `enabled`、`state`、缺项代码、已登记系统数与元数据计数（`workspaces`、`snapshots`、`jobs`、`artifacts`、`activeJobs`）。命令不启动容器，也不暴露宿主路径。
 
+## 离线融合发布
+
+```bash
+DSH_INTEGRATION_JOB_IMAGE=dsh-integration-job:2026.11.24 \
+  bash deploy/scripts/make-integration-release.sh 2026.11.24
+bash deploy/scripts/verify-integration-release.sh deploy/release/integration-2026.11.24 2026.11.24
+```
+
+发布包包含镜像 tar、两份注册表样例、Job Dockerfile、默认关闭的 `fusion.env.example` 与校验和。它从不复制 `.env`、数据库、快照、工作区或用户数据。在目标机导入镜像，保持 `DSH_INTEGRATION_ENABLED=false`，只合并已审核配置，然后运行 `admin integration status`。
+
 ## 边界
 
 - 分析容器只接收 `/inputs`（只读）、`/work`（选中的工作区，读写）、`/scratch`（Job 私有，读写）。`/app`、平台配置与 `/secrets` 从不挂载。

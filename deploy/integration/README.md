@@ -61,6 +61,16 @@ docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin int
 
 It prints `enabled`, `state`, issue codes, registered system count, and metadata counts (`workspaces`, `snapshots`, `jobs`, `artifacts`, `activeJobs`). It does not start a container or expose host paths.
 
+## Offline fusion release
+
+```bash
+DSH_INTEGRATION_JOB_IMAGE=dsh-integration-job:2026.11.24 \
+  bash deploy/scripts/make-integration-release.sh 2026.11.24
+bash deploy/scripts/verify-integration-release.sh deploy/release/integration-2026.11.24 2026.11.24
+```
+
+The bundle contains the image tar, both registry examples, the job Dockerfile, a disabled-by-default `fusion.env.example`, and checksums. It never copies `.env`, databases, snapshots, workspaces, or user data. Import the image on the target host, keep `DSH_INTEGRATION_ENABLED=false`, merge only the reviewed settings, then run `admin integration status`.
+
 ## Boundaries
 
 - Analysis containers receive only `/inputs` (read-only), `/work` (the selected workspace, read-write), and `/scratch` (job-private, read-write). `/app`, the platform configuration, and `/secrets` are never mounted.

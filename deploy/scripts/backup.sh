@@ -93,6 +93,14 @@ echo "== 记录部署事实 =="
   echo "runtime_containers=$(printf '%s' "$RUNTIME_IDS" | tr '\n' ' ')"
   echo "storage=${DSH_PLATFORM_STORAGE:-sqlite}"
   echo "spaces=$(find "$ROOT/spaces" -mindepth 1 -maxdepth 1 -type d | wc -l)"
+  if [ -d "$ROOT/management/integration" ]; then
+    echo "integration_present=true"
+    echo "integration_snapshot_files=$(find "$ROOT/management/integration/snapshots" -type f 2>/dev/null | wc -l)"
+    echo "integration_workspace_dirs=$(find "$ROOT/management/integration/workspaces" -mindepth 2 -maxdepth 2 -type d 2>/dev/null | wc -l)"
+    echo "integration_job_dirs=$(find "$ROOT/management/integration/jobs" -mindepth 2 -maxdepth 2 -type d 2>/dev/null | wc -l)"
+  else
+    echo "integration_present=false"
+  fi
 } > "$DEST/MANIFEST.txt"
 
 echo "备份完成：$DEST"
