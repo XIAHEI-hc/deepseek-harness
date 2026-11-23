@@ -1,6 +1,7 @@
 /** Fusion tool client: capability header, discovery, bounded reads, and errors. */
 import { describe, expect, it } from 'vitest'
 import { IntegrationClient, IntegrationClientError } from '../src/client.ts'
+import { fusionToolAllowed } from '../src/index.ts'
 
 interface Recorded {
   readonly input: string
@@ -49,6 +50,16 @@ const SNAPSHOT = {
   classification: 'internal',
   size: 5,
 }
+
+describe('fusion session allowlist', () => {
+  it('admits only integration tools', () => {
+    expect(fusionToolAllowed('integration_read_resource')).toBe(true)
+    expect(fusionToolAllowed('pwsh')).toBe(false)
+    expect(fusionToolAllowed('read')).toBe(false)
+    expect(fusionToolAllowed('mcp_call')).toBe(false)
+    expect(fusionToolAllowed('run_code')).toBe(false)
+  })
+})
 
 describe('IntegrationClient', () => {
   it('lists systems and resources with the runtime capability header', async () => {

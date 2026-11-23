@@ -94,10 +94,11 @@ Actual commands and results are in [TEST_REPORT.md](TEST_REPORT.md); per-gate st
 - Native optional UI: `packages/client/ui-integration-workbench` registers one `shell.overlay` launcher, reads status once, and renders nothing when fusion is absent; its API and component specs pass.
 - Model tools: `packages/integration/tool-integration` exposes discovery, snapshot, isolated-job, status, and artifact tools; the platform injects a short-lived HMAC capability into the per-user runtime and the gateway resolves it without a browser session.
 - Session revocation: runtime tokens are re-checked against the current permission version, and the job reaper cancels a running container after logout, disable, or permission change.
+- Fusion tool guard: after the first `integration_*` call, a session's `tools/pre-execute` guard denies shell, MCP, PTY, SSH, subagent, Schedule, browser, and dynamic-plugin tools.
 
 Not complete, and must not be claimed production-ready:
 
-- The model fusion tools are additive; the platform does not yet disable shell, MCP, PTY, SSH, subagent, Schedule, or browser tools for a fusion Session.
+- The fusion guard activates on the first `integration_*` call; a session is not pre-marked before that call, and the marker is process-local rather than a physical sandbox rule.
 - A controlled egress broker is not implemented; analysis containers can only use `--network none`.
 - Real W3 tenant A/B, a seven-day target-machine run, and internal Git are external `BLOCKED` items.
 - Production deployment, upgrade, backup, and rollback reuse the existing scripts; a fusion-specific rehearsal on the target machine has not run.

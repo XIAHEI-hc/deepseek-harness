@@ -13,6 +13,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
+import type { PreToolDecision, ToolRunContext } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import {
   IntegrationClient,
@@ -59,6 +60,15 @@ type ResolvedConfig = Required<Config>
 
 /** Generic lossless JSON object output used by every tool. */
 const OBJECT_OUTPUT = { type: 'object', additionalProperties: true } as const
+
+/**
+ * Report whether one tool name is admitted in a fusion-analysis session.
+ * @param name - registered tool name.
+ * @returns true only for the fusion tools themselves.
+ */
+export function fusionToolAllowed(name: string): boolean {
+  return name.startsWith('integration_')
+}
 
 /** Render one canonical JSON value as model text. */
 function renderJson(_args: unknown, value: Record<string, JsonValue>): { type: 'text'; text: string }[] {
@@ -182,6 +192,23 @@ export function apply(ctx: Context, config: Config): void {
     timeoutMs: resolved.timeoutMs,
     maxContentChars: resolved.maxContentChars,
   })
+  // A session becomes a fusion-analysis session on its first fusion tool call.
+  // From then on only integration tools are admitted: shell, MCP, PTY, SSH,
+  // subagent, Schedule, dynamic plugins, and browser tools stay unavailable.
+  const fusionSessions = new Set<string>()
+  const markFusion = (exec: ToolRunContext): void => {
+    const sessionId = exec.agent?.session.id
+    if (sessionId !== undefined) fusionSessions.add(sessionId)
+  }
+  ctx.on('tools/pre-execute', async (exec, next): Promise<PreToolDecision> => {
+    const sessionId = exec.agent?.session.id
+    if (sessionId === undefined || !fusionSessions.has(sessionId)) return next()
+    if (fusionToolAllowed(exec.name)) return next()
+    return {
+      kind: 'deny',
+      reason: 'This session is in fusion analysis mode; only integration_* tools are admitted.',
+    }
+  })
 
   ctx.tools.register(defineTool({
     name: 'integration_list_resources',
@@ -190,6 +217,7 @@ export function apply(ctx: Context, config: Config): void {
     output: { schema: OBJECT_OUTPUT, render: renderJson },
     timeoutMs: resolved.timeoutMs,
     async execute(_args, exec) {
+      markFusion(exec)
       const result = await client.listResources(exec.signal)
       return {
         systems: result.systems.map(system => ({ id: system.id, name: system.name, health: system.health })),
@@ -206,6 +234,7 @@ export function apply(ctx: Context, config: Config): void {
     output: { schema: OBJECT_OUTPUT, render: renderJson },
     timeoutMs: resolved.timeoutMs,
     async execute(_args, exec) {
+      markFusion(exec)
       return { workspaces: (await client.listWorkspaces(exec.signal)).map(workspaceJson) }
     },
     presentCall: () => ({ card: 'generic', title: 'List fusion workspaces', kind: 'read' }),
@@ -218,6 +247,7 @@ export function apply(ctx: Context, config: Config): void {
     output: { schema: OBJECT_OUTPUT, render: renderJson },
     timeoutMs: resolved.timeoutMs,
     async execute(args, exec) {
+      markFusion(exec)
       const result = await client.readResource(args, exec.signal)
       return { snapshot: snapshotJson(result.snapshot), content: result.content, truncated: result.truncated }
     },
@@ -231,6 +261,7 @@ export function apply(ctx: Context, config: Config): void {
     output: { schema: OBJECT_OUTPUT, render: renderJson },
     timeoutMs: resolved.timeoutMs,
     async execute(args, exec) {
+      markFusion(exec)
       return { snapshot: snapshotJson(await client.createSnapshot(args, exec.signal)) }
     },
     presentCall: () => ({ card: 'generic', title: 'Create fusion snapshot', kind: 'read' }),
@@ -253,6 +284,7 @@ export function apply(ctx: Context, config: Config): void {
     output: { schema: OBJECT_OUTPUT, render: renderJson },
     timeoutMs: resolved.timeoutMs,
     async execute(args, exec) {
+      markFusion(exec)
       return { job: jobJson(await client.startJob(args, exec.signal)) }
     },
     presentCall: () => ({ card: 'generic', title: 'Run fusion analysis', kind: 'execute' }),
@@ -267,6 +299,7 @@ export function apply(ctx: Context, config: Config): void {
     output: { schema: OBJECT_OUTPUT, render: renderJson },
     timeoutMs: resolved.timeoutMs,
     async execute(args, exec) {
+      markFusion(exec)
       const result = await client.jobStatus(args.jobId, exec.signal)
       return { job: jobJson(result.job), artifacts: result.artifacts.map(artifactJson) }
     },
@@ -282,6 +315,7 @@ export function apply(ctx: Context, config: Config): void {
     output: { schema: OBJECT_OUTPUT, render: renderJson },
     timeoutMs: resolved.timeoutMs,
     async execute(args, exec) {
+      markFusion(exec)
       const result = await client.readArtifact(args.artifactId, exec.signal)
       return {
         artifactId: result.artifactId,

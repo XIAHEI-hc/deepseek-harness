@@ -20,7 +20,8 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 | F3-02 | Workspace and scratch are writable; uid is unprivileged | RUN_PASS | same Docker gate |
 | F3-03 | `--network none`, no Docker socket, no host deployment root | RUN_PASS | same Docker gate |
 | F3-04 | Non-Linux host is refused for analysis containers | RUN_PASS | `integration.preflight.spec.ts` host-platform issue |
-| F3-05 | Shell/MCP/PTY/SSH/subagent/schedule bypasses disabled in a fusion Session | NOT_RUN | model-side restricted tool assembly is not wired |
+| F3-05 | Shell/MCP/PTY/SSH/subagent/schedule bypasses disabled before any fusion tool runs | NOT_RUN | a session is marked only on its first fusion tool call |
+| F3-06 | Non-integration tools denied after a session enters fusion mode | RUN_PASS | `fusionToolAllowed` and `tools/pre-execute` guard in `tool-integration` |
 | F4-01 | Mock ACL isolates users and resources | RUN_PASS | `integration.service.spec.ts` |
 | F4-02 | HTTP adapter refuses redirects, metadata hosts, and oversized bodies | RUN_PASS | `integration.http-adapter.spec.ts` |
 | F5-01 | Snapshot hash, source version, grant record, and epoch are stored | RUN_PASS | `integration.service.spec.ts` |

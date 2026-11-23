@@ -94,10 +94,11 @@ GET  /api/integration/audit?jobId=...
 - 原生可选 UI：`packages/client/ui-integration-workbench` 注册一个 `shell.overlay` 启动器，只读取一次状态，融合不存在时不渲染任何内容；其 API 与组件测试通过。
 - 模型工具：`packages/integration/tool-integration` 提供发现、快照、隔离 Job、状态与产物工具；平台向每用户 Runtime 注入短生命周期 HMAC 能力，Gateway 无需浏览器 Session 即可解析。
 - 会话撤销：运行时 token 会按当前权限版本复验；注销、禁用或权限变化后，Job reaper 会取消运行中的容器。
+- 融合工具 guard：首次 `integration_*` 调用后，会话的 `tools/pre-execute` 会拒绝 Shell、MCP、PTY、SSH、子 Agent、Schedule、浏览器与动态插件工具。
 
 尚未完成、不得声称生产可用：
 
-- 模型融合工具是增量能力；平台尚未在融合 Session 中禁用 Shell、MCP、PTY、SSH、子 Agent、Schedule 或浏览器工具。
+- 融合 guard 从首次 `integration_*` 调用开始；之前不会预先标记会话，且标记是进程内的，不是物理沙箱规则。
 - 受控 egress broker 未实现；分析容器只能 `--network none`。
 - 真实 W3 租户 A/B、目标机 7 天运行、内网 Git 属外部 `BLOCKED`。
 - 生产部署、升级、备份与回滚仅复用现有脚本，尚未在目标机完成融合专用演练。

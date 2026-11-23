@@ -20,7 +20,8 @@
 | F3-02 | 工作区与 scratch 可写；uid 非特权 | RUN_PASS | 同一 Docker 门禁 |
 | F3-03 | `--network none`、无 Docker socket、无宿主部署根 | RUN_PASS | 同一 Docker 门禁 |
 | F3-04 | 非 Linux 主机拒绝分析容器 | RUN_PASS | `integration.preflight.spec.ts` 主机平台缺项 |
-| F3-05 | 融合 Session 中 Shell/MCP/PTY/SSH/子 Agent/Schedule 旁路禁用 | NOT_RUN | 模型侧受限工具装配尚未接入 |
+| F3-05 | 在任意融合工具运行前禁用 Shell/MCP/PTY/SSH/子 Agent/Schedule 旁路 | NOT_RUN | 会话只在第一次调用融合工具时被标记 |
+| F3-06 | 会话进入融合模式后拒绝非融合工具 | RUN_PASS | `tool-integration` 的 `fusionToolAllowed` 与 `tools/pre-execute` guard |
 | F4-01 | Mock ACL 隔离用户与资源 | RUN_PASS | `integration.service.spec.ts` |
 | F4-02 | HTTP 适配器拒绝重定向、metadata 主机与超大响应 | RUN_PASS | `integration.http-adapter.spec.ts` |
 | F5-01 | 快照哈希、来源版本、授权记录与 epoch 被保存 | RUN_PASS | `integration.service.spec.ts` |

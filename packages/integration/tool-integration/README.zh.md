@@ -75,7 +75,7 @@ schema 与描述为每个融合 Runtime 的请求增加固定提示成本。工�
 <a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与后续工作
 
-- **没有模型侧融合 Session 限制** — 这些工具是增量能力；平台尚未在融合 Session 中禁用 Shell、MCP、PTY、SSH、子 Agent、Schedule 或浏览器工具。
+- **融合 guard 从首次使用开始** — 任一 `integration_*` 调用后，会话拒绝其他所有工具；但在该调用之前已发生的调用不会被追溯限制，且标记是进程内的。
 - **没有流式 Job 状态** — 模型轮询 `integration_job_status`。
 - **产物只按文本读取** — 二进制产物按 UTF-8 解码，可能不可读。
 - **没有连接器 URL 或业务写操作** — 工具不能直接调用宿主系统，也不能执行写操作。
