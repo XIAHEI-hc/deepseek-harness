@@ -82,6 +82,20 @@ describe('HttpReadOnlyAdapter', () => {
       .toThrow(/metadata/u)
   })
 
+  it('refuses an expired or read-less grant', async () => {
+    const adapter = new HttpReadOnlyAdapter(system, {
+      timeoutMs: 1000,
+      maxBytes: 1024,
+      now: () => Date.parse('2026-01-01T00:00:00.000Z'),
+      fetchImplementation: async () => new Response('{"ok":true}', { status: 200 }),
+    })
+    const grant = await adapter.authorize(actorA, locator, 'read')
+    await expect(adapter.snapshot(actorA, locator, { ...grant, expiresAt: '2020-01-01T00:00:00.000Z' }))
+      .rejects.toMatchObject({ code: 'resource-forbidden' })
+    await expect(adapter.snapshot(actorA, locator, { ...grant, actions: ['list'] as const }))
+      .rejects.toMatchObject({ code: 'resource-forbidden' })
+  })
+
   it('never accepts a locator from another connector', async () => {
     const adapter = new HttpReadOnlyAdapter(system, { timeoutMs: 1000, maxBytes: 1024 })
     await expect(adapter.authorize(actorA, { ...locator, systemId: 'other' }, 'read'))

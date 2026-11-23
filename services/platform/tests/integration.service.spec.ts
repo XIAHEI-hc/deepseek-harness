@@ -1,4 +1,4 @@
-/** System-fusion service: authorization, snapshots, workspaces, jobs, and provenance. */
+/** System-fusion service: authorization, snapshots, workspaces, jobs, and source metadata. */
 import { afterEach, describe, expect, it } from 'vitest'
 import type { IntegrationService } from '../src/contracts.ts'
 import {
@@ -126,7 +126,7 @@ describe('fusion discovery and authorization', () => {
 })
 
 describe('analysis jobs', () => {
-  it('runs a job, records provenance, and downloads the artifact', async () => {
+  it('runs a job, records source metadata, and downloads the artifact', async () => {
     environment = await createIntegrationTestEnvironment()
     const workspaceId = await createWorkspace(environment.service, USER_A, 'Analysis A')
     const snapshotId = await captureSnapshot(environment.service, USER_A, 'sales-2026')

@@ -358,6 +358,8 @@
       "@deepseek-ai/dsh-client-ui-settings-session-log": ["./packages/client/ui-settings-session-log/src"],
       "@deepseek-ai/dsh-client-ui-settings-subagent": ["./packages/client/ui-settings-subagent/src"],
       "@deepseek-ai/dsh-client-ui-settings-web-search": ["./packages/client/ui-settings-web-search/src"],
+      "@deepseek-ai/dsh-client-ui-integration-workbench": ["./packages/client/ui-integration-workbench/src"],
+      "@deepseek-ai/dsh-client-ui-integration-workbench/client": ["./packages/client/ui-integration-workbench/src/client/index.ts"],
       "@deepseek-ai/dsh-client-ui-jobs": ["./packages/client/ui-jobs/src"],
       "@deepseek-ai/dsh-client-ui-jobs/client": ["./packages/client/ui-jobs/src/client/index.ts"],
       "@deepseek-ai/dsh-client-ui-schedule": ["./packages/client/ui-schedule/src"],

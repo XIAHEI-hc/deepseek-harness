@@ -1,5 +1,5 @@
 /**
- * Immutable input snapshots and their provenance.
+ * Immutable input snapshots and their source metadata.
  *
  * A snapshot is written once under the owning user's directory, hashed, and
  * recorded in the metadata store. Jobs receive copies staged under their own

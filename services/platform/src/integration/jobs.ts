@@ -58,7 +58,7 @@ export type JobAuditSink = (event: {
   readonly errorCode: string | null
 }) => void
 
-/** Runs analysis jobs and records their provenance. */
+/** Runs analysis jobs and records their source metadata. */
 export class JobService {
   private readonly config: IntegrationConfig
   private readonly store: IntegrationStore

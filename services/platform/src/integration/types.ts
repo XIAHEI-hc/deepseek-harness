@@ -3,7 +3,7 @@
  *
  * These types describe resources crossing the platform/Gateway boundary. They
  * intentionally contain no host paths, connector tokens, or upstream response
- * text: the browser and the model only ever see logical ids and provenance.
+ * text: the browser and the model only ever see logical ids and source metadata.
  *
  * @module @deepseek-ai/dsh-platform-services/integration/types
  */
@@ -56,7 +56,7 @@ export interface ResourcePage {
   readonly nextCursor: string | null
 }
 
-/** One immutable input snapshot with provenance. */
+/** One immutable input snapshot with source metadata. */
 export interface SnapshotRecord {
   readonly id: string
   readonly ownerUserId: string

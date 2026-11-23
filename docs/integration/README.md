@@ -69,7 +69,7 @@ GET  /api/integration/artifacts/:artifactId/download
 GET  /api/integration/audit?jobId=...
 ```
 
-A cross-user read returns 404 and does not distinguish "absent" from "unauthorized". `GET /api/integration/audit` returns the Job, input snapshots, and artifact metadata for provenance.
+A cross-user read returns 404 and does not distinguish "absent" from "unauthorized". `GET /api/integration/audit` returns the Job, input snapshots, and artifact metadata for source tracing.
 
 ## 6. Configuration
 
@@ -86,13 +86,14 @@ See the "system-fusion analysis" block in `deploy/.env.example` and `deploy/inte
 Actual commands and results are in [TEST_REPORT.md](TEST_REPORT.md). Executed locally:
 
 - `pnpm run typecheck:platform`: passed.
-- `pnpm run test:platform`: 24 files passed, 1 skipped; 260 tests passed, 4 skipped (including 6 fusion specs).
+- `pnpm run test:platform`: 24 files passed, 1 skipped; 262 tests passed, 4 skipped (including 6 fusion specs).
 - Real Docker negative verification: `deploy/scripts/verify-integration-isolation.sh` passed on WSL2 Ubuntu + Docker Engine 29.7.2, covering read-only root, read-only `/inputs`, writable `/work` and `/scratch`, uid 1000, `--network none`, no Docker socket, and no host `/srv/dsh`.
 - W3 baseline regression: this round's `pnpm run test:platform` covered the original 220 baseline cases, all passed; a real W3 tenant remains externally `BLOCKED`.
+- Native optional UI: `packages/client/ui-integration-workbench` registers one `shell.overlay` launcher, reads status once, and renders nothing when fusion is absent; its API and component specs pass.
 
 Not complete, and must not be claimed production-ready:
 
-- Model-side restricted tool assembly for a fusion Session (`readResource` / `createSnapshot` / `runAnalysisJob` / `readJobArtifact`) is not wired into the DSH Agent; the API and execution layer are ready, while native UI and tool assembly remain later stages.
+- Model-side restricted tool assembly for a fusion Session (`readResource` / `createSnapshot` / `runAnalysisJob` / `readJobArtifact`) is not wired into the DSH Agent; the API, execution layer, and native workbench are ready, while tool assembly remains a later stage.
 - A controlled egress broker is not implemented; analysis containers can only use `--network none`.
 - Real W3 tenant A/B, a seven-day target-machine run, and internal Git are external `BLOCKED` items.
 - Production deployment, upgrade, backup, and rollback reuse the existing scripts; a fusion-specific rehearsal on the target machine has not run.

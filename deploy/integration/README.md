@@ -11,7 +11,7 @@ This directory holds the optional host-fusion assets. The native W3 platform run
 3. A fixed analysis image built from [`job/Dockerfile`](job/Dockerfile) or an equivalent image with `/bin/sh` and `python3`.
 4. A connector registry copied from [`systems.http.example.json`](systems.http.example.json). Remove the example host and users before deployment. ACL keys may be the internal user id, the W3 subject, or the W3 uid; `uid` is the practical choice for administrators.
 5. Snapshot, workspace, and job roots on a persistent volume. They must be pairwise disjoint real directories; preflight refuses overlap or symlinks.
-6. A backup plan for `DSH_INTEGRATION_DATA_DIR`. Snapshots and job metadata are required for provenance, not for the native chat history.
+6. A backup plan for `DSH_INTEGRATION_DATA_DIR`. Snapshots and job metadata are required for source tracing, not for the native chat history.
 
 ## Enable
 

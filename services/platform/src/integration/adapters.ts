@@ -67,6 +67,22 @@ function grantedActions(acl: ResourceAcl, actor: IntegrationActor): readonly Res
 }
 
 /**
+ * Re-check grant ownership, expiry, and the read action before a snapshot read.
+ * @param grant - grant returned by `authorize`.
+ * @param actor - validated session actor.
+ * @param now - current epoch milliseconds.
+ * @throws {IntegrationError} when the grant is not usable.
+ */
+function assertGrantUsable(grant: ResourceGrant, actor: IntegrationActor, now: () => number): void {
+  if (grant.ownerUserId !== actor.userId || !grant.actions.includes('read')) {
+    throw new IntegrationError('resource-forbidden', 'grant does not authorize this actor', 403)
+  }
+  if (Date.parse(grant.expiresAt) <= now()) {
+    throw new IntegrationError('resource-forbidden', 'grant has expired', 403)
+  }
+}
+
+/**
  * Build a short-lived grant after a successful ACL check.
  * @param actor - validated session actor.
  * @param systemId - connector id.
@@ -150,9 +166,7 @@ export class MockHostAdapter implements HostAdapter {
 
   /** @inheritDoc */
   async snapshot(actor: IntegrationActor, locator: ResourceLocator, grant: ResourceGrant): Promise<SnapshotPayload> {
-    if (grant.ownerUserId !== actor.userId) {
-      throw new IntegrationError('resource-forbidden', 'grant owner does not match the actor', 403)
-    }
+    assertGrantUsable(grant, actor, this.now)
     const resource = this.resourceFor(locator)
     if (!allows(resource.acl, actor, 'read')) {
       throw new IntegrationError('resource-forbidden', 'read permission was revoked', 403)
@@ -323,9 +337,7 @@ export class HttpReadOnlyAdapter implements HostAdapter {
 
   /** @inheritDoc */
   async snapshot(actor: IntegrationActor, locator: ResourceLocator, grant: ResourceGrant): Promise<SnapshotPayload> {
-    if (grant.ownerUserId !== actor.userId) {
-      throw new IntegrationError('resource-forbidden', 'grant owner does not match the actor', 403)
-    }
+    assertGrantUsable(grant, actor, this.now)
     const endpoint = this.endpointFor(locator)
     if (!allows(endpoint.acl, actor, 'read')) {
       throw new IntegrationError('resource-forbidden', 'read permission was revoked', 403)
