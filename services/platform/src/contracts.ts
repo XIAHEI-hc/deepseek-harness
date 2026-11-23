@@ -110,6 +110,22 @@ export interface PlatformHttpResult {
   readonly body?: string | undefined
 }
 
+/** One audit event a platform component appends to the identity audit stream. */
+export interface PlatformAuditEvent {
+  /** Stable action name such as `runtime.start` or `login`. */
+  readonly action: string
+  /** Stable outcome name such as `success`, `denied`, or `error`. */
+  readonly outcome: string
+  /** Affected platform user, when the event resolves one. */
+  readonly userId?: string | undefined
+  /** Affected W3 subject, when the event resolves one. */
+  readonly subject?: string | undefined
+  /** Transport-observed client address. */
+  readonly clientAddress?: string | undefined
+  /** Additional JSON-safe facts for operators. */
+  readonly detail?: Readonly<Record<string, unknown>> | undefined
+}
+
 /**
  * DSH platform identity service.
  *
@@ -142,6 +158,11 @@ export interface IdentityService {
     csrfHeader: string | undefined,
     csrfCookie: string | undefined,
   ): boolean
+  /**
+   * Append one platform audit event (for example a runtime lifecycle transition).
+   * @param event - JSON-safe audit facts.
+   */
+  recordAudit(event: PlatformAuditEvent): void
   /** Release database handles. */
   close(): Promise<void>
 }

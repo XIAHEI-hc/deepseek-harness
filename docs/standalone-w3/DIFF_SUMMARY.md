@@ -51,6 +51,7 @@
 | `services/platform/src/storage/*`、`identity/{store,migrations,http,lookup}.ts`、`config.ts` | 可插拔身份库：SQLite 与 PostgreSQL（`DSH_PLATFORM_STORAGE`/`DSH_POSTGRES_URL`）共用同步存储门面与版本化迁移；PG 适配器通过 worker 线程桥接 `pg`，主流程保持同步调用 |
 | `deploy/platform/Dockerfile`、`services/platform/package.json` | 平台镜像安装 `pg` 驱动；身份库选择由部署环境决定 |
 | `.dockerignore` | 排除 `deploy/release`，避免离线发布 tar 被打包进运行时/平台镜像上下文（修复运行时镜像膨胀到 17GB 的问题，重建后回到约 962MB） |
+| `services/platform/src/runtime/manager.ts`、`contracts.ts`、`app.ts`、`identity/http.ts` | Runtime 生命周期审计：start/ready/failed/stop 写入身份审计流（`PlatformAuditEvent`、`recordAudit`），审计失败不影响生命周期 |
 | `deploy/tests/w3-test-provider.mjs`、`deploy/tests/installed-stack-w3-ab.mjs`、`deploy/scripts/verify-installed-stack-w3-ab.sh` | 可复现的部署机 W3 双身份验证：host W3 测试 Provider、一键安装 W3 模式平台、两账号授权码登录、两个真实 Runtime 容器、Session 隔离与注销撤销 |
 | `services/platform/src/admin/cleanup.ts`、`identity/store.ts`、`main.ts` | `admin session cleanup [--retention-days n] [--confirm]`：过期 Session/OAuth state 的 dry-run 计数、确认删除与审计 |
 | `deploy/scripts/install.sh` | 一键离线安装：SHA256 校验、双镜像导入、目录/网络/密钥/编排/环境文件、镜像内配置校验、compose 启动与 health 等待；production/local 两种 profile、幂等 |

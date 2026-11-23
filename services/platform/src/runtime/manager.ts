@@ -54,6 +54,25 @@ export type RuntimeManagerConfig = RuntimeConfig & {
 }
 
 /** Optional runtime manager injections; every one exists so tests need no real runtime. */
+/** One runtime lifecycle transition recorded in the platform audit stream. */
+export interface RuntimeAuditEvent {
+  /** Affected internal user id. */
+  readonly userId: string
+  /** Stable action name such as untime.start or untime.ready. */
+  readonly action: 'runtime.start' | 'runtime.ready' | 'runtime.failed' | 'runtime.stop'
+  /** Stable outcome name. */
+  readonly outcome: 'success' | 'failure'
+  /** Allocation generation the transition belongs to. */
+  readonly generation: number
+  /** Failure code, or null. */
+  readonly errorCode: string | null
+  /** Backend runtime id, or null when the generation was not running. */
+  readonly runtimeId: string | null
+}
+
+/** Consumer of runtime lifecycle audit events. */
+export type RuntimeAuditSink = (event: RuntimeAuditEvent) => void
+
 export interface RuntimeManagerOptions {
   /** Assertion facts stamped on every runtime; required for a real backend. */
   readonly runtimeAuth?: RuntimeAssertionFacts | undefined
@@ -89,6 +108,8 @@ export interface RuntimeManagerOptions {
   /** Minimum interval between READY inspections triggered by `ensure`, in milliseconds. */  readonly inspectIntervalMs?: number | undefined
   /** Structured log sink; defaults to one JSON line per event on stderr. */
   readonly log?: RuntimeLog | undefined
+  /** Audit sink for lifecycle transitions; audit failures never fail a runtime. */
+  readonly audit?: RuntimeAuditSink | undefined
 }
 
 /** One free slot of a bounded concurrent-start gate. */
@@ -183,6 +204,7 @@ class PlatformRuntimeManager implements RuntimeManager {
   private readonly publicAuthority: string
   private readonly inspectIntervalMs: number
   private readonly timers: RuntimeScheduler
+  private readonly audit: RuntimeAuditSink | undefined
   private readonly startGate: StartGate
   private readonly locks = new Map<string, Promise<void>>()
   private readonly targets = new Map<string, RuntimeTarget>()
@@ -203,6 +225,7 @@ class PlatformRuntimeManager implements RuntimeManager {
     readonly inspectIntervalMs: number
     readonly timers: RuntimeScheduler
     readonly log: RuntimeLog
+    readonly audit: RuntimeAuditSink | undefined
     readonly now: () => number
   }) {
     this.config = parts.config
@@ -214,6 +237,7 @@ class PlatformRuntimeManager implements RuntimeManager {
     this.inspectIntervalMs = parts.inspectIntervalMs
     this.timers = parts.timers
     this.log = parts.log
+    this.audit = parts.audit
     this.now = parts.now
     this.startGate = new StartGate(parts.config.maxConcurrentStarts)
   }
@@ -256,6 +280,7 @@ class PlatformRuntimeManager implements RuntimeManager {
         }
         this.targets.delete(userId)
         this.inspectedAt.delete(userId)
+        this.auditEvent('runtime.stop', 'success', userId, record.generation, null, record.runtimeId)
       }
       const stopped = this.registry.update(record.id, {
         state: 'STOPPED',
@@ -494,6 +519,7 @@ class PlatformRuntimeManager implements RuntimeManager {
           updatedAt: this.now(),
         })
         this.logEvent('runtime.reclaim_failed', record.userId, code, record.generation)
+        this.auditEvent('runtime.failed', 'failure', record.userId, record.generation, code)
         return this.failedResult(failed)
       }
       await ensureRuntimeSpaceDirs(space, this.spaceOwnership())
@@ -511,6 +537,7 @@ class PlatformRuntimeManager implements RuntimeManager {
         lastErrorCode: null,
         updatedAt: this.now(),
       })
+      this.auditEvent('runtime.start', 'success', starting.userId, generation)
       let spec: RuntimeStartSpec
       try {
         spec = this.buildStartSpec(starting, space)
@@ -522,6 +549,7 @@ class PlatformRuntimeManager implements RuntimeManager {
           updatedAt: this.now(),
         })
         this.logEvent('runtime.start_failed', starting.userId, code, generation)
+        this.auditEvent('runtime.failed', 'failure', starting.userId, generation, code)
         return this.failedResult(failed)
       }
       let instance: RuntimeInstance
@@ -535,6 +563,7 @@ class PlatformRuntimeManager implements RuntimeManager {
           updatedAt: this.now(),
         })
         this.logEvent('runtime.start_failed', starting.userId, code, generation)
+        this.auditEvent('runtime.failed', 'failure', starting.userId, generation, code)
         return this.failedResult(failed)
       }
       const readyAt = this.now()
@@ -555,6 +584,7 @@ class PlatformRuntimeManager implements RuntimeManager {
       this.inspectedAt.set(ready.userId, readyAt)
       this.startedHere.add(ready.userId)
       this.logEvent('runtime.ready', ready.userId, undefined, ready.generation)
+      this.auditEvent('runtime.ready', 'success', ready.userId, ready.generation, null, instance.runtimeId)
       return this.readyResult(ready, target)
     } finally {
       release()
@@ -654,6 +684,7 @@ class PlatformRuntimeManager implements RuntimeManager {
     this.targets.delete(record.userId)
     this.inspectedAt.delete(record.userId)
     this.logEvent('runtime.reaped', record.userId, undefined, record.generation)
+    this.auditEvent('runtime.stop', 'success', record.userId, record.generation, null, record.runtimeId)
   }
 
   /**
@@ -838,6 +869,34 @@ class PlatformRuntimeManager implements RuntimeManager {
   }
 
   /**
+   * Record one lifecycle transition in the platform audit stream.
+   *
+   * Audit delivery is best effort: a failing sink must never change runtime
+   * lifecycle behavior, so failures are logged and swallowed.
+   * @param action - stable transition name.
+   * @param outcome - success or failure.
+   * @param userId - affected internal user id.
+   * @param generation - allocation generation.
+   * @param errorCode - failure code, or null.
+   * @param runtimeId - backend runtime id, or null.
+   */
+  private auditEvent(
+    action: RuntimeAuditEvent['action'],
+    outcome: RuntimeAuditEvent['outcome'],
+    userId: string,
+    generation: number,
+    errorCode: string | null = null,
+    runtimeId: string | null = null,
+  ): void {
+    if (this.audit === undefined) return
+    try {
+      this.audit({ userId, action, outcome, generation, errorCode, runtimeId })
+    } catch {
+      this.logEvent('runtime.audit_failed', userId)
+    }
+  }
+
+  /**
    * Build the anonymous status view of one record.
    * @param record - persisted record.
    * @returns the status view.
@@ -951,6 +1010,7 @@ export async function createRuntimeManager(
     inspectIntervalMs: options.inspectIntervalMs ?? DEFAULT_INSPECT_INTERVAL_MS,
     timers: options.timers ?? createDefaultScheduler(),
     log: options.log ?? stderrRuntimeLog,
+    audit: options.audit,
     now,
   })
   try {

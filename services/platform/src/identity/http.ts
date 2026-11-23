@@ -16,6 +16,7 @@ import type {
   PlatformHeaders,
   PlatformHttpRequest,
   PlatformHttpResult,
+  PlatformAuditEvent,
   PlatformUser,
   SessionLookup,
   SetCookie,
@@ -216,6 +217,11 @@ class IdentityHttpService implements IdentityService {
    * Append one audit event with the service clock.
    * @param input - event facts without a timestamp.
    */
+  /** @inheritDoc */
+  recordAudit(input: PlatformAuditEvent): void {
+    this.audit(input)
+  }
+
   private audit(input: AuditEventInput): void {
     this.store.appendAudit(input, toIso(this.clock()))
   }

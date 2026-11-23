@@ -22,6 +22,7 @@ import type { Duplex } from 'node:stream'
 import { createPlatformConfig, type GatewayConfig, type PlatformConfig } from '../src/config.ts'
 import type {
   IdentityService,
+  PlatformAuditEvent,
   PlatformHttpRequest,
   PlatformHttpResult,
   PlatformUser,
@@ -177,6 +178,7 @@ export class FakeIdentityService implements IdentityService {
   readonly mode = 'mock' as const
   readonly sessions = new Map<string, StoredFakeSession>()
   readonly handled: PlatformHttpRequest[] = []
+  readonly auditEvents: PlatformAuditEvent[] = []
   csrfValid = true
   healthBody = '{"ok":true}'
   closed = false
@@ -200,6 +202,11 @@ export class FakeIdentityService implements IdentityService {
     const stored: StoredFakeSession = { token, csrfToken, session, revoked: false }
     this.sessions.set(token, stored)
     return stored
+  }
+
+  /** @inheritDoc */
+  recordAudit(event: PlatformAuditEvent): void {
+    this.auditEvents.push(event)
   }
 
   /** Mark a session revoked (logout or administrator revocation). */

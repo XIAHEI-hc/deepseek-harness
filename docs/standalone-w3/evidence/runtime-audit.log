@@ -1,0 +1,96 @@
+# Runtime 生命周期审计（开发平台，Mock，process 后端）
+
+$ node .dsh-runtime-audit-check.mjs
+{"state":"READY","userId":"c3fcc5ce-885b-4fc3-ac2a-07559b311312","displayName":"本地开发用户"}
+
+$ admin audit list --limit 40
+[
+  {
+    "id": "f96d3de5-c123-4cd2-9747-a728639e5d6e",
+    "at": "2026-11-23T14:05:46.369Z",
+    "action": "login",
+    "outcome": "success",
+    "userId": "c3fcc5ce-885b-4fc3-ac2a-07559b311312",
+    "subject": "dev-user-001",
+    "clientAddress": "127.0.0.1",
+    "detail": {
+      "mode": "mock"
+    }
+  },
+  {
+    "id": "38a329f2-9988-485d-a491-d9efa4acd2f0",
+    "at": "2026-11-23T14:05:39.026Z",
+    "action": "login",
+    "outcome": "success",
+    "userId": "c3fcc5ce-885b-4fc3-ac2a-07559b311312",
+    "subject": "dev-user-001",
+    "clientAddress": "127.0.0.1",
+    "detail": {
+      "mode": "mock"
+    }
+  },
+  {
+    "id": "8e967f24-7f6b-41e2-b416-26dd7d6d4f20",
+    "at": "2026-11-23T14:05:34.170Z",
+    "action": "login",
+    "outcome": "success",
+    "userId": "c3fcc5ce-885b-4fc3-ac2a-07559b311312",
+    "subject": "dev-user-001",
+    "clientAddress": "127.0.0.1",
+    "detail": {
+      "mode": "mock"
+    }
+  },
+  {
+    "id": "f8c1630d-6bce-46b4-b3f1-c292bc50d1d6",
+    "at": "2026-11-23T14:05:34.002Z",
+    "action": "login",
+    "outcome": "success",
+    "userId": "c3fcc5ce-885b-4fc3-ac2a-07559b311312",
+    "subject": "dev-user-001",
+    "clientAddress": "127.0.0.1",
+    "detail": {
+      "mode": "mock"
+    }
+  },
+  {
+    "id": "d6679684-39ef-4129-bc61-09795bfde4c7",
+    "at": "2026-11-23T14:05:24.406Z",
+    "action": "runtime.ready",
+    "outcome": "success",
+    "userId": "c3fcc5ce-885b-4fc3-ac2a-07559b311312",
+    "subject": null,
+    "clientAddress": null,
+    "detail": {
+      "generation": 1,
+      "errorCode": null,
+      "runtimeId": "proc-396f3720fc8752c1-24004-59055"
+    }
+  },
+  {
+    "id": "ab81c9c0-c4b9-4a31-8b8b-ed47442acbf4",
+    "at": "2026-11-23T14:05:13.466Z",
+    "action": "runtime.start",
+    "outcome": "success",
+    "userId": "c3fcc5ce-885b-4fc3-ac2a-07559b311312",
+    "subject": null,
+    "clientAddress": null,
+    "detail": {
+      "generation": 1,
+      "errorCode": null,
+      "runtimeId": null
+    }
+  },
+  {
+    "id": "24e90487-0c06-4412-a038-653743895698",
+    "at": "2026-11-23T14:05:13.447Z",
+    "action": "login",
+    "outcome": "success",
+    "userId": "c3fcc5ce-885b-4fc3-ac2a-07559b311312",
+    "subject": "dev-user-001",
+    "clientAddress": "127.0.0.1",
+    "detail": {
+      "mode": "mock"
+    }
+  }
+]

@@ -444,6 +444,15 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 - 部署机一键安装 v6 后：Mock 登录 302、`/auth/me=200`、用户 Runtime READY、原生 UI `__DSH_BOOT__`、Runtime 容器 `dsh-runtime:2026.11.23.6`。
 - 发布包不包含 `deploy/release` 历史 tar（构建上下文已排除），镜像尺寸稳定为平台约 93MB、运行时约 1.0GB。
 
+## 3.28 Runtime 生命周期审计（实测）
+
+证据 [evidence/runtime-audit.log](evidence/runtime-audit.log)。
+
+- `RuntimeManager` 新增审计 sink，生命周期迁移写入身份审计流（`dsh_audit_events`）：`runtime.start`、`runtime.ready`、`runtime.failed`（含错误码）、`runtime.stop`（reaper/restart 停止）。
+- 平台组合层把 sink 接到 `IdentityService.recordAudit`；审计投递失败只记日志，不影响 Runtime 生命周期。
+- 实测（Mock/process）：打开 Runtime 后 `admin audit list` 可见 `runtime.start`（generation 1）与 `runtime.ready`（generation 1、runtimeId、errorCode=null），与登录审计同表可查。
+- 单元测试覆盖 start/ready/stop 审计记录；平台测试 220 passed / 4 skipped（PG 集成测试默认跳过）。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -534,6 +543,7 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 20:31 | 部署机安装栈 W3 双身份 A/B（测试 Provider + 2 个真实 Runtime 容器） | PASS（姓名/隔离/注销撤销，证据 `evidence/install-w3-ab.log`） |
 | 21:05 | PostgreSQL 身份库后端（本地 PostgreSQL 16） | PASS（迁移/登录/Session/审计/重启保持，证据 `evidence/postgres-identity.log`） |
 | 21:57 | 最终发布包 2026.11.23.6 安装与冒烟 | PASS（PG 驱动内置、Mock 登录、Runtime READY、原生 UI，证据 `evidence/release-manifest-2026.11.23.6.txt`、`evidence/final-release-2026.11.23.6.log`） |
+| 22:05 | Runtime 生命周期审计（start/ready/failed/stop） | PASS（证据 `evidence/runtime-audit.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

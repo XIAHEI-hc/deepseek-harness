@@ -26,6 +26,7 @@ import {
   type SpawnedProcess,
   type SpawnOptionsLike,
 } from '../src/runtime/index.ts'
+import type { RuntimeAuditEvent } from '../src/runtime/manager.ts'
 
 const SECRET = 'manager-test-secret-0123456789abcdef'
 const REALM = 'test-realm'
@@ -176,6 +177,7 @@ interface Harness {
   readonly config: RuntimeManagerConfig
   readonly platformDataDir: string
   readonly runtimeDataDir: string
+  readonly audit: RuntimeAuditEvent[]
 }
 
 /** Overrides accepted by {@link makeHarness}. */
@@ -187,6 +189,7 @@ interface HarnessOptions {
   readonly backend?: FakeBackend
   readonly clock?: TestClock
   readonly maxConcurrentStarts?: number
+  readonly audit?: RuntimeAuditEvent[]
 }
 
 /**
@@ -244,9 +247,10 @@ async function makeHarness(options: HarnessOptions = {}): Promise<Harness> {
     publicAuthority: '127.0.0.1:8080',
     dataDir: runtimeDataDir,
     log: () => undefined,
+    audit: event => options.audit?.push(event),
   })
   openManagers.push(manager)
-  return { manager, backend, clock, scheduler, config, platformDataDir, runtimeDataDir }
+  return { manager, backend, clock, scheduler, config, platformDataDir, runtimeDataDir, audit: options.audit ?? [] }
 }
 
 /**
@@ -425,6 +429,18 @@ describe('runtime manager generation and failure', () => {
     expect(harness.backend.startCalls).toHaveLength(2)
     const status = await harness.manager.status(USER_A)
     expect(status).toMatchObject({ state: 'READY', generation: 2, retryable: false })
+  })
+
+  it('records lifecycle transitions in the audit sink', async () => {
+    const harness = await makeHarness({ audit: [] })
+    await harness.manager.ensure(USER_A)
+    const ready = harness.audit.find(event => event.action === 'runtime.ready')
+    expect(harness.audit.some(event => event.action === 'runtime.start')).toBe(true)
+    expect(ready).toMatchObject({ userId: USER_A, generation: 1, outcome: 'success', errorCode: null })
+    expect(ready?.runtimeId).toBeTypeOf('string')
+    await harness.manager.restart(USER_A)
+    expect(harness.audit.some(event => event.action === 'runtime.stop')).toBe(true)
+    expect(harness.audit.filter(event => event.action === 'runtime.ready')).toHaveLength(2)
   })
 
   it('restarts a user without an allocated runtime by starting one', async () => {

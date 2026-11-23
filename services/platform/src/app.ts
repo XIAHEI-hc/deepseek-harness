@@ -69,6 +69,18 @@ export async function createPlatformApp(
       publicOrigin: config.gateway.publicOrigin,
       publicAuthority: config.runtime.publicAuthority,
       dataDir: join(config.dataDir, 'runtime'),
+      audit: (event) => {
+        identity.recordAudit({
+          action: event.action,
+          outcome: event.outcome,
+          userId: event.userId,
+          detail: {
+            generation: event.generation,
+            errorCode: event.errorCode,
+            runtimeId: event.runtimeId,
+          },
+        })
+      },
       ...(options.runtimeEnv === undefined ? {} : { runtimeEnv: options.runtimeEnv }),
     },
   )

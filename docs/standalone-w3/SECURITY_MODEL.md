@@ -55,7 +55,7 @@
 - 不记录 Cookie、session token、CSRF、W3 access token、client_secret、断言原文、私钥。
 - 日志只记录稳定错误码、user_id 哈希/后四位、状态迁移、Runtime 状态。
 - `/api/runtime/*` 永不返回内部 host/port/路径/镜像 digest；错误码映射为稳定 code。
-- 身份审计表 `dsh_audit_events`（migration v2）记录登录成功/拒绝/限流、注销、全设备注销与管理员操作，字段只有 action/outcome/user_id/subject/客户端地址/JSON detail；`admin audit list` 只读输出。审计写入复用身份库事务，不含 Cookie、token、CSRF、W3 token 等敏感值。
+- 身份审计表 `dsh_audit_events`（migration v2）记录登录成功/拒绝/限流、注销、全设备注销、管理员操作，以及 Runtime 生命周期（start/ready/failed/stop，含 generation/错误码/runtimeId）；字段只有 action/outcome/user_id/subject/客户端地址/JSON detail；`admin audit list` 只读输出。审计写入复用身份库事务，不含 Cookie、token、CSRF、W3 token 等敏感值。
 - 登录限流：按 transport 观测到的客户端地址做进程内滑动窗口（`AUTH_LOGIN_RATE_LIMIT_MAX`/`AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS`，0 关闭）；超出返回 429 + `Retry-After` 并写一条 `rate-limited` 审计。多副本部署需在共享反代执行同等额度（见已知限制）。
 
 ## 7. 已知限制
