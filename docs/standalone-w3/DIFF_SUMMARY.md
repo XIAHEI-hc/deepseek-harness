@@ -45,6 +45,7 @@
 | `services/platform/src/identity/{store,migrations,http,ratelimit}.ts` | 身份库 migration v2 `dsh_audit_events`；登录/注销/限流/管理员操作审计；按客户端地址的登录滑动窗口限流（429 + Retry-After） |
 | `services/platform/src/admin/audit.ts`、`main.ts` | `admin audit list [--limit] [--offset]` 只读输出审计流 |
 | `services/platform/src/admin/runtime.ts`、`main.ts` | `admin runtime status (--user|--subject|--all)` 只读输出 Runtime 状态/generation/runtimeId/错误码 |
+| `services/platform/src/admin/cleanup.ts`、`identity/store.ts`、`main.ts` | `admin session cleanup [--retention-days n] [--confirm]`：过期 Session/OAuth state 的 dry-run 计数、确认删除与审计 |
 
 ## 3. 新增：平台身份前端插件
 

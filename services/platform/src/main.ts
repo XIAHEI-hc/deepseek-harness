@@ -11,6 +11,7 @@
 
 import { createPlatformApp } from './app.ts'
 import { listAuditEvents } from './admin/audit.ts'
+import { runIdentityCleanup } from './admin/cleanup.ts'
 import { migrateHome, MigrationError } from './admin/migrate-home.ts'
 import { readRuntimeStatus } from './admin/runtime.ts'
 import { disableUser, enableUser, revokeAllUserSessions, UserAdminError, type UserAdminRequest } from './admin/users.ts'
@@ -81,6 +82,9 @@ function printAdminHelp(): number {
     '',
     '  runtime status (--user <user-id> | --subject <w3-subject> | --all)',
     '      print runtime state, generation, backend id, and last failure code',
+    '',
+    '  session cleanup [--retention-days <n>] [--confirm]',
+    '      count (or with --confirm delete) expired sessions and login transactions',
     '',
   ].join('\n'))
   return 0
@@ -158,6 +162,29 @@ async function runAuditList(argv: readonly string[], config: PlatformConfig): Pr
 }
 
 /**
+ * Run the expired-identity-row cleanup command.
+ * @param argv - admin arguments including the subcommand.
+ * @param config - validated platform configuration.
+ * @returns the process exit code.
+ */
+async function runSessionCleanup(argv: readonly string[], config: PlatformConfig): Promise<number> {
+  const retention = flagValue(argv, '--retention-days')
+  const retentionDays = retention === undefined ? 7 : Number(retention)
+  try {
+    const report = await runIdentityCleanup({
+      identity: config.identity,
+      retentionDays,
+      confirm: argv.includes('--confirm'),
+    })
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
+    return 0
+  } catch (error) {
+    process.stderr.write(`admin session cleanup: ${error instanceof Error ? error.message : String(error)}\n`)
+    return 2
+  }
+}
+
+/**
  * Run one administrative command.
  * @param argv - admin arguments without the leading `admin` token.
  * @param config - validated platform configuration.
@@ -165,13 +192,16 @@ async function runAuditList(argv: readonly string[], config: PlatformConfig): Pr
  */
 async function runAdmin(argv: readonly string[], config: PlatformConfig): Promise<number> {
   if (argv.length === 0 || argv[0] === '--help' || argv[0] === '-h') return printAdminHelp()
-  if (argv[0] === 'user' || argv[0] === 'session') return runUserAdmin(argv, config)
+  if (argv[0] === 'user' || (argv[0] === 'session' && argv[1] !== 'cleanup')) return runUserAdmin(argv, config)
   if (argv[0] === 'audit') {
     if (argv[1] !== 'list') {
       process.stderr.write(`unknown admin command ${JSON.stringify(['audit', argv[1]])}\n`)
       return 2
     }
     return runAuditList(argv, config)
+  }
+  if (argv[0] === 'session' && argv[1] === 'cleanup') {
+    return await runSessionCleanup(argv, config)
   }
   if (argv[0] === 'runtime') {
     if (argv[1] !== 'status') {

@@ -365,6 +365,15 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 - 选择器支持 `--user`、`--subject`、`--all`；缺省/歧义/未知选择器返回 2 与明确错误；单元测试覆盖四种情况。
 - 强制重启子命令仍待补（OPEN_ISSUES）。
 
+## 3.20 过期身份数据清理（实测）
+
+证据 [evidence/admin-cleanup.log](evidence/admin-cleanup.log)。
+
+- `admin session cleanup` 默认 dry run：实测 `sessions=2, oauthStates=1, applied=false`（retention 7 天，行生命周期已过 30 天）。
+- `admin session cleanup --confirm` 删除同样行并写 `admin.session.cleanup` 审计（含 cutoff/retention/删除计数）。
+- 删除谓词只覆盖“已过期/已撤销且早于 cutoff”的 session 与“已过期/已消费早于 cutoff”的 login transaction；活跃 session 不受影响。
+- 单元测试覆盖 dry-run、确认删除、审计行与非正 retention 拒绝。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -448,6 +457,7 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 17:58 | 浏览器自动化原生往返 + 双用户上下文隔离（真实 Chromium） | **PASS：8 + 13 assertions**（证据 `evidence/browser-native/`、`browser-isolation/`） |
 | 18:15 | 身份审计表 + 登录限流 + `admin audit list` | PASS（429/Retry-After + 审计行，证据 `evidence/admin-audit.log`） |
 | 18:22 | 管理端 Runtime 状态只读查询 `admin runtime status` | PASS（证据 `evidence/admin-runtime.log`） |
+| 18:30 | 过期身份数据清理 `admin session cleanup`（dry-run + confirm + 审计） | PASS（证据 `evidence/admin-cleanup.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

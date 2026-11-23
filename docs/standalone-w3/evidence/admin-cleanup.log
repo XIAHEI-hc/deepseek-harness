@@ -1,0 +1,46 @@
+# 过期身份数据清理（dev platform, Mock）
+
+dry run (默认 retention 7 天):
+{
+  "cutoff": "2026-11-16T10:18:59.600Z",
+  "sessions": 2,
+  "oauthStates": 1,
+  "applied": false
+}
+
+apply (--confirm):
+{
+  "cutoff": "2026-11-16T10:18:59.917Z",
+  "sessions": 2,
+  "oauthStates": 1,
+  "applied": true
+}
+
+audit list --limit 2:
+[
+  {
+    "id": "6af530ac-da06-4c94-be8d-bcf072a23b11",
+    "at": "2026-11-23T10:18:59.934Z",
+    "action": "admin.session.cleanup",
+    "outcome": "success",
+    "userId": null,
+    "subject": null,
+    "clientAddress": null,
+    "detail": {
+      "cutoff": "2026-11-16T10:18:59.917Z",
+      "retentionDays": 7,
+      "sessions": 2,
+      "oauthStates": 1
+    }
+  },
+  {
+    "id": "c3811cc5-3d60-4dc9-9f68-1af4eb0214bb",
+    "at": "2026-11-23T10:08:53.884Z",
+    "action": "login",
+    "outcome": "rate-limited",
+    "userId": null,
+    "subject": null,
+    "clientAddress": "127.0.0.1",
+    "detail": null
+  }
+]

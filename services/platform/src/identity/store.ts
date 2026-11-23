@@ -83,6 +83,17 @@ function textOf(value: SQLOutputValue | undefined): string {
 }
 
 /**
+ * Read a numeric SQLite count.
+ * @param value - raw cell.
+ * @returns the integer count.
+ */
+function integerOf(value: SQLOutputValue | undefined): number {
+  if (typeof value === 'number') return value
+  if (typeof value === 'bigint') return Number(value)
+  throw new Error('identity count cell is not an integer')
+}
+
+/**
  * Read a nullable text SQLite value.
  * @param value - raw cell.
  * @returns the string, or null.
@@ -626,6 +637,48 @@ export class IdentityStore {
       .prepare('SELECT * FROM dsh_audit_events ORDER BY at DESC, rowid DESC LIMIT ? OFFSET ?')
       .all(boundedLimit, boundedOffset)
       .map(row => toAuditRow(row))
+  }
+
+  /**
+   * Count sessions and login transactions whose lifetime ended before a cutoff.
+   * @param cutoffIso - rows expiring or revoked before this ISO instant are prunable.
+   * @returns the prunable row counts.
+   */
+  countPrunableState(cutoffIso: string): { sessions: number; oauthStates: number } {
+    const sessions = this.database
+      .prepare(
+        `SELECT COUNT(*) AS total FROM dsh_sessions
+         WHERE (expires_at < ? AND absolute_expires_at < ?) OR (revoked_at IS NOT NULL AND revoked_at < ?)`,
+      )
+      .get(cutoffIso, cutoffIso, cutoffIso)
+    const oauthStates = this.database
+      .prepare(
+        `SELECT COUNT(*) AS total FROM dsh_oauth_states
+         WHERE expires_at < ? OR (consumed_at IS NOT NULL AND consumed_at < ?)`,
+      )
+      .get(cutoffIso, cutoffIso)
+    return { sessions: integerOf(sessions?.['total']), oauthStates: integerOf(oauthStates?.['total']) }
+  }
+
+  /**
+   * Delete sessions and login transactions whose lifetime ended before a cutoff.
+   * @param cutoffIso - rows expiring or revoked before this ISO instant are deleted.
+   * @returns the deleted row counts.
+   */
+  pruneExpiredState(cutoffIso: string): { sessions: number; oauthStates: number } {
+    const sessions = this.database
+      .prepare(
+        `DELETE FROM dsh_sessions
+         WHERE (expires_at < ? AND absolute_expires_at < ?) OR (revoked_at IS NOT NULL AND revoked_at < ?)`,
+      )
+      .run(cutoffIso, cutoffIso, cutoffIso)
+    const oauthStates = this.database
+      .prepare(
+        `DELETE FROM dsh_oauth_states
+         WHERE expires_at < ? OR (consumed_at IS NOT NULL AND consumed_at < ?)`,
+      )
+      .run(cutoffIso, cutoffIso)
+    return { sessions: Number(sessions.changes), oauthStates: Number(oauthStates.changes) }
   }
 
   /** Release the SQLite handle; later calls are no-ops. */

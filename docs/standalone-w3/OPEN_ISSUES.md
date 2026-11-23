@@ -16,7 +16,7 @@
 1. **管理控制台/CLI**：已提供 `admin migrate-home`、`admin user disable|enable`、`admin session revoke-all`、`admin audit list`、`admin runtime status`；仍需补强制重启 Runtime 的 `admin` 子命令（当前故障恢复通过用户重试入口）。
 2. **登录限流/防爆破**：已实现按客户端地址的进程内滑动窗口（`AUTH_LOGIN_RATE_LIMIT_*`，429 + Retry-After + 审计）；多副本部署需在共享反代执行同等额度。
 3. **W3 单点退出 / PKCE**：依赖 W3 支持情况，未在真实环境验证。
-4. **Session 清理任务**：过期 Session/OAuth state 的定期清理未建 cron；表上有索引，可后续加定时清理。
+4. **Session 清理任务**：已提供 `admin session cleanup [--retention-days n] [--confirm]`（dry-run/删除/审计）；生产可由系统 cron/定时任务按天调用，仓库不内置调度器。
 5. **gzip/压缩与 HTTP/2**：Gateway 透传原始流，未做压缩；由反代负责。
 6. **前端快照/浏览器冒烟**：平台身份插件的组件/apply 测试与 Playwright 真实浏览器验收（登录、姓名、退出、刷新、第二身份）已通过并留存 `docs/standalone-w3/evidence/` 截图；仓库自带 `test:web` 快照套件未运行（需要构建后的 Web host 与模型凭据）。
 7. **平台审计事件表**：`dsh_audit_events`（migration v2）已记录登录成功/拒绝/限流、注销、全设备注销与管理员 disable/enable/revoke-all，`admin audit list` 可读；仍可扩展 Runtime 状态迁移与连接归属事件。
