@@ -27,6 +27,8 @@ DSH_INTEGRATION_RUNTIME_API_URL=http://platform:8080
 
 重启平台，并以已登录用户读取 `GET /api/integration/status`。`ready` 表示预检通过。`blocked` 列出稳定缺项代码；修复所需的细节保留在运维配置中，不返回浏览器。
 
+Supervisor 会签发并注入每 Runtime 的能力 token；不要把 `DSH_INTEGRATION_CAPABILITY_TOKEN` 写进 `.env`，也不要在用户之间复制。
+
 ## 停用
 
 设置 `DSH_INTEGRATION_ENABLED=false` 并重启。融合路由消失，元数据库与快照保留在磁盘，且不会启动任何分析容器。若必须立即停止活动 Job，请先撤销它们。

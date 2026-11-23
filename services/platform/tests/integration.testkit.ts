@@ -198,6 +198,7 @@ export async function createIntegrationTestEnvironment(options: {
     audit: event => audit.push(event),
     dockerExecutor: executor.execute.bind(executor) as DockerExecutor,
     capabilitySecret: 'test-runtime-capability-secret-0123456789abcdef',
+    resolveRuntimeUser: userId => userId === USER_A || userId === USER_B ? { permissionVersion: 1 } : undefined,
   })
   return {
     root,

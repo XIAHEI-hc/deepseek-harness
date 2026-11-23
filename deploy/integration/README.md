@@ -27,6 +27,8 @@ DSH_INTEGRATION_RUNTIME_API_URL=http://platform:8080
 
 Restart the platform and read `GET /api/integration/status` as a signed-in user. `ready` means preflight passed. `blocked` lists stable issue codes; the detail needed to repair the deployment stays in the operator's configuration, not in the browser.
 
+The supervisor mints and injects the per-runtime capability token; do not set `DSH_INTEGRATION_CAPABILITY_TOKEN` in `.env` or copy it between users.
+
 ## Disable
 
 Set `DSH_INTEGRATION_ENABLED=false` and restart. Fusion routes disappear, the metadata database and snapshots stay on disk, and no analysis container is started. Revoke active jobs before disabling if they must stop immediately.

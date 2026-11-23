@@ -118,6 +118,8 @@ describe('fusion discovery and authorization', () => {
     const runtimeSession = environment.service.authenticateRuntimeToken(token)
     expect(runtimeSession?.user.id).toBe(USER_A)
     expect(environment.service.authenticateRuntimeToken(`${token}x`)).toBeUndefined()
+    const stale = environment.service.mintRuntimeToken(session.user, 2)
+    expect(environment.service.authenticateRuntimeToken(stale)).toBeUndefined()
     const response = await callFusion(environment.service, runtimeSession!, 'GET', '/api/integration/resources?systemId=mock-erp')
     expect(response.status).toBe(200)
   })

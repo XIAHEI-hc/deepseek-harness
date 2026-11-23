@@ -71,7 +71,7 @@ GET  /api/integration/audit?jobId=...
 
 跨用户读取返回 404，不区分“不存在”和“无权”。`GET /api/integration/audit` 返回 Job、输入快照与产物元数据，用于追溯来源。
 
-每用户 Runtime 的模型工具以 `Authorization: Bearer <capability>` 调用 `/api/integration/runtime/` 下的相同路径。Gateway 将短生命周期 HMAC token 解析为 Session 形状的主体；不使用浏览器 Cookie 或 CSRF，且该路由不会落入原生 Runtime 代理。
+每用户 Runtime 的模型工具以 `Authorization: Bearer <capability>` 调用 `/api/integration/runtime/` 下的相同路径。Gateway 将短生命周期 HMAC token 解析为 Session 形状的主体，并重新校验用户当前权限版本，因此已撤销的 token 在过期前也会被拒绝；不使用浏览器 Cookie 或 CSRF，且该路由不会落入原生 Runtime 代理。
 
 ## 6. 配置
 

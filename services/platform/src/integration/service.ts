@@ -63,6 +63,12 @@ export interface IntegrationServiceOptions {
   readonly capabilitySecret?: string | undefined
   /** Runtime capability lifetime; defaults to fifteen minutes. */
   readonly capabilityTtlMs?: number | undefined
+  /**
+   * Resolve the current user state for a runtime token. When supplied, a token
+   * whose permission version no longer matches is refused even if it has not
+   * expired.
+   */
+  readonly resolveRuntimeUser?: ((userId: string) => { readonly permissionVersion: number } | undefined) | undefined
 }
 
 /**
@@ -208,6 +214,7 @@ class PlatformIntegrationService implements IntegrationService {
   private readonly audit: IntegrationAuditSink | undefined
   private readonly capabilitySecret: string
   private readonly capabilityTtlMs: number
+  private readonly resolveRuntimeUser: ((userId: string) => { readonly permissionVersion: number } | undefined) | undefined
   private readonly now: () => number
   private closed = false
 
@@ -226,6 +233,7 @@ class PlatformIntegrationService implements IntegrationService {
     readonly audit?: IntegrationAuditSink | undefined
     readonly capabilitySecret: string
     readonly capabilityTtlMs: number
+    readonly resolveRuntimeUser: ((userId: string) => { readonly permissionVersion: number } | undefined) | undefined
     readonly now: () => number
   }) {
     this.config = parts.config
@@ -239,6 +247,7 @@ class PlatformIntegrationService implements IntegrationService {
     this.audit = parts.audit
     this.capabilitySecret = parts.capabilitySecret
     this.capabilityTtlMs = parts.capabilityTtlMs
+    this.resolveRuntimeUser = parts.resolveRuntimeUser
     this.now = parts.now
   }
 
@@ -264,7 +273,12 @@ class PlatformIntegrationService implements IntegrationService {
   authenticateRuntimeToken(token: string | undefined): ValidatedSession | undefined {
     if (token === undefined || token === '' || this.capabilitySecret.length < 32) return undefined
     const claims = verifyRuntimeCapability(this.capabilitySecret, token, this.now())
-    return claims === undefined ? undefined : sessionFromCapability(claims)
+    if (claims === undefined) return undefined
+    if (this.resolveRuntimeUser !== undefined) {
+      const current = this.resolveRuntimeUser(claims.userId)
+      if (current === undefined || current.permissionVersion !== claims.permissionVersion) return undefined
+    }
+    return sessionFromCapability(claims)
   }
 
   /** @inheritDoc */
@@ -601,6 +615,7 @@ export function createIntegrationService(
     jobs,
     capabilitySecret: options.capabilitySecret ?? '',
     capabilityTtlMs: options.capabilityTtlMs ?? RUNTIME_CAPABILITY_TTL_MS,
+    resolveRuntimeUser: options.resolveRuntimeUser,
     now,
     ...(options.audit === undefined ? {} : { audit: options.audit }),
   })

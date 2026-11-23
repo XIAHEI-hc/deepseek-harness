@@ -63,6 +63,7 @@ export async function createPlatformApp(
     const preflight = await runPreflight(config.integration)
     integration = createIntegrationService(config.integration, preflight, {
       capabilitySecret: config.runtime.spaceKeySecret,
+      resolveRuntimeUser: (userId) => findPlatformUserStateById(config.identity, userId),
       audit: (event) => {
         identity.recordAudit(event)
       },

@@ -71,7 +71,7 @@ GET  /api/integration/audit?jobId=...
 
 A cross-user read returns 404 and does not distinguish "absent" from "unauthorized". `GET /api/integration/audit` returns the Job, input snapshots, and artifact metadata for source tracing.
 
-The per-user runtime's model tools call the same paths under `/api/integration/runtime/` with `Authorization: Bearer <capability>`. The gateway resolves the short-lived HMAC token to a session-shaped actor; no browser cookie or CSRF token is involved, and the route never falls through to the native runtime proxy.
+The per-user runtime's model tools call the same paths under `/api/integration/runtime/` with `Authorization: Bearer <capability>`. The gateway resolves the short-lived HMAC token to a session-shaped actor and re-checks the user's current permission version, so a revoked token is refused before expiry; no browser cookie or CSRF token is involved, and the route never falls through to the native runtime proxy.
 
 ## 6. Configuration
 
