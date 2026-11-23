@@ -44,20 +44,35 @@ docker run --rm --network dsh-private -e DSH_HOME=/data/dsh-home -e HOME=/data/h
 
 ## 4. 首次部署
 
+### 推荐：一键离线安装（发布包）
+
+前置：部署机有 `docker` + compose 插件 + `node`（生成密钥/校验配置），部署目录 `/srv/dsh` 由 root 或具备写权限的账号预先创建（`install.sh` 不会 sudo）。
+
 ```bash
-# 1) 放置代码：/srv/dsh/current 指向本仓库（或解压后的发布目录）
-# 2) 初始化目录、网络、.env 与 Gateway 密钥
+# 1) 把构建机的 deploy/release/ 整目录复制到部署机同名位置
+# 2) 生产：准备目标环境 .env（从 env.example-<v> 填写真实 W3/域名/密钥）
+bash deploy/scripts/install.sh --version <version> --env-file /path/to/prod.env
+#    本地冒烟（部署机 Docker 验证，Mock，无需 W3）：
+bash deploy/scripts/install.sh --version <version> --profile local --port 18080
+# 3) 脚本会：校验 SHA256 → 导入双镜像 → 建目录/网络/密钥 → 写编排与 overlay →
+#    docker run 配置校验 → compose up → 等待 health；幂等保留 .env/密钥/用户卷
+```
+
+安装完成后访问 `DSH_GATEWAY_PUBLIC_URL`；生产还需在反代终止 TLS 并按 §2 登记 W3 回调。卸载：`docker compose -f /srv/dsh/compose.yml down`（用户空间目录保留）。
+
+### 源码方式（开发机）
+
+```bash
 bash deploy/scripts/init.sh
-# 3) 按目标环境填写 deploy/.env（真实 W3、域名、密钥）
-# 4) 校验配置（失败会列出缺项，不启动服务）
+# 按目标环境填写 deploy/.env（真实 W3、域名、密钥）
 node --import tsx/esm services/platform/src/main.ts --check
-# 5) 启动
 docker compose -f deploy/compose.yml up -d --build
-# 6) 健康检查
 curl -fsS http://127.0.0.1:8080/health
 ```
 
 浏览器访问 `https://<dsh-domain>/`：未登录会跳转 `/login`，点击“通过 W3 登录”完成授权码流程，回到原生 DSH 聊天界面；侧栏底部显示 W3 姓名与工号。
+
+> 生产平台容器以 root 运行以访问 docker socket；Supervisor 在创建用户空间顶层目录后会 chown 到运行时容器 uid（默认 1000），用户 Runtime 本身始终以非 root 运行。
 
 ## 5. 数据与备份
 

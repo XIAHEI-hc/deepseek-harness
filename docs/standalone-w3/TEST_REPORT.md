@@ -374,6 +374,16 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 - 删除谓词只覆盖“已过期/已撤销且早于 cutoff”的 session 与“已过期/已消费早于 cutoff”的 login transaction；活跃 session 不受影响。
 - 单元测试覆盖 dry-run、确认删除、审计行与非正 retention 拒绝。
 
+## 3.21 一键离线安装 + 部署机冒烟（实测）
+
+证据 [evidence/install-smoke.log](evidence/install-smoke.log)。
+
+- 构建机产出 `2026.11.23.2` 发布包（平台镜像 89MB、运行时镜像 2.0GB、SHA256SUMS、compose/env/overlay）。
+- 部署机（WSL2 Ubuntu + Docker 29.7.2）执行 `bash deploy/scripts/install.sh --version 2026.11.23.2 --profile local --port 18080`：SHA256 校验 → 导入镜像 → 创建 `/srv/dsh`、`dsh-private`、Gateway 密钥、生成 Mock 冒烟 `.env` → 镜像内 `--check` → compose up → health 就绪。
+- Mock 登录后访问原生 UI：`runtime=READY`、`native_boot=present`；Supervisor 以 `dsh-runtime:2026.11.23.2` 启动 1 个用户容器 `dsh-rt-…`；同身份再次访问容器数保持 1（复用实例）。
+- **安装演练发现并修复的生产缺陷**：平台容器以 root 创建用户空间目录时，运行时容器（uid 1000）无法写 `/data/tmp`（`EACCES`）。修复为：容器后端下，Supervisor 创建空间顶层目录后 chown 到 `DSH_RUNTIME_CONTAINER_UID`（默认 1000）；重新构建发布包后同一冒烟通过。单元测试 216 passed。
+- 幂等性：重复执行 install.sh 保留现有 `.env`/密钥/用户卷，仅补缺失项并以当前发布版本重建容器。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -458,6 +468,7 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 18:15 | 身份审计表 + 登录限流 + `admin audit list` | PASS（429/Retry-After + 审计行，证据 `evidence/admin-audit.log`） |
 | 18:22 | 管理端 Runtime 状态只读查询 `admin runtime status` | PASS（证据 `evidence/admin-runtime.log`） |
 | 18:30 | 过期身份数据清理 `admin session cleanup`（dry-run + confirm + 审计） | PASS（证据 `evidence/admin-cleanup.log`） |
+| 18:48 | 一键离线安装 + 部署机真实容器 Runtime 冒烟（2026.11.23.2） | PASS（修复空间目录属主缺陷后，证据 `evidence/install-smoke.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

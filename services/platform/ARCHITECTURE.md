@@ -68,6 +68,7 @@ Runtime 只读取公钥文件。
 `/app/apps/cli/src/bin.ts`），Supervisor 追加 `web --patch ... --host --port ...` 参数。容器只挂载该用户的空间目录
 （读写）与 Gateway 公钥（只读），不挂 Docker socket、宿主 root、Gateway 私钥或平台数据库。
 空间目录结构：`<root>/<space_key>/{dsh-home,home,agents-home,workspaces,uploads,tmp}`。
+生产平台容器以 root 运行以便访问 docker socket；容器后端下 Supervisor 创建空间顶层目录后会把属主 chown 到 DSH_RUNTIME_CONTAINER_UID（默认 1000），因为运行中的用户容器以该 uid 非 root 运行并直接读写这些挂载。
 `space_key = HMAC-SHA256(realm, user_id)` 的不透明十六进制值，绝不使用显示名或客户端输入。
 真实容器策略由 `deploy/scripts/verify-container-isolation.sh` 在真实 Docker 上验证（60 断言）；
 完整运行时镜像由 `deploy/scripts/build-runtime-image.sh` 构建，`deploy/scripts/verify-container-runtime.sh`

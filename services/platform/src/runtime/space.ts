@@ -10,7 +10,7 @@
  */
 
 import { createHmac } from 'node:crypto'
-import { mkdir } from 'node:fs/promises'
+import { chown, mkdir } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { RuntimeManagerError } from './errors.ts'
 
@@ -136,19 +136,36 @@ export function resolveRuntimeSpace(input: {
   return resolveRuntimeSpaceByKey({ root: input.root, realm: input.realm, userId: input.userId, spaceKey })
 }
 
+/** Ownership applied to freshly created space directories when the platform runs as root. */
+export interface RuntimeSpaceOwnership {
+  /** Numeric uid of the runtime container user. */
+  readonly uid: number
+  /** Numeric gid of the runtime container user. */
+  readonly gid: number
+}
+
 /**
  * Create every directory of one user's space; existing directories are kept.
  * @param space - resolved space paths.
+ * @param ownership - when set, every created space directory is chowned to the
+ * runtime container user; the platform container runs as root while runtimes run
+ * as an unprivileged uid, so their mounts must already belong to that uid.
  */
-export async function ensureRuntimeSpaceDirs(space: RuntimeSpacePaths): Promise<void> {
-  await Promise.all([
-    mkdir(space.directory, { recursive: true }),
-    mkdir(space.dshHome, { recursive: true }),
-    mkdir(space.home, { recursive: true }),
-    mkdir(space.agentsHome, { recursive: true }),
-    mkdir(space.workspaces, { recursive: true }),
-    mkdir(space.defaultWorkspace, { recursive: true }),
-    mkdir(space.uploads, { recursive: true }),
-    mkdir(space.tmp, { recursive: true }),
-  ])
+export async function ensureRuntimeSpaceDirs(
+  space: RuntimeSpacePaths,
+  ownership?: RuntimeSpaceOwnership,
+): Promise<void> {
+  const directories = [
+    space.directory,
+    space.dshHome,
+    space.home,
+    space.agentsHome,
+    space.workspaces,
+    space.defaultWorkspace,
+    space.uploads,
+    space.tmp,
+  ]
+  await Promise.all(directories.map(directory => mkdir(directory, { recursive: true })))
+  if (ownership === undefined) return
+  await Promise.all(directories.map(directory => chown(directory, ownership.uid, ownership.gid)))
 }

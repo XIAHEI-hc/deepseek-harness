@@ -37,6 +37,7 @@ import {
   computeSpaceKey,
   ensureRuntimeSpaceDirs,
   resolveRuntimeSpaceByKey,
+  type RuntimeSpaceOwnership,
   type RuntimeSpacePaths,
 } from './space.ts'
 import { hashUserRef, stderrRuntimeLog, type RuntimeLog } from './support.ts'
@@ -459,7 +460,7 @@ class PlatformRuntimeManager implements RuntimeManager {
         this.logEvent('runtime.reclaim_failed', record.userId, code, record.generation)
         return this.failedResult(failed)
       }
-      await ensureRuntimeSpaceDirs(space)
+      await ensureRuntimeSpaceDirs(space, this.spaceOwnership())
       const provisioning = this.registry.update(record.id, {
         state: 'PROVISIONING',
         desiredState: 'RUNNING',
@@ -724,6 +725,21 @@ class PlatformRuntimeManager implements RuntimeManager {
       if (raced !== undefined) return raced
       throw error
     }
+  }
+
+  /**
+   * Ownership the runtime user needs on a freshly provisioned space.
+   *
+   * The production platform container runs as root while every runtime container
+   * runs as an unprivileged uid; directories created by the platform must already
+   * belong to that uid before the runtime mounts them.
+   * @returns the container uid/gid to apply, or undefined for the process backend
+   * and for platforms that already run unprivileged.
+   */
+  private spaceOwnership(): RuntimeSpaceOwnership | undefined {
+    if (this.config.kind !== 'container') return undefined
+    if (typeof process.geteuid !== 'function' || process.geteuid() !== 0) return undefined
+    return { uid: this.config.containerUid, gid: this.config.containerUid }
   }
 
   /**
