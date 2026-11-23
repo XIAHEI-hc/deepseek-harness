@@ -44,6 +44,7 @@
 | F8-05 | 目标机七天运行 | BLOCKED | 无目标机窗口 |
 | F8-06 | 只读融合管理状态报告状态与计数 | RUN_PASS | `admin.integration.spec.ts` |
 | F8-07 | 只读融合管理 Job 列表 | RUN_PASS | `admin.integration.spec.ts` |
+| F8-08 | 管理端紧急取消单个融合 Job | RUN_PASS | `admin.integration.spec.ts` 移除容器并标记 `ADMIN_CANCELLED` |
 
 ## 明确不声明
 

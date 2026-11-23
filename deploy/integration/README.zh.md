@@ -67,6 +67,12 @@ docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin int
 docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin integration jobs --limit 50
 ```
 
+紧急停止单个排队/运行中的 Job（移除分析容器并记录 `ADMIN_CANCELLED`）：
+
+```bash
+docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin integration cancel --job <job-id> --confirm
+```
+
 ## 离线融合发布
 
 ```bash

@@ -11,7 +11,7 @@
 
 import { createPlatformApp } from './app.ts'
 import { listAuditEvents } from './admin/audit.ts'
-import { readIntegrationJobs, readIntegrationStatus } from './admin/integration.ts'
+import { cancelIntegrationJob, readIntegrationJobs, readIntegrationStatus } from './admin/integration.ts'
 import { runIdentityCleanup } from './admin/cleanup.ts'
 import { migrateHome, MigrationError } from './admin/migrate-home.ts'
 import { readRuntimeStatus, restartRuntime } from './admin/runtime.ts'
@@ -93,6 +93,8 @@ function printAdminHelp(): number {
     '      print fusion preflight state, issue codes, system count, and metadata counts',
     '  integration jobs [--limit <n>]',
     '      print recent fusion jobs across users (default limit 100)',
+    '  integration cancel --job <job-id> --confirm',
+    '      remove one queued or running analysis container and mark the job cancelled',
     '',
   ].join('\n'))
   return 0
@@ -228,6 +230,26 @@ async function runAdmin(argv: readonly string[], config: PlatformConfig): Promis
       }
       process.stdout.write(`${JSON.stringify(readIntegrationJobs(config, limit), null, 2)}\n`)
       return 0
+    }
+    if (argv[1] === 'cancel') {
+      const jobId = flagValue(argv, '--job')
+      if (jobId === undefined || !argv.includes('--confirm')) {
+        process.stderr.write('admin integration cancel: --job <job-id> --confirm is required\n')
+        return 2
+      }
+      try {
+        const job = await cancelIntegrationJob(config, jobId)
+        if (job === undefined) {
+          process.stderr.write(`admin integration cancel: unknown job ${jobId}\n`)
+          return 2
+        }
+        process.stdout.write(`${JSON.stringify(job, null, 2)}\n`)
+        process.stdout.write(`integration job ${job.id}: ${job.status}\n`)
+        return 0
+      } catch (error) {
+        process.stderr.write(`admin integration cancel: ${error instanceof Error ? error.message : String(error)}\n`)
+        return 2
+      }
     }
     process.stderr.write(`unknown admin command ${JSON.stringify(['integration', argv[1]])}\n`)
     return 2

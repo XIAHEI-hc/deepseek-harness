@@ -44,6 +44,7 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 | F8-05 | Target-machine seven-day run | BLOCKED | no target machine window |
 | F8-06 | Read-only fusion admin status reports state and counts | RUN_PASS | `admin.integration.spec.ts` |
 | F8-07 | Read-only fusion admin job listing | RUN_PASS | `admin.integration.spec.ts` |
+| F8-08 | Admin emergency cancellation of one fusion job | RUN_PASS | `admin.integration.spec.ts` removes the container and marks `ADMIN_CANCELLED` |
 
 ## Explicit non-claims
 

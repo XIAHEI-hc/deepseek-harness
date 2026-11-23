@@ -88,7 +88,7 @@ See the "system-fusion analysis" block in `deploy/.env.example` and `deploy/inte
 Actual commands and results are in [TEST_REPORT.md](TEST_REPORT.md); per-gate status is in [ACCEPTANCE.md](ACCEPTANCE.md). Executed locally:
 
 - `pnpm run typecheck:platform`: passed.
-- `pnpm run test:platform`: 27 files passed, 1 skipped; 280 tests passed, 4 skipped (including 6 fusion specs).
+- `pnpm run test:platform`: 27 files passed, 1 skipped; 281 tests passed, 4 skipped (including 6 fusion specs).
 - Real Docker negative verification: `deploy/scripts/verify-integration-isolation.sh` passed on WSL2 Ubuntu + Docker Engine 29.7.2, covering read-only root, read-only `/inputs`, writable `/work` and `/scratch`, uid 1000, `--network none`, no Docker socket, and no host `/srv/dsh`.
 - W3 baseline regression: this round's `pnpm run test:platform` covered the original 220 baseline cases, all passed; a real W3 tenant remains externally `BLOCKED`.
 - Native optional UI: `packages/client/ui-integration-workbench` registers one `shell.overlay` launcher, reads status once, and renders nothing when fusion is absent; its API and component specs pass.

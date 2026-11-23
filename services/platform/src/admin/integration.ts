@@ -9,8 +9,10 @@
 
 import type { PlatformConfig } from '../config.ts'
 import { runPreflight, type PreflightOptions } from '../integration/preflight.ts'
+import { AnalysisJobRunner } from '../integration/runner.ts'
 import { IntegrationStore } from '../integration/store.ts'
 import type { IntegrationIssue, IntegrationState, JobRecord } from '../integration/types.ts'
+import type { DockerExecutor } from '../runtime/backend.ts'
 
 /** One integration status report. */
 export interface IntegrationStatusReport {
@@ -66,6 +68,45 @@ export async function readIntegrationStatus(
     systems: preflight.registry?.systems.length ?? 0,
     issues: preflight.issues,
     counts,
+  }
+}
+
+/** Injectable executor and clock for an administrative cancellation. */
+export interface CancelIntegrationOptions {
+  readonly executor?: DockerExecutor
+  readonly now?: string
+}
+
+/**
+ * Cancel one queued or running fusion job across users.
+ * @param config - resolved platform configuration.
+ * @param jobId - job id from the local operator.
+ * @param options - injectable Docker executor and clock.
+ * @returns the updated job, or undefined when the id is unknown.
+ * @throws when fusion is disabled.
+ */
+export async function cancelIntegrationJob(
+  config: PlatformConfig,
+  jobId: string,
+  options: CancelIntegrationOptions = {},
+): Promise<JobRecord | undefined> {
+  if (!config.integration.enabled) throw new Error('fusion is disabled')
+  const store = IntegrationStore.open(config.integration.databaseFile)
+  try {
+    const job = store.findJob(jobId, null)
+    if (job === undefined) return undefined
+    if (job.status !== 'queued' && job.status !== 'running') return job
+    const runner = new AnalysisJobRunner(config.integration, options.executor === undefined
+      ? {}
+      : { executor: options.executor })
+    await runner.cancel(jobId)
+    return store.updateJob(jobId, {
+      status: 'cancelled',
+      finishedAt: options.now ?? new Date().toISOString(),
+      errorCode: 'ADMIN_CANCELLED',
+    })
+  } finally {
+    store.close()
   }
 }
 

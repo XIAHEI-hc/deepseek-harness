@@ -67,6 +67,12 @@ Recent job records with owner, workspace, status, inputs, and error code:
 docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin integration jobs --limit 50
 ```
 
+Emergency stop for one queued or running job (removes the analysis container and records `ADMIN_CANCELLED`):
+
+```bash
+docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin integration cancel --job <job-id> --confirm
+```
+
 ## Offline fusion release
 
 ```bash
