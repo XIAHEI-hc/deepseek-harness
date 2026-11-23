@@ -38,7 +38,7 @@
 | F7-02 | 注销/撤销时中止旧 Job 容器 | RUN_PASS | 身份 `isSessionActive` 测试与 `integration.service.spec.ts` reaper 用例 |
 | F7-03 | 融合 Session 的后台任务、Schedule、MCP、浏览器旁路 | RUN_PASS | 进入 `/fusion` 后 `tools/pre-execute` 拒绝所有非 `integration_*` 工具 |
 | F8-01 | 从 `deploy/integration/job/Dockerfile` 构建分析镜像 | BLOCKED | 本地 Docker 构建无法解析 `python:3.12-alpine`（registry 出口超时） |
-| F8-02 | 备份覆盖融合元数据与快照 | RUN_PASS（设计） | `backup.sh` 打包 `management/`，其中包含 `integration/`；目标机演练未执行 |
+| F8-02 | 备份覆盖融合元数据与快照 | RUN_PASS | `backup.sh` 打包 `management/`；`integration.backup.spec.ts` 证明计数与快照字节经过 tar/恢复往返保持；目标机演练未执行 |
 | F8-03 | 升级/回滚保留原生用户与融合数据 | NOT_RUN | 复用现有脚本；尚无目标机融合演练 |
 | F8-04 | 离线发布包结构保持融合默认关闭 | RUN_PASS | 合成发布包通过 `verify-integration-release.sh`；镜像构建仍见 F8-01 |
 | F8-05 | 目标机七天运行 | BLOCKED | 无目标机窗口 |

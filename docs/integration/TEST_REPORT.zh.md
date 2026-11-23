@@ -9,12 +9,13 @@
 | 命令 | 结果 | 说明 |
 |---|---|---|
 | `pnpm run typecheck:platform` | PASS | `tsc -p services/platform/tsconfig.json --noEmit` |
-| `pnpm run test:platform` | PASS | 26 个测试文件通过、1 个跳过；279 个用例通过、4 个跳过 |
+| `pnpm run test:platform` | PASS | 27 个测试文件通过、1 个跳过；280 个用例通过、4 个跳过 |
 | `DSH_INTEGRATION_JOB_IMAGE=dsh-runtime:2026.11.23.7 bash deploy/scripts/verify-integration-isolation.sh`（WSL2 Ubuntu） | PASS | 真实 Docker 29.7.2；只读根、只读输入、工作区/scratch 可写、uid 1000、`network none`、无 Docker socket、无宿主部署根 |
 | `pnpm exec vitest run packages/client/ui-integration-workbench/tests` | PASS | 2 个文件、10 个用例：状态/概览/CSRF 解析、面板状态与排队 Job 轮询 |
 | `pnpm exec vitest run packages/client/ui-theme/tests` | PASS | 24 个文件、183 个用例：新样式表满足圆角、发丝边框、阴影、焦点环、圆角形状与滚动条门禁 |
 | `pnpm exec vitest run packages/integration/tool-integration/tests` | PASS | 2 个文件、8 个用例：运行时能力头、发现、有界读取、Job 启动/状态、API 错误、白名单与持久化会话标记 |
 | `pnpm exec vitest run services/platform/tests/admin.integration.spec.ts` | PASS | 3 个用例：关闭状态无副作用；就绪状态报告零元数据计数；关闭时 Job 列表为空 |
+| `pnpm exec vitest run services/platform/tests/integration.backup.spec.ts` | PASS | 元数据计数与快照字节经过 tar/恢复往返保持 |
 | 在合成发布包上运行 `bash deploy/scripts/verify-integration-release.sh` | PASS | 校验和、镜像 tar、broker 源码、默认关闭 env 与两份 JSON 注册表 |
 | `node --test deploy/integration/broker/proxy.test.mjs` | PASS | 精确白名单转发；其他端口返回 403 |
 | `DSH_INTEGRATION_EGRESS_TEST_IMAGE=dsh-platform:2026.11.23.7 bash deploy/scripts/verify-integration-egress.sh`（WSL2） | PASS | 内部 Job 网络；broker 健康；白名单目标经代理可达；拒绝端口 403；无目标直连路径 |
