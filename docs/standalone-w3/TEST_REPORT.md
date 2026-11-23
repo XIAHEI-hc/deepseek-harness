@@ -238,6 +238,32 @@ wsl -d Ubuntu --exec bash deploy/scripts/verify-release-upgrade.sh 2026.11.23.1
 | 数据连续 | 升级后既有 Mock 会话 `/auth/me` 仍 200；运行镜像已是 `dsh-platform:2026.11.23.1` |
 | 包安全 | 源码发布包无 `.env`/数据库/凭据；运行时镜像 tar 不含部署密钥（密钥在部署机卷内） |
 
+## 3.12 并发 Agent 文件/会话隔离（DATA-11，22 断言 PASS）
+
+```bash
+pwsh -File deploy/scripts/verify-agent-isolation.ps1     # Windows
+bash deploy/scripts/verify-agent-isolation.sh            # Linux/WSL
+```
+
+实测结果：`AGENT ISOLATION PASS: 22 assertions`，证据 [evidence/agent-isolation.log](evidence/agent-isolation.log)。
+
+做法：平台以脚本化 W3 Provider 启动两个真实 Runtime；两个 headless DSH Agent 并发运行，分别通过脚本化的 Messages 兼容 Mock LLM 获得 `pwsh` 工具调用并写入不同产物。断言：
+- 两个 Runtime 均 READY，两个 Agent 退出码 0 且真实执行了工具调用（JSON 事件含 `tool_call`/`tool_result completed`）
+- Agent 产物 `artifact-a.txt` 只在 A 工作区、`artifact-b.txt` 只在 B 工作区，互不出现
+- 平台原生 `session/list` 各自包含本人 Agent Session、不包含对方 Session
+- A 用 B 的 Agent Session id 调 `session/state`、`session/page` 均失败
+- A 的产物内容为 A Agent 写入的内容
+
+## 3.13 原生 GUI/Agent 回归（keyless）
+
+| 检查 | 结果 |
+|---|---|
+| `pnpm run test:gui`（client + host 包全量） | **790 files / 14108 tests passed**，2 skipped；4 个失败全部为 Windows 环境限制（symlink `EPERM`、`pnpm pack ETIMEDOUT`、慢文件系统导致的 5s 超时），均不在本次改动包内 |
+| Keyless Agent/Chat（Mock LLM，§3.12） | 原生 Agent Loop、流式事件（`status`/`text`/`tool_call`/`tool_result`）、工具执行与 Session 持久化全部真实运行 |
+| 原生 Session/Skills（容器 e2e，§3.10） | `session/create|list|state|page|rename|cancel`、`skillPlaza/saveDraft|drafts` 在真实容器 Runtime 上可用且按身份隔离 |
+
+MCP 与真实模型供应商的聊天回归仍需目标环境凭据，OPS-09 保持 NOT_RUN。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -259,6 +285,8 @@ wsl -d Ubuntu --exec bash deploy/scripts/verify-release-upgrade.sh 2026.11.23.1
 | 运行时镜像构建 | `bash deploy/scripts/build-runtime-image.sh dev` | **PASS**（多阶段构建成功，`dsh-runtime:dev` 4.24GB） |
 | 容器模式端到端 | `wsl -d Ubuntu --exec bash deploy/scripts/verify-container-runtime.sh` | **PASS：46 assertions**（证据 `evidence/container-runtime-e2e.log`） |
 | 版本化发布包 + 离线升级 | `build-image.sh 2026.11.23.1` + `verify-release-upgrade.sh 2026.11.23.1` | **PASS：3 assertions**（真实 tar/SHA256，证据 `evidence/release-upgrade.log`） |
+| 并发 Agent 隔离 | `pwsh -File deploy/scripts/verify-agent-isolation.ps1` | **PASS：22 assertions**（证据 `evidence/agent-isolation.log`） |
+| 原生 GUI 回归 | `pnpm run test:gui` | 14108 passed / 4 Windows 环境失败（证据 `evidence/gui-regression.log`） |
 | 源码发布包 | `deploy/release/dsh-platform-source-2026.11.23-dev.tar.gz` | PASS（541,465 bytes，sha256 37f4da64…d44a3；173 条目，无 `.env`/数据库/凭据；含 `.env.example`） |
 | 仓库 lint | `pnpm run lint` | 失败项全部为**既有文件**（`skill-plaza`、`authentication-gateway` 测试、`workspace-controller`、`ui-skill-plaza` 测试），无新代码文件；`pnpm exec oxlint services/platform packages/client/ui-platform-identity` 0 问题 |
 
@@ -306,6 +334,8 @@ wsl -d Ubuntu --exec bash deploy/scripts/verify-release-upgrade.sh 2026.11.23.1
 | 15:00 | 真实运行时镜像 + 容器模式双用户 e2e | **PASS：46 assertions**（原生 UI/Session/Skills/文件/凭据/供应商分离） |
 | 15:18 | 构建版本化发布包（平台+运行时镜像 tar/SHA256） | PASS（runtime 962MB / platform 89MB） |
 | 15:22 | 真实发布包离线升级演练 | **PASS：3 assertions**（会话与数据连续） |
+| 15:29 | 原生 GUI 回归 `pnpm run test:gui` | 14108 passed，4 个 Windows 环境失败 |
+| 15:35 | 并发 Agent 文件/会话隔离（Mock LLM） | **PASS：22 assertions** |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 
