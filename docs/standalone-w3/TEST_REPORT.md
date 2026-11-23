@@ -398,6 +398,17 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 - 实测（2026.11.23.4 发布包）：restart 前 READY，执行后新 generation READY，容器名不变（确定性 space 命名）、imageDigest 更新为当前发布版本，原生 UI `__DSH_BOOT__` 仍可用。
 - 演练还发现并修复：就绪轮询的 `sleep` 使用 unref 计时器，短生命周期 CLI 会在等待容器启动时因无事件句柄提前退出；改为 referenced timer 后 restart 稳定完成。平台单测 **219 passed / 1 skipped**。
 
+## 3.23 部署机备份一致性 + 真实发布包离线升级（v3 → v4，实测）
+
+证据 [evidence/backup-upgrade-rehearsal.log](evidence/backup-upgrade-rehearsal.log)。
+
+- 安装 2026.11.23.3 发布包，Mock 登录并打开真实用户 Runtime；创建并改名 Session `upgrade-preserved-title`。
+- 备份：`backup.sh pre-upgrade-v4` 在快照期间同时停止 platform 与用户 Runtime 容器（新增一致性修复），备份 `management.tar.gz`、每用户空间 tar、SHA256SUMS、MANIFEST（记录 runtime 容器 id）；结束后按原 id 重启 Runtime、再启动 platform，platform 成功 adopt（runtime 保持 READY，无 FAILED 竞态）。
+- 离线版本切换：`install.sh --version 2026.11.23.4` 从离线发布包导入/切换（保留 `.env`、密钥、用户卷），health 通过。
+- 数据连续性：升级后旧 Cookie `/auth/me=200`，`session/list` 正常，原 Session 与标题 `upgrade-preserved-title` 保留，原生 UI `__DSH_BOOT__` 可用。
+- Runtime 升级：platform 先 adopt 旧 `dsh-runtime:2026.11.23.3` 容器（READY generation 1）；执行 `admin runtime restart` 后新 generation READY 且 imageDigest 更新为 `dsh-runtime:2026.11.23.4`，Session 历史仍在。
+- 备份 MANIFEST 实测：`runtime_containers` 记录 2 个用户容器 id、`spaces=1`。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -484,6 +495,7 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 18:30 | 过期身份数据清理 `admin session cleanup`（dry-run + confirm + 审计） | PASS（证据 `evidence/admin-cleanup.log`） |
 | 18:48 | 一键离线安装 + 部署机真实容器 Runtime 冒烟（2026.11.23.2） | PASS（修复空间目录属主缺陷后，证据 `evidence/install-smoke.log`） |
 | 19:55 | 管理端强制重启 Runtime（2026.11.23.4，容器后端） | PASS（新 generation + 原生 UI，证据 `evidence/admin-runtime-restart.log`） |
+| 20:12 | 部署机备份一致性 + 真实发布包离线升级 v3→v4 | PASS（Session/标题保留、Runtime adopt + 重启到新镜像，证据 `evidence/backup-upgrade-rehearsal.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

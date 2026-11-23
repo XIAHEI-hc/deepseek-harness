@@ -80,7 +80,7 @@ curl -fsS http://127.0.0.1:8080/health
 - 运行时注册表：`/srv/dsh/management/runtime/runtime.sqlite`。
 - Gateway 密钥：`/srv/dsh/management/keys/gateway-ed25519-{private,public}.pem`（私钥仅平台进程可读）。
 - 用户空间：`/srv/dsh/spaces/<space_key>/...`，容器停止不删除。
-- 备份：`bash deploy/scripts/backup.sh <label>`（短暂停止 platform 保证 SQLite 一致性，逐用户打包空间目录并记录 SHA256）。恢复：`bash deploy/scripts/restore.sh <label>`。
+- 备份：`bash deploy/scripts/backup.sh <label>`（维护窗口内同时停止 platform 与该主机的用户 Runtime 容器，保证 SQLite 与空间目录一致；逐用户打包空间目录、记录 SHA256 与容器 id，完成后按原 id 重启 Runtime 再启动 platform 以 adopt）。恢复：`bash deploy/scripts/restore.sh <label>`。
 
 > 生产 PostgreSQL 后端为已记录缺口（见 `docs/standalone-w3/OPEN_ISSUES.md`）：当前版本生产同样使用 SQLite（WAL），并保留版本化迁移表；切换到 PostgreSQL 必须提供等价迁移与验收证据后才可声明完成。
 

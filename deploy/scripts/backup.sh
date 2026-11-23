@@ -15,7 +15,37 @@ mkdir -p "$DEST"
 
 echo "== 停止 platform（短暂维护窗口）=="
 docker compose -f "$COMPOSE" stop platform || true
-trap 'docker compose -f "$COMPOSE" start platform >/dev/null 2>&1 || true' EXIT
+
+# 用户 Runtime 容器由宿主 docker 持有，停止 platform 不会停止它们；快照前必须
+# 一起停止，否则空间目录会与运行中的 DSH 写入竞争。备份结束后按原 id 启动，
+# platform 重新上线时会 adopt 这些运行中的容器。
+RUNTIME_IDS="$(docker ps -q --filter label=dsh.platform=1 || true)"
+stop_runtimes() {
+  if [ -n "$RUNTIME_IDS" ]; then
+    # shellcheck disable=SC2086 -- ids are newline-separated Docker ids.
+    docker stop $RUNTIME_IDS >/dev/null 2>&1 || true
+  fi
+}
+start_after_backup() {
+  if [ -n "$RUNTIME_IDS" ]; then
+    # shellcheck disable=SC2086 -- ids are newline-separated Docker ids.
+    docker start $RUNTIME_IDS >/dev/null 2>&1 || true
+    # The platform reconciles READY records by inspecting container liveness; wait
+    # until every restarted runtime is running before it comes back and inspects.
+    for _ in $(seq 1 30); do
+      pending=0
+      for id in $RUNTIME_IDS; do
+        running="$(docker inspect --format '{{.State.Running}}' "$id" 2>/dev/null || echo false)"
+        [ "$running" = "true" ] || pending=1
+      done
+      [ "$pending" -eq 0 ] && break
+      sleep 1
+    done
+  fi
+  docker compose -f "$COMPOSE" start platform >/dev/null 2>&1 || true
+}
+stop_runtimes
+trap start_after_backup EXIT
 
 echo "== 备份管理数据与密钥 =="
 tar -C "$ROOT" -czf "$DEST/management.tar.gz" management
@@ -44,7 +74,8 @@ echo "== 记录部署事实 =="
   echo "label=$LABEL"
   echo "created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "platform_image=$(docker compose -f "$COMPOSE" images -q platform 2>/dev/null || true)"
-  echo "runtime_image=$(grep -E '^DSH_RUNTIME_IMAGE=' "$ROOT/current/deploy/.env" 2>/dev/null || true)"
+  echo "runtime_image=$(grep -E '^DSH_RUNTIME_IMAGE=' "$ROOT/.env" 2>/dev/null || grep -E '^DSH_RUNTIME_IMAGE=' "$ROOT/current/deploy/.env" 2>/dev/null || true)"
+  echo "runtime_containers=$(printf '%s' "$RUNTIME_IDS" | tr '\n' ' ')"
   echo "spaces=$(find "$ROOT/spaces" -mindepth 1 -maxdepth 1 -type d | wc -l)"
 } > "$DEST/MANIFEST.txt"
 
