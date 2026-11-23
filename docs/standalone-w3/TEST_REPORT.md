@@ -463,6 +463,16 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 - 两个身份各自启动独立 `dsh-runtime:2026.11.23.7` 容器，Runtime 均 READY；平台审计流出现各自的 `runtime.start`/`runtime.ready`。
 - 真实 W3 租户（AUTH-24）仍 BLOCKED；本项使用仓库内 W3 测试 Provider 验证最终发布包 + 浏览器呈现，不冒称真实租户登录。
 
+## 3.30 多窗口复用、共享历史与 platform 重启恢复（最终安装栈，实测）
+
+证据 [evidence/reuse-restart.log](evidence/reuse-restart.log)。
+
+- 安装 2026.11.23.7，`AUTH_MODE=w3`、`W3_TOKEN_REQUEST_FORMAT=form`（同时验证 W3 form token 模式在最终发布包可用）。
+- 同一 W3 账号开两个浏览器上下文：`/auth/me` 返回同一内部 userId，两个窗口共享同一 Runtime 容器与 Session 历史（A1 创建/改名 `shared-history-title`，A2 的 `session/list` 可见）。
+- 第二个 W3 账号得到不同 userId、独立 Runtime 容器，`session/list` 不含 A 的 Session。
+- 实测容器数 2（A 与 B 各一），不是每窗口一实例。
+- `docker restart dsh-platform-platform-1` 后：health 恢复、旧 Session Cookie 仍有效、Session 历史仍在、Runtime 重新 READY、左下角仍显示 `U User A W3 · uid-a`。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -552,8 +562,10 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 20:12 | 部署机备份一致性 + 真实发布包离线升级 v3→v4 | PASS（Session/标题保留、Runtime adopt + 重启到新镜像，证据 `evidence/backup-upgrade-rehearsal.log`） |
 | 20:31 | 部署机安装栈 W3 双身份 A/B（测试 Provider + 2 个真实 Runtime 容器） | PASS（姓名/隔离/注销撤销，证据 `evidence/install-w3-ab.log`） |
 | 21:05 | PostgreSQL 身份库后端（本地 PostgreSQL 16） | PASS（迁移/登录/Session/审计/重启保持，证据 `evidence/postgres-identity.log`） |
-| 22:20 | 最终发布包 2026.11.23.7 安装、冒烟与 Runtime 审计 | PASS（PG 驱动内置、Mock 登录、Runtime READY、原生 UI，证据 `evidence/release-manifest-2026.11.23.6.txt`、`evidence/final-release-2026.11.23.6.log`） |
+| 22:20 | 最终发布包 2026.11.23.7 安装、冒烟与 Runtime 审计 | PASS（PG 驱动内置、Mock 登录、Runtime READY、原生 UI，证据 `evidence/release-manifest-2026.11.23.7.txt`、`evidence/final-release-2026.11.23.7.log`） |
 | 22:05 | Runtime 生命周期审计（start/ready/failed/stop） | PASS（证据 `evidence/runtime-audit.log`） |
+| 22:28 | 最终安装栈 W3 浏览器 A/B 左下角姓名 | PASS（Windows Chromium，User A/User B，证据 `evidence/browser-w3-installed.log` 与截图） |
+| 22:35 | 多窗口复用、共享历史、platform 重启恢复（W3 form token） | PASS（同身份同用户同 Runtime、重启后 Session/姓名/Runtime 仍有效，证据 `evidence/reuse-restart.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

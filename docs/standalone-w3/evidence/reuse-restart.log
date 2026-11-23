@@ -1,0 +1,99 @@
+# 最终安装栈：W3 form token + 多窗口复用 + platform 重启恢复（2026.11.23.7）
+
+$ node .dsh-reuse-restart.mjs
+{
+  "before": {
+    "a1": {
+      "userId": "59f393ff-6777-4db4-a6eb-1d3e56c42b60",
+      "displayName": "User A",
+      "state": "READY"
+    },
+    "a2": {
+      "userId": "59f393ff-6777-4db4-a6eb-1d3e56c42b60",
+      "state": "READY"
+    },
+    "b": {
+      "userId": "97c56544-dc84-4f8d-8d71-73ed852588b2",
+      "displayName": "User B",
+      "state": "READY"
+    },
+    "sameAccountSameUser": true,
+    "differentAccountDifferentUser": true,
+    "a1HasSession": true,
+    "a2SeesSharedHistory": true,
+    "bLacksASession": true
+  },
+  "afterRestart": {
+    "healthy": true,
+    "sessionSurvives": true,
+    "meStatusUserId": "59f393ff-6777-4db4-a6eb-1d3e56c42b60",
+    "sessionCookieValid": true,
+    "runtimeState": "READY",
+    "launcherText": "U User A W3 · uid-a"
+  }
+}
+FINAL REUSE/RESTART PASS
+
+--- runtime containers after drill ---
+dsh-rt-e70ba5634ba33724 dsh-runtime:2026.11.23.7
+dsh-rt-c87c8054810e5dbb dsh-runtime:2026.11.23.7
+
+--- runtime audit rows ---
+[
+  {
+    "id": "381fd8f7-b56f-4af5-aa13-e4d7e4c70e6a",
+    "at": "2026-11-23T14:30:26.706Z",
+    "action": "runtime.ready",
+    "outcome": "success",
+    "userId": "97c56544-dc84-4f8d-8d71-73ed852588b2",
+    "subject": null,
+    "clientAddress": null,
+    "detail": {
+      "generation": 1,
+      "errorCode": null,
+      "runtimeId": "dsh-rt-e70ba5634ba33724"
+    }
+  },
+  {
+    "id": "6de9ca58-c2e2-4cc3-b848-912dd3cd3226",
+    "at": "2026-11-23T14:30:17.879Z",
+    "action": "runtime.start",
+    "outcome": "success",
+    "userId": "97c56544-dc84-4f8d-8d71-73ed852588b2",
+    "subject": null,
+    "clientAddress": null,
+    "detail": {
+      "generation": 1,
+      "errorCode": null,
+      "runtimeId": null
+    }
+  },
+  {
+    "id": "ef07154e-aa51-4167-b019-76e4e836faa2",
+    "at": "2026-11-23T14:30:14.384Z",
+    "action": "runtime.ready",
+    "outcome": "success",
+    "userId": "59f393ff-6777-4db4-a6eb-1d3e56c42b60",
+    "subject": null,
+    "clientAddress": null,
+    "detail": {
+      "generation": 1,
+      "errorCode": null,
+      "runtimeId": "dsh-rt-c87c8054810e5dbb"
+    }
+  },
+  {
+    "id": "1e56c944-8129-47ba-b145-fd363539702a",
+    "at": "2026-11-23T14:30:05.210Z",
+    "action": "runtime.start",
+    "outcome": "success",
+    "userId": "59f393ff-6777-4db4-a6eb-1d3e56c42b60",
+    "subject": null,
+    "clientAddress": null,
+    "detail": {
+      "generation": 1,
+      "errorCode": null,
+      "runtimeId": null
+    }
+  }
+]
