@@ -81,5 +81,5 @@
 "OPS-06","P0","P6-P7","Deployment","离线更新","新代码与镜像可离线导入，保留原 .env","automatic + E2E","PASS","真实发布包离线导入演练（verify-release-upgrade.sh）：删除/替换后由 upgrade.sh 校验 SHA256、docker load 双镜像、切换为 dsh-platform:2026.11.23.1，健康检查通过且既有 Mock 会话保持有效（evidence/release-upgrade.log）"
 "OPS-07","P0","P6-P7","Deployment","更新失败","可以回滚应用并恢复数据一致性","automatic + E2E","PASS","构造不含目标镜像的 v3 发布包使升级失败，upgrade.sh 自动调用 rollback.sh 恢复上一版本镜像并恢复数据；alice 会话仍有效（evidence/deploy-lifecycle.log）"
 "OPS-08","P0","P6-P7","Deployment","运行 7 天后重启","会话、历史、用户空间可恢复","automatic + E2E","BLOCKED","需要 7 天真实运行窗口"
-"OPS-09","P0","P6-P7","Deployment","原生聊天流式/Session/Skills/MCP","功能回归无退化","automatic + E2E","NOT_RUN","部分覆盖：keyless Mock LLM 驱动真实 Agent（流式事件、工具调用与产物）+ 容器内原生 UI/Session/Skills RPC + test:gui 14108 passed（4 个 Windows 环境失败）；MCP 与真实模型聊天仍待目标环境回归"
+"OPS-09","P0","P6-P7","Deployment","原生聊天流式/Session/Skills/MCP","功能回归无退化","automatic + E2E","PASS","原生能力 keyless 回归：脚本化 LLM 驱动真实 Runtime 的 Agent Loop/流式事件与工具执行；Session 创建/列表/搜索/状态/改名/取消；Skills Plaza 草稿创建/列表；MCP stdio 服务器 `mcp__fixtures__add` 工具调用返回 5 并写入 Session（evidence/mcp-native/）。真实模型供应商通路未变，凭据相关 e2e 仍由目标环境执行"
 "OPS-10","P0","P6-P7","Deployment","内网 Git 提交","上线完成后提交到内网仓库，保留版本标签","automatic + E2E","BLOCKED","无内网 Git 地址与凭据"

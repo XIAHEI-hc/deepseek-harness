@@ -22,7 +22,7 @@
 7. **平台审计事件表**：认证失败/运行时状态/连接归属的审计落库未实现（日志已脱敏记录稳定 code）。
 8. **容器化生产验证**：平台镜像与完整 DSH 运行时镜像都已成功构建；用真实运行时镜像跑通容器模式双用户 e2e（46 断言，见 TEST_REPORT §3.10），覆盖原生 UI、Session/Skills 隔离、文件/凭据/Docker socket/宿主根/Gateway 私钥不可见、供应商账户与平台身份分离、注销撤销。仍待目标环境完成的是：镜像推送/离线分发到部署机、compose 全栈部署、真实 W3 与内网 Git（见 §1 BLOCKED 项）。
 9. **仓库级既有红**（与本次改动无关）：`verify-cordis-config`（`apps/cli/tests/profiles/acp/cordis.yml` 夹具）、`verify-client-domain-graph`（ui-workspace sibling import）、`pnpm run lint` 中 skill-plaza/authentication-gateway 测试/workspace-controller 的既有告警；新增代码定向 oxlint 为 0 问题。
-10. **Agent 高级能力回归**：DATA-10（浏览器自动化上下文）需要真实浏览器工具链；keyless Mock LLM 已覆盖 Agent Loop、工具调用、产物隔离（DATA-11）、后台 Job 跨用户隔离（DATA-08）与 WebSocket 事件隔离/实时撤销（DATA-12）；MCP 与真实模型聊天（OPS-09）留待目标环境补测。
+10. **Agent 高级能力回归**：DATA-10（浏览器自动化上下文）需要真实浏览器工具链（browser-use/Chrome 与实验 provider）；keyless Mock LLM 已覆盖 Agent Loop、工具调用、产物隔离（DATA-11）、后台 Job 跨用户隔离（DATA-08）、MCP stdio 工具往返（OPS-09）与 WebSocket 事件隔离/实时撤销（DATA-12）；真实模型供应商聊天仍建议在目标环境复验。
 
 ## 3. 与开发包的已知偏差
 

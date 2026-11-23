@@ -133,6 +133,8 @@ pwsh -File deploy/scripts/verify-agent-isolation.ps1
 pwsh -File deploy/scripts/verify-ws-stream-isolation.ps1
 # 后台 Job 跨用户隔离（keyless Mock LLM 驱动真实 Runtime）
 pwsh -File deploy/scripts/verify-job-isolation.ps1
+# 原生 MCP stdio 工具往返（keyless）
+pwsh -File deploy/scripts/verify-mcp-native.ps1
 ```
 
 开发模式：`AUTH_MODE=mock`、`DSH_RUNTIME_KIND=process`（受限进程，非生产安全边界），数据位于仓库根 `.dsh-platform/`。真实 A/B 双用户与隔离验收见`services/platform/tests/e2e/`，真实 W3 登录需要目标环境凭据。

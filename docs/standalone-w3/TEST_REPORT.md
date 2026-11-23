@@ -306,6 +306,27 @@ bash deploy/scripts/verify-job-isolation.sh          # Linux/WSL
 
 Goal/Workflow 没有跨 Runtime 的寻址端点，其隔离边界与 Session 相同（A 无法寻址 B 的 Session，见 DATA-02/03/12）。
 
+## 3.16 原生 MCP 往返（OPS-09 MCP 子项，8 断言 PASS）
+
+```bash
+pwsh -File deploy/scripts/verify-mcp-native.ps1   # Windows
+bash deploy/scripts/verify-mcp-native.sh          # Linux/WSL
+```
+
+实测结果：`MCP NATIVE PASS: 8 assertions`，证据 [evidence/mcp-native/](evidence/mcp-native/)。
+
+做法：平台通过显式 `runtimeEnv` 注入脚本化 LLM；探针在用户 DSH home 的 web profile patch 中配置一个 stdio MCP server（仓库自带 fixture server，`mcp__fixtures__add`），再让该用户 Runtime 启动。脚本化模型调用该 MCP 工具后，断言工具结果写回 Session。
+
+| 断言 | 实测 |
+|---|---|
+| 用户 web profile 成功配置 stdio MCP server | PASS |
+| Runtime 在 MCP manager 配置下启动并就绪 | PASS |
+| 通过 Gateway 创建 Session、读取模型目录、选择模型 | PASS |
+| 模型面向工具名为 `mcp__fixtures__add` | PASS |
+| MCP server 真实执行 `add(2,3)` 并把 `5` 返回模型回合 | PASS |
+
+至此 OPS-09 的原生聊天/Agent Loop、Session、Skills、MCP 四类能力均由 keyless 真实运行覆盖；真实模型供应商通路未改，凭据相关 e2e 仍属目标环境项。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -331,6 +352,7 @@ Goal/Workflow 没有跨 Runtime 的寻址端点，其隔离边界与 Session 相
 | 原生 GUI 回归 | `pnpm run test:gui` | 14108 passed / 4 Windows 环境失败（证据 `evidence/gui-regression.log`） |
 | Session WebSocket 隔离与撤销 | `pwsh -File deploy/scripts/verify-ws-stream-isolation.ps1` | **PASS：10 assertions**（证据 `evidence/ws-stream-isolation/`） |
 | 后台 Job 跨用户隔离 | `pwsh -File deploy/scripts/verify-job-isolation.ps1` | **PASS：11 assertions**（证据 `evidence/job-isolation/`） |
+| 原生 MCP 往返 | `pwsh -File deploy/scripts/verify-mcp-native.ps1` | **PASS：8 assertions**（证据 `evidence/mcp-native/`） |
 | 源码发布包 | `deploy/release/dsh-platform-source-2026.11.23-dev.tar.gz` | PASS（541,465 bytes，sha256 37f4da64…d44a3；173 条目，无 `.env`/数据库/凭据；含 `.env.example`） |
 | 仓库 lint | `pnpm run lint` | 失败项全部为**既有文件**（`skill-plaza`、`authentication-gateway` 测试、`workspace-controller`、`ui-skill-plaza` 测试），无新代码文件；`pnpm exec oxlint services/platform packages/client/ui-platform-identity` 0 问题 |
 
@@ -343,7 +365,7 @@ Goal/Workflow 没有跨 Runtime 的寻址端点，其隔离边界与 Session 相
 
 ## 5. BLOCKED / NOT_RUN
 
-当前矩阵：**PASS 79 / NOT_RUN 2 / BLOCKED 3**（另有 PostgreSQL 生产后端记录缺口）。
+当前矩阵：**PASS 80 / NOT_RUN 1 / BLOCKED 3**（另有 PostgreSQL 生产后端记录缺口）。
 
 | ID | 状态 | 原因 |
 |---|---|---|
@@ -352,7 +374,6 @@ Goal/Workflow 没有跨 Runtime 的寻址端点，其隔离边界与 Session 相
 | OPS-10 | BLOCKED | 无内网 Git 地址与凭据 |
 | PostgreSQL 生产库 | BLOCKED | 当前实现为 SQLite + 版本化迁移；PostgreSQL 后端未实现 |
 | DATA-10 | NOT_RUN | 浏览器自动化上下文需要真实浏览器工具链（browser-use/Chrome）与 Agent 会话 |
-| OPS-09 | NOT_RUN | MCP 与真实模型供应商聊天回归需要目标环境凭据；keyless 已覆盖 Agent Loop/流式事件、Session、Skills、Job 与 WebSocket 隔离 |
 
 ## 6. 更新记录
 
@@ -385,6 +406,7 @@ Goal/Workflow 没有跨 Runtime 的寻址端点，其隔离边界与 Session 相
 | 15:48 | 浏览器验收“退出所有设备”确认流程 | **PASS**（截图 `evidence/sign-out-all/`，确认后旧 Cookie 401） |
 | 16:10 | 浏览器 WebSocket 流事件隔离与注销实时撤销 | **PASS：10 assertions**（证据 `evidence/ws-stream-isolation/`） |
 | 16:38 | 后台 Job 跨用户隔离（Mock LLM 驱动真实 Runtime） | **PASS：11 assertions**（证据 `evidence/job-isolation/`） |
+| 16:58 | 原生 MCP stdio 工具往返（Mock LLM + 真实 Runtime） | **PASS：8 assertions**（证据 `evidence/mcp-native/`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 
