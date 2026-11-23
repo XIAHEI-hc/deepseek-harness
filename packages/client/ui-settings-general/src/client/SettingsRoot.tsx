@@ -7,7 +7,10 @@
  * slot-owned text (trigger label, panel title, close label, sections) arrives
  * from registrants through slots; accessible names resolve from localized
  * content (trigger: shell locale; dialog: aria-labelledby the title node;
- * close: visually-hidden slot text). Modal open state and the active section
+ * close: visually-hidden slot text). The optional platform identity launcher
+ * seat renders directly above the trigger row; a deployment without a
+ * platform identity leaves it empty and keeps this shell unchanged. Modal
+ * open state and the active section
  * id belong to the declared owner store; the onboarding coordinator mounts
  * exactly one ordered registrant while the sessions-derived empty-Hero fact
  * is active. Visible dialog chrome belongs to the step, so a
@@ -126,6 +129,13 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
   const { open, activeId } = useStore(state => state)
   const shortcut = useShortcuts(rows => rows.find(row => row.id === 'settings.open'))
   const { close, openSection } = actions
+  // Settings navigation shared by the settings launcher and the platform
+  // launcher beside it: the shell owns the panel and its section selection,
+  // so every launcher reaches both surfaces through this one callback.
+  const openSettings = (sectionId?: string): void => {
+    if (sectionId === undefined) actions.open()
+    else actions.openSection(sectionId)
+  }
   const [requestedOnboarding, setRequestedOnboarding] = useState<string | undefined>()
   const [completedOnboarding, setCompletedOnboarding] = useState<ReadonlySet<string>>(() => new Set())
   const [showRecovery, setShowRecovery] = useState(false)
@@ -222,12 +232,14 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
 
   return (
     <>
+      {renderSlot('settings.platform-launcher', {
+        wide,
+        settingsOpen: open,
+        openSettings,
+      })}
       <div className={clsx(css.triggerRow, !wide && css.railRow)}>
         {renderSlot('settings.launcher', {
-          wide, settingsOpen: open, openSettings: (sectionId) => {
-            if (sectionId === undefined) actions.open()
-            else actions.openSection(sectionId)
-          },
+          wide, settingsOpen: open, openSettings,
           ...(shortcut?.keys.length ? { settingsShortcut: { keys: shortcut.keys, aria: shortcut.aria } } : {}),
           openOnboarding: (id) => { close(); setRequestedOnboarding(id) },
         }, { fallback: <Tooltip disabled={open} label={t('trigger')} shortcutKeys={shortcut?.keys}>

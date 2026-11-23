@@ -344,6 +344,12 @@
     - id: ui-settings-general
       name: '@deepseek-ai/dsh-client-ui-settings-general'
 
+    # Platform identity: the sidebar account entry and the personal-runtime
+    # ready/starting/failed overlay over the multi-user gateway. The native
+    # pages stay unchanged; without the gateway both contributions render nothing.
+    - id: ui-platform-identity
+      name: '@deepseek-ai/dsh-client-ui-platform-identity'
+
     - id: ui-settings-models
       name: '@deepseek-ai/dsh-client-ui-settings-models'
 

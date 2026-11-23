@@ -1,0 +1,28 @@
+# Per-user DSH runtime overlay, applied by the platform supervisor with
+# `dsh web --patch <this file>`.
+#
+# The legacy launch-token provider is disabled: no cookie, `?token=` URL, or
+# legacy API credential may admit a browser into a platform runtime. The only
+# admitted credential is the short-lived Ed25519 assertion the gateway signs for
+# this instance's fixed subject and generation.
+#
+# Every value that varies per user comes from the environment the supervisor
+# sets on the child process; nothing here is read from the browser.
+
+- id: authentication-token
+  disabled: true
+
+- insert:
+    - id: authentication-gateway
+      name: '@deepseek-ai/dsh-host-authentication-gateway'
+      config:
+        algorithm: ed25519
+        publicKeyFile: !!js process.env.DSH_GATEWAY_PUBLIC_KEY_FILE
+        audience: !!js process.env.DSH_GATEWAY_AUDIENCE
+        subject: !!js process.env.DSH_RUNTIME_SUBJECT
+        issuer: !!js process.env.DSH_GATEWAY_ISSUER
+        generation: !!js Number(process.env.DSH_RUNTIME_GENERATION)
+        keyId: !!js process.env.DSH_GATEWAY_KEY_ID
+        replayWindowSeconds: !!js Number(process.env.DSH_GATEWAY_REPLAY_WINDOW_SECONDS ?? '60')
+        clockSkewSeconds: 30
+        maxLifetimeSeconds: !!js Number(process.env.DSH_GATEWAY_MAX_LIFETIME_SECONDS ?? '300')

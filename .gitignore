@@ -52,3 +52,9 @@ native/system/test/bin/
 
 # Generated company-signed CUA release record.
 /packages/experimental/cua-macos/cua-helper.json
+
+# DSH multi-user platform local state and deployment secrets/artifacts.
+.dsh-platform/
+deploy/.env
+deploy/release/
+services/platform/evidence/
