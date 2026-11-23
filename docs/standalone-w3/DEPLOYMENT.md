@@ -35,6 +35,8 @@ bash deploy/scripts/build-image.sh 2026.11.23-1
 
 离线复制整个 `deploy/release/` 到部署机同名目录即可，无需部署机联网或重新构建。
 
+源码发布包（不含 `.env`/数据库/凭据，供内网 Git 或审计）：`bash deploy/scripts/make-source-release.sh <version>`，产物为 `deploy/release/dsh-platform-source-<version>.tar.gz` 与独立的 `SHA256SUMS-source-<version>`。交付入口与运维命令汇总见 [HANDOFF.md](HANDOFF.md)。
+
 首次构建前可先验证运行时镜像能启动：
 
 ```bash

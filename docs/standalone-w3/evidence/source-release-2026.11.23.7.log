@@ -1,0 +1,18 @@
+# 源码发布包 2026.11.23.7
+commit=6b2279deec884db81e927a4f6594c31cf872d7a5
+created_at=2026-11-23T14:46:40Z
+
+$ cat deploy/release/SHA256SUMS-source-2026.11.23.7
+9c3fb407b0a68001c936e94a02e0640c30922e3a4adddbb012f87b4692dea0a9  dsh-platform-source-2026.11.23.7.tar.gz
+
+size_bytes=1232525
+entry_count=473
+
+== forbidden content check ==
+no .env, no identity.sqlite, no runtime.sqlite
+
+== top-level entries ==
+deploy
+docs
+packages
+services

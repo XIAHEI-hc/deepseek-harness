@@ -498,6 +498,15 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 - 容器环境只含公钥路径与断言事实（issuer/audience/kid/时间窗），无平台数据库/会话/私钥变量。
 - 空闲回收：`DSH_RUNTIME_IDLE_SECONDS=8` 后 Runtime 自动 STOPPED、容器停止；用户空间目录全部保留；下一次请求从持久化空间重新启动并 READY。
 
+## 3.33 源码发布包（实测）
+
+证据 [evidence/source-release-2026.11.23.7.log](evidence/source-release-2026.11.23.7.log)。
+
+- `make-source-release.sh 2026.11.23.7` 生成 `dsh-platform-source-2026.11.23.7.tar.gz`：1,232,525 bytes、473 条目、sha256 `9c3fb407…`。
+- 内容：`services/platform`、`deploy`、`docs/standalone-w3`、平台身份前端插件与 Web bundle 接线文件；**不含** `.env`、`identity.sqlite`、`runtime.sqlite` 或凭据。
+- 校验文件独立为 `SHA256SUMS-source-2026.11.23.7`，不会覆盖镜像包的 `SHA256SUMS-2026.11.23.7`。
+- 交付入口与部署/运维命令见 [HANDOFF.md](HANDOFF.md)。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -593,6 +602,7 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 22:35 | 多窗口复用、共享历史、platform 重启恢复（W3 form token） | PASS（同身份同用户同 Runtime、重启后 Session/姓名/Runtime 仍有效，证据 `evidence/reuse-restart.log`） |
 | 22:45 | 最终 HEAD 回归探针（Agent/WS/Job/MCP/Browser） | PASS：22+10+11+8+8+13 assertions（证据 `evidence/final-probes.log`） |
 | 22:52 | 最终发布包安全/挂载/空闲回收演练 | PASS（旧 token 401、8 挂载无 socket、uid1000、空闲停止后空间保留并可重启，证据 `evidence/final-security-drill.log`） |
+| 22:58 | 源码发布包（无 .env/数据库/凭据） | PASS（473 条目、1,232,525 bytes、sha256 `9c3fb407…`，证据 `evidence/source-release-2026.11.23.7.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

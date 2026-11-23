@@ -3,7 +3,7 @@
 #
 #   bash deploy/scripts/make-source-release.sh [version]
 #
-# 产物：deploy/release/dsh-platform-source-<version>.tar.gz 与 SHA256SUMS-<version>
+# 产物：deploy/release/dsh-platform-source-<version>.tar.gz 与 SHA256SUMS-source-<version>（不覆盖镜像包的 SHA256SUMS-<version>）
 # 生产镜像包由 build-image.sh 生成；本脚本只打包平台源码、部署文件与实施文档。
 set -euo pipefail
 
@@ -27,5 +27,5 @@ tar -czf "$OUT/dsh-platform-source-$VERSION.tar.gz" \
   packages/bundle/web-app/cordis.patch.yml \
   packages/bundle/web-app/package.json
 
-( cd "$OUT" && sha256sum "dsh-platform-source-$VERSION.tar.gz" > "SHA256SUMS-$VERSION" && cat "SHA256SUMS-$VERSION" )
+( cd "$OUT" && sha256sum "dsh-platform-source-$VERSION.tar.gz" > "SHA256SUMS-source-$VERSION" && cat "SHA256SUMS-source-$VERSION" )
 echo "源码发布包：$OUT/dsh-platform-source-$VERSION.tar.gz"

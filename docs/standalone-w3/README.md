@@ -6,6 +6,7 @@
 
 | 文档 | 内容 |
 |---|---|
+| [HANDOFF.md](HANDOFF.md) | 最终交付入口：当前状态、发布包、部署/运维命令、证据索引、剩余外部阻塞 |
 | [BASELINE.md](BASELINE.md) | P0 基线：仓库状态、现有认证链审计、模块处置、技术决策 |
 | [ARCHITECTURE.md](../../services/platform/ARCHITECTURE.md) | 平台服务模块、信任边界、Runtime 启动约定、断言格式、开发测试约定 |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | 生产拓扑、前置条件、首次部署、备份、升级、日常运维 |
@@ -19,7 +20,7 @@
 ## 代码位置
 
 ```
-services/platform/           平台服务（TypeScript，零第三方运行时依赖）
+services/platform/           平台服务（TypeScript，仅 PostgreSQL 身份库使用 pg 驱动）
   src/identity/              W3/Mock 身份核心（移植 source/dsh_auth_core 行为）
   src/runtime/               Runtime Manager + Supervisor（进程/容器后端）
   src/gateway/               公网 Gateway（Session、CSRF、Ed25519 v2 断言、HTTP/SSE/WS 代理）
