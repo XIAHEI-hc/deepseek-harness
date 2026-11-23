@@ -23,7 +23,7 @@ BLOCKED  any hard prerequisite missing; all data and Job routes refuse
 | Chat/control plane | existing per-user DSH Runtime | sign-in, Session, chat, native tools; no host source, business data, or fusion workspace mounted |
 | Data/execution plane | `AnalysisJobRunner` | one short-lived container per job; read-only inputs, current workspace output, job scratch, no network by default |
 
-Analysis containers are started directly by Docker, and `services/platform/src/integration/runner.ts` is the only source of their arguments: `--read-only`, `--network none`, `--user <uid>`, `--cap-drop ALL`, `--security-opt no-new-privileges:true`, CPU/memory/PID limits, `--tmpfs /tmp`, and exactly three mounts:
+Analysis containers are started directly by Docker, and `services/platform/src/integration/runner.ts` is the only source of their arguments: `--read-only`, `--network none` by default (or an internal network plus the allowlisted broker), `--user <uid>`, `--cap-drop ALL`, `--security-opt no-new-privileges:true`, CPU/memory/PID limits, `--tmpfs /tmp`, and exactly three mounts:
 
 ```text
 /inputs   RO   authorized snapshots of the current Job
@@ -79,7 +79,7 @@ See the "system-fusion analysis" block in `deploy/.env.example` and `deploy/inte
 
 - Production requires `AUTH_MODE=w3`, `DSH_RUNTIME_KIND=container`, and `DSH_INTEGRATION_JOB_RUNNER_KIND=container`.
 - The analysis image must be fixed; a digest is recommended.
-- `DSH_INTEGRATION_JOB_NETWORK=none`; until a controlled egress broker lands, every other value is refused by preflight.
+- `DSH_INTEGRATION_JOB_NETWORK=none` by default. A dedicated network requires `DSH_INTEGRATION_EGRESS_BROKER_URL` and a healthy `/healthz`; the broker accepts only exact `host:port` allowlist entries.
 - Snapshot, workspace, and Job roots must be pairwise disjoint real directories; preflight refuses symlinks and overlap.
 - A non-Linux host cannot start analysis containers; a Windows host using Docker through WSL2 is development-only and is not a production fusion boundary.
 
@@ -88,7 +88,7 @@ See the "system-fusion analysis" block in `deploy/.env.example` and `deploy/inte
 Actual commands and results are in [TEST_REPORT.md](TEST_REPORT.md); per-gate status is in [ACCEPTANCE.md](ACCEPTANCE.md). Executed locally:
 
 - `pnpm run typecheck:platform`: passed.
-- `pnpm run test:platform`: 24 files passed, 1 skipped; 276 tests passed, 4 skipped (including 6 fusion specs).
+- `pnpm run test:platform`: 26 files passed, 1 skipped; 278 tests passed, 4 skipped (including 6 fusion specs).
 - Real Docker negative verification: `deploy/scripts/verify-integration-isolation.sh` passed on WSL2 Ubuntu + Docker Engine 29.7.2, covering read-only root, read-only `/inputs`, writable `/work` and `/scratch`, uid 1000, `--network none`, no Docker socket, and no host `/srv/dsh`.
 - W3 baseline regression: this round's `pnpm run test:platform` covered the original 220 baseline cases, all passed; a real W3 tenant remains externally `BLOCKED`.
 - Native optional UI: `packages/client/ui-integration-workbench` registers one `shell.overlay` launcher, reads status once, and renders nothing when fusion is absent; its API and component specs pass.
@@ -100,6 +100,6 @@ Actual commands and results are in [TEST_REPORT.md](TEST_REPORT.md); per-gate st
 Not complete, and must not be claimed production-ready:
 
 - `/fusion` is an explicit opt-in; without it, the guard activates only on the first `integration_*` call. The marker persists under `DSH_HOME` but is an application guard, not a physical sandbox rule.
-- A controlled egress broker is not implemented; analysis containers can only use `--network none`.
+- Controlled egress is opt-in and contract-tested; the broker image has not run in a target Docker network.
 - Real W3 tenant A/B, a seven-day target-machine run, and internal Git are external `BLOCKED` items.
 - Production deployment, upgrade, backup, and rollback reuse the existing scripts; a fusion-specific rehearsal on the target machine has not run.

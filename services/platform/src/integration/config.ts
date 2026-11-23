@@ -41,6 +41,8 @@ export interface IntegrationConfig {
   readonly runtimeApiUrl: string
   /** Network mode or network name for an analysis container. */
   readonly jobNetwork: string
+  /** Controlled egress proxy URL, or empty when jobs have no network. */
+  readonly egressBrokerUrl: string
   /** Numeric UID/GID the analysis container runs as. */
   readonly jobUid: number
   /** CPU limit passed to the analysis container. */
@@ -168,6 +170,7 @@ export function loadIntegrationConfig(
       dockerCommand: defaults.runtimeDockerCommand,
       runtimeApiUrl: '',
       jobNetwork: 'none',
+      egressBrokerUrl: '',
       jobUid: 1000,
       jobCpuLimit: '1',
       jobMemoryMb: 1024,
@@ -206,6 +209,7 @@ export function loadIntegrationConfig(
     dockerCommand: read(env, 'DSH_INTEGRATION_DOCKER_COMMAND', defaults.runtimeDockerCommand),
     runtimeApiUrl: read(env, 'DSH_INTEGRATION_RUNTIME_API_URL', ''),
     jobNetwork,
+    egressBrokerUrl: read(env, 'DSH_INTEGRATION_EGRESS_BROKER_URL', ''),
     jobUid: parsePositiveInteger(read(env, 'DSH_INTEGRATION_JOB_UID', ''), 'DSH_INTEGRATION_JOB_UID', 1000),
     jobCpuLimit: read(env, 'DSH_INTEGRATION_JOB_CPU_LIMIT', '1'),
     jobMemoryMb: parsePositiveInteger(read(env, 'DSH_INTEGRATION_JOB_MEMORY_MB', ''), 'DSH_INTEGRATION_JOB_MEMORY_MB', 1024),

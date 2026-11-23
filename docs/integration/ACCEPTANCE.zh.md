@@ -8,7 +8,7 @@
 
 | ID | 检查 | 状态 | 证据 |
 |---|---|---|---|
-| F0-01 | 现有 W3 平台套件仍通过 | RUN_PASS | `pnpm run test:platform`：276 通过、4 跳过 |
+| F0-01 | 现有 W3 平台套件仍通过 | RUN_PASS | `pnpm run test:platform`：278 通过、4 跳过 |
 | F0-02 | 真实 W3 租户 A/B 登录 | BLOCKED | 无 W3 租户凭据 |
 | F1-01 | 关闭开关无融合副作用 | RUN_PASS | `integration.config.spec.ts`、`integration.service.spec.ts` |
 | F1-02 | 开启但预检不完整时 blocked，原生平台继续运行 | RUN_PASS | `integration.preflight.spec.ts`、blocked 路由测试 |
@@ -22,6 +22,7 @@
 | F3-04 | 非 Linux 主机拒绝分析容器 | RUN_PASS | `integration.preflight.spec.ts` 主机平台缺项 |
 | F3-05 | 在任意融合工具运行前禁用 Shell/MCP/PTY/SSH/子 Agent/Schedule 旁路 | RUN_PASS | `/fusion` 命令标记会话；guard 只允许 `integration_*` 工具 |
 | F3-06 | 会话进入融合模式后拒绝非融合工具 | RUN_PASS | `tool-integration` 的 `fusionToolAllowed` 与 `tools/pre-execute` guard |
+| F3-07 | 可选 broker 只接受精确白名单 host:port | RUN_PASS | `deploy/integration/broker/proxy.test.mjs`、runner argv 与预检 broker 测试 |
 | F4-01 | Mock ACL 隔离用户与资源 | RUN_PASS | `integration.service.spec.ts` |
 | F4-02 | HTTP 适配器拒绝重定向、metadata 主机与超大响应 | RUN_PASS | `integration.http-adapter.spec.ts` |
 | F5-01 | 快照哈希、来源版本、授权记录与 epoch 被保存 | RUN_PASS | `integration.service.spec.ts` |

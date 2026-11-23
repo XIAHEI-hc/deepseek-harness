@@ -31,6 +31,8 @@ export interface PreflightOptions {
   readonly probeDocker?: ((command: string) => Promise<boolean>) | undefined
   /** Test-only override for a host that cannot preserve Linux bind-mount paths. */
   readonly allowUnsupportedHost?: boolean | undefined
+  /** Egress broker health probe; defaults to `GET <url>/healthz`. */
+  readonly probeBroker?: ((url: string) => Promise<boolean>) | undefined
 }
 
 /**
@@ -181,10 +183,46 @@ export async function runPreflight(config: IntegrationConfig, options: Preflight
       issues.push({ code: 'job-image-missing', message: 'DSH_INTEGRATION_JOB_IMAGE is not configured' })
     }
     if (config.jobNetwork !== 'none') {
-      issues.push({
-        code: 'job-network-not-denied',
-        message: 'DSH_INTEGRATION_JOB_NETWORK must be `none` until a controlled egress broker is configured',
-      })
+      if (config.egressBrokerUrl === '') {
+        issues.push({
+          code: 'egress-broker-missing',
+          message: 'a dedicated job network requires DSH_INTEGRATION_EGRESS_BROKER_URL',
+        })
+      } else {
+        let brokerUrl: URL | undefined
+        try {
+          brokerUrl = new URL(config.egressBrokerUrl)
+        } catch {
+          issues.push({ code: 'egress-broker-invalid', message: 'egress broker URL is not absolute' })
+        }
+        if (brokerUrl !== undefined && brokerUrl.protocol !== 'http:' && brokerUrl.protocol !== 'https:') {
+          issues.push({ code: 'egress-broker-invalid', message: 'egress broker URL must use http or https' })
+        }
+        if (brokerUrl !== undefined && (brokerUrl.username !== '' || brokerUrl.password !== '')) {
+          issues.push({ code: 'egress-broker-invalid', message: 'egress broker URL must not embed credentials' })
+        }
+        if (brokerUrl !== undefined) {
+          const probe = options.probeBroker ?? (async (url: string): Promise<boolean> => {
+            try {
+              const response = await fetch(`${url.replace(/\/+$/u, '')}/healthz`, { signal: AbortSignal.timeout(5_000) })
+              return response.ok
+            } catch {
+              // A broker that does not answer is unusable; preflight reports the
+              // stable issue instead of exposing the network error.
+              return false
+            }
+          })
+          let healthy = false
+          try {
+            healthy = await probe(config.egressBrokerUrl)
+          } catch {
+            healthy = false
+          }
+          if (!healthy) {
+            issues.push({ code: 'egress-broker-unavailable', message: 'egress broker health check failed' })
+          }
+        }
+      }
     }
     const probe = options.probeDocker ?? probeDockerDaemon
     let available = false

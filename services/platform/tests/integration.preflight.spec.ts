@@ -71,6 +71,22 @@ describe('runPreflight', () => {
     expect(imageResult.issues.map(issue => issue.code)).toContain('job-image-missing')
   })
 
+  it('requires a healthy broker for a dedicated job network', async () => {
+    const missing = makeConfig({ DSH_INTEGRATION_JOB_NETWORK: 'dsh-fusion-egress' }).config
+    const missingResult = await runPreflight(missing, { probeDocker: async () => true, allowUnsupportedHost: true })
+    expect(missingResult.issues.map(issue => issue.code)).toContain('egress-broker-missing')
+    const brokered = makeConfig({
+      DSH_INTEGRATION_JOB_NETWORK: 'dsh-fusion-egress',
+      DSH_INTEGRATION_EGRESS_BROKER_URL: 'http://fusion-broker:3128',
+    }).config
+    const brokeredResult = await runPreflight(brokered, {
+      probeDocker: async () => true,
+      allowUnsupportedHost: true,
+      probeBroker: async () => true,
+    })
+    expect(brokeredResult.state).toBe('ready')
+  })
+
   it('blocks a non-https connector in production and Mock systems in production', async () => {
     const { config, root } = makeConfig()
     writeFileSync(join(root, 'systems.json'), JSON.stringify(mockSystemsDocument()), 'utf8')

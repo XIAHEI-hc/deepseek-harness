@@ -71,9 +71,21 @@ bash deploy/scripts/verify-integration-release.sh deploy/release/integration-202
 
 The bundle contains the image tar, both registry examples, the job Dockerfile, a disabled-by-default `fusion.env.example`, and checksums. It never copies `.env`, databases, snapshots, workspaces, or user data. Import the image on the target host, keep `DSH_INTEGRATION_ENABLED=false`, merge only the reviewed settings, then run `admin integration status`.
 
+## Controlled egress (optional)
+
+Jobs stay on `--network none` unless an administrator deploys the broker. The broker joins the internal `dsh-fusion-egress` network and one egress network; jobs can reach only the broker. Configure exact destinations, then point the job network and proxy at it:
+
+```dotenv
+DSH_INTEGRATION_JOB_NETWORK=dsh-fusion-egress
+DSH_INTEGRATION_EGRESS_BROKER_URL=http://fusion-broker:3128
+DSH_FUSION_EGRESS_ALLOWLIST=api.example.test:443,batch.example.test:8443
+```
+
+The broker never follows redirects, refuses any target not in the exact `host:port` allowlist, and rejects metadata hosts. Preflight probes `/healthz` and stays blocked if the broker is missing or unhealthy. Build it with `docker build -t dsh-fusion-broker:local deploy/integration/broker`; compose starts it without publishing a port.
+
 ## Boundaries
 
 - Analysis containers receive only `/inputs` (read-only), `/work` (the selected workspace, read-write), and `/scratch` (job-private, read-write). `/app`, the platform configuration, and `/secrets` are never mounted.
-- Jobs have no network by default. A dedicated broker network is not implemented; preflight refuses anything except `none`.
+- Jobs have no network by default. A dedicated network is accepted only with a healthy allowlisted broker; the job container itself has no direct egress.
 - The connector registry is administrator-owned. A request selects an existing endpoint id; it never supplies a URL, host, or action outside the configured read actions.
 - Mock connectors are development fixtures. Production preflight refuses them.

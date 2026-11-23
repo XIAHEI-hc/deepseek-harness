@@ -52,6 +52,39 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # Optional fusion egress broker. It is the only member of the internal
+  # analysis network with an external route; exact allowlisted host:port pairs
+  # are proxied. The service publishes no port.
+  fusion-broker:
+    build:
+      context: ./integration/broker
+    image: dsh-fusion-broker:${DSH_PLATFORM_VERSION:-local}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: "3128"
+      DSH_FUSION_EGRESS_ALLOWLIST: ${DSH_FUSION_EGRESS_ALLOWLIST:-}
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    user: "1000:1000"
+    networks:
+      - default
+      - dsh-fusion-egress
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3128/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 networks:
   dsh-private:
     external: true
+  dsh-fusion-egress:
+    internal: true

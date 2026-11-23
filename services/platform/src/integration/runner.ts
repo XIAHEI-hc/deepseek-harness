@@ -93,6 +93,15 @@ export function buildAnalysisRunArguments(config: IntegrationConfig, spec: Analy
     `${spec.scratchDirectory}:/scratch:rw`,
     '-w',
     '/work',
+    ...(config.egressBrokerUrl === ''
+      ? []
+      : [
+          '-e', `HTTP_PROXY=${config.egressBrokerUrl}`,
+          '-e', `HTTPS_PROXY=${config.egressBrokerUrl}`,
+          '-e', `http_proxy=${config.egressBrokerUrl}`,
+          '-e', `https_proxy=${config.egressBrokerUrl}`,
+          '-e', 'NO_PROXY=127.0.0.1,localhost',
+        ]),
     '-e',
     'HOME=/scratch',
     '-e',

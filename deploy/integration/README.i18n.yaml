@@ -26,6 +26,9 @@
 /system-fusion-deployment/offline-fusion-release:
   en: b2261a9eb4b5a71b
   zh: 494898f0f32f4357
+/system-fusion-deployment/controlled-egress-optional:
+  en: 2c780e800cff0eb6
+  zh: 14f8eb4244e756e2
 /system-fusion-deployment/boundaries:
-  en: 633649366eba079c
-  zh: 632e7dc53b3222ce
+  en: bd7471b3e5cf91b7
+  zh: 621ca05d5924c842

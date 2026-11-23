@@ -71,9 +71,21 @@ bash deploy/scripts/verify-integration-release.sh deploy/release/integration-202
 
 发布包包含镜像 tar、两份注册表样例、Job Dockerfile、默认关闭的 `fusion.env.example` 与校验和。它从不复制 `.env`、数据库、快照、工作区或用户数据。在目标机导入镜像，保持 `DSH_INTEGRATION_ENABLED=false`，只合并已审核配置，然后运行 `admin integration status`。
 
+## 受控出口（可选）
+
+除非管理员部署 broker，否则 Job 仍是 `--network none`。broker 同时加入内部 `dsh-fusion-egress` 网络与一个出口网络；Job 只能访问 broker。配置精确目标后，把 Job 网络与代理指向它：
+
+```dotenv
+DSH_INTEGRATION_JOB_NETWORK=dsh-fusion-egress
+DSH_INTEGRATION_EGRESS_BROKER_URL=http://fusion-broker:3128
+DSH_FUSION_EGRESS_ALLOWLIST=api.example.test:443,batch.example.test:8443
+```
+
+broker 从不跟随重定向，拒绝不在精确 `host:port` 白名单中的目标，并拒绝 metadata 主机。预检探测 `/healthz`，broker 缺失或不健康时保持 blocked。可用 `docker build -t dsh-fusion-broker:local deploy/integration/broker` 构建；compose 启动它但不发布端口。
+
 ## 边界
 
 - 分析容器只接收 `/inputs`（只读）、`/work`（选中的工作区，读写）、`/scratch`（Job 私有，读写）。`/app`、平台配置与 `/secrets` 从不挂载。
-- 默认无网络。专用 broker 网络尚未实现；预检拒绝 `none` 以外的值。
+- 默认无网络。只有存在健康且带白名单的 broker 时才接受专用网络；Job 容器本身没有直接出口。
 - 连接器注册表由管理员持有。请求只选择已登记 endpoint id；绝不提供 URL、主机或配置只读动作之外的操作。
 - Mock 连接器是开发夹具。生产预检拒绝它们。

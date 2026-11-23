@@ -52,6 +52,22 @@ describe('analysis container argv', () => {
     expect(args).toContain('dsh-analysis@sha256:' + 'a'.repeat(64))
   })
 
+  it('adds proxy variables only when a controlled broker is configured', () => {
+    const brokered = loadIntegrationConfig({
+      APP_ENV: 'testing',
+      DSH_INTEGRATION_ENABLED: 'true',
+      DSH_INTEGRATION_JOB_RUNNER_KIND: 'container',
+      DSH_INTEGRATION_JOB_IMAGE: 'dsh-analysis@sha256:' + 'a'.repeat(64),
+      DSH_INTEGRATION_JOB_NETWORK: 'dsh-fusion-egress',
+      DSH_INTEGRATION_EGRESS_BROKER_URL: 'http://fusion-broker:3128',
+    }, { appEnv: 'testing', dataDir: 'C:/tmp/platform', runtimeDockerCommand: 'docker' })
+    const args = buildAnalysisRunArguments(brokered, spec)
+    expect(args[args.indexOf('--network') + 1]).toBe('dsh-fusion-egress')
+    expect(args).toContain('HTTP_PROXY=http://fusion-broker:3128')
+    expect(args).toContain('HTTPS_PROXY=http://fusion-broker:3128')
+    expect(args).toContain('NO_PROXY=127.0.0.1,localhost')
+  })
+
   it('uses the requested interpreter and a stable container name', () => {
     const python = buildAnalysisRunArguments(config, { ...spec, language: 'python' })
     expect(python.slice(-2)).toEqual(['python3', '/scratch/run.py'])

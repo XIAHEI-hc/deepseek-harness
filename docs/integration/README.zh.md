@@ -23,7 +23,7 @@ BLOCKED  any hard prerequisite missing; all data and Job routes refuse
 | 对话/控制平面 | 现有每用户 DSH Runtime | 登录、Session、聊天、原生工具；不挂载宿主源码、业务数据或融合工作区 |
 | 数据/执行平面 | `AnalysisJobRunner` | 每任务短生命周期容器；只读输入、当前工作区输出、Job scratch、默认无网络 |
 
-分析容器由 Docker 直接启动，参数以 `services/platform/src/integration/runner.ts` 为唯一来源：`--read-only`、`--network none`、`--user <uid>`、`--cap-drop ALL`、`--security-opt no-new-privileges:true`、CPU/内存/PID 限额、`--tmpfs /tmp`，以及三个显式挂载：
+分析容器由 Docker 直接启动，参数以 `services/platform/src/integration/runner.ts` 为唯一来源：`--read-only`、默认 `--network none`（或内部网络 + 白名单 broker）、`--user <uid>`、`--cap-drop ALL`、`--security-opt no-new-privileges:true`、CPU/内存/PID 限额、`--tmpfs /tmp`，以及三个显式挂载：
 
 ```text
 /inputs   RO   authorized snapshots of the current Job
@@ -79,7 +79,7 @@ GET  /api/integration/audit?jobId=...
 
 - 生产必须 `AUTH_MODE=w3`、`DSH_RUNTIME_KIND=container`、`DSH_INTEGRATION_JOB_RUNNER_KIND=container`。
 - 分析镜像必须固定；建议使用 digest。
-- `DSH_INTEGRATION_JOB_NETWORK=none`；在受控 egress broker 落地前，其他值被预检拒绝。
+- 默认 `DSH_INTEGRATION_JOB_NETWORK=none`。专用网络要求 `DSH_INTEGRATION_EGRESS_BROKER_URL` 且 `/healthz` 健康；broker 只接受精确 `host:port` 白名单。
 - 快照、工作区、Job 根必须是互不重叠的真实目录；预检拒绝符号链接与重叠。
 - 非 Linux 主机拒绝启动分析容器；Windows 上通过 WSL2 运行 Docker 的宿主只用于开发，不作为融合生产边界。
 
@@ -88,7 +88,7 @@ GET  /api/integration/audit?jobId=...
 实际命令与结果见 [TEST_REPORT.zh.md](TEST_REPORT.zh.md)，逐项状态见 [ACCEPTANCE.zh.md](ACCEPTANCE.zh.md)。已在本机执行：
 
 - `pnpm run typecheck:platform`：通过。
-- `pnpm run test:platform`：24 个文件通过、1 个跳过；276 个用例通过、4 个跳过（含 6 个融合 spec）。
+- `pnpm run test:platform`：26 个文件通过、1 个跳过；278 个用例通过、4 个跳过（含 6 个融合 spec）。
 - 真实 Docker 负向验证：`deploy/scripts/verify-integration-isolation.sh` 在 WSL2 Ubuntu + Docker Engine 29.7.2 上通过，验证只读根、只读 `/inputs`、`/work`/`/scratch` 可写、uid 1000、`--network none`、无 Docker socket、无宿主 `/srv/dsh`。
 - W3 基线回归：本轮 `pnpm run test:platform` 覆盖原 220 个基线用例，全部通过；真实 W3 租户仍为外部 `BLOCKED`。
 - 原生可选 UI：`packages/client/ui-integration-workbench` 注册一个 `shell.overlay` 启动器，只读取一次状态，融合不存在时不渲染任何内容；其 API 与组件测试通过。
@@ -100,6 +100,6 @@ GET  /api/integration/audit?jobId=...
 尚未完成、不得声称生产可用：
 
 - `/fusion` 是显式 opt-in；未使用它时，guard 只在首次 `integration_*` 调用后生效。标记持久化在 `DSH_HOME` 下，但仍是应用层 guard，不是物理沙箱规则。
-- 受控 egress broker 未实现；分析容器只能 `--network none`。
+- 受控出口是 opt-in 且只做了合同测试；broker 镜像尚未在目标 Docker 网络运行。
 - 真实 W3 租户 A/B、目标机 7 天运行、内网 Git 属外部 `BLOCKED`。
 - 生产部署、升级、备份与回滚仅复用现有脚本，尚未在目标机完成融合专用演练。
