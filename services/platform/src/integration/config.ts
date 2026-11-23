@@ -55,6 +55,8 @@ export interface IntegrationConfig {
   readonly jobTimeoutMs: number
   /** Concurrent active jobs allowed per user. */
   readonly maxActiveJobsPerUser: number
+  /** Concurrent active jobs allowed across the platform. */
+  readonly maxActiveJobs: number
   /** Largest accepted snapshot body in bytes. */
   readonly maxSnapshotBytes: number
   /** Largest accepted analysis script in bytes. */
@@ -177,6 +179,7 @@ export function loadIntegrationConfig(
       jobPidsLimit: 256,
       jobTimeoutMs: 900_000,
       maxActiveJobsPerUser: 2,
+      maxActiveJobs: 8,
       maxSnapshotBytes: 16 * 1024 * 1024,
       maxScriptBytes: 256 * 1024,
       httpTimeoutMs: 15_000,
@@ -221,6 +224,11 @@ export function loadIntegrationConfig(
       read(env, 'DSH_INTEGRATION_MAX_ACTIVE_JOBS', ''),
       'DSH_INTEGRATION_MAX_ACTIVE_JOBS',
       2,
+    ),
+    maxActiveJobs: parsePositiveInteger(
+      read(env, 'DSH_INTEGRATION_MAX_ACTIVE_JOBS_TOTAL', ''),
+      'DSH_INTEGRATION_MAX_ACTIVE_JOBS_TOTAL',
+      8,
     ),
     maxSnapshotBytes: parsePositiveInteger(
       read(env, 'DSH_INTEGRATION_MAX_SNAPSHOT_BYTES', ''),

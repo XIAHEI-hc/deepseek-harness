@@ -532,7 +532,7 @@ export class IntegrationStore {
   }
 
   /** @returns the number of queued or running jobs across all users. */
-  private countActiveJobsAll(): number {
+  countActiveJobsAll(): number {
     const row = this.database
       .prepare("SELECT COUNT(*) AS total FROM dsh_integration_jobs WHERE status IN ('queued', 'running')")
       .get()

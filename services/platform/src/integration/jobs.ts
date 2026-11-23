@@ -130,6 +130,9 @@ export class JobService {
     if (this.store.countActiveJobs(actor.userId) >= this.config.maxActiveJobsPerUser) {
       throw new IntegrationError('job-limit', 'too many active analysis jobs', 429)
     }
+    if (this.store.countActiveJobsAll() >= this.config.maxActiveJobs) {
+      throw new IntegrationError('job-limit', 'the analysis platform is busy', 429)
+    }
     const workspace = this.workspaces.require(actor, request.workspaceId)
     const uniqueIds = [...new Set(request.inputSnapshotIds)]
     const snapshots = this.store.findSnapshots(uniqueIds, actor.userId)

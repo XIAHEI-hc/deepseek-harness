@@ -80,6 +80,7 @@ See the "system-fusion analysis" block in `deploy/.env.example` and `deploy/inte
 - Production requires `AUTH_MODE=w3`, `DSH_RUNTIME_KIND=container`, and `DSH_INTEGRATION_JOB_RUNNER_KIND=container`.
 - The analysis image must be fixed; a digest is recommended.
 - `DSH_INTEGRATION_JOB_NETWORK=none` by default. A dedicated network requires `DSH_INTEGRATION_EGRESS_BROKER_URL` and a healthy `/healthz`; the broker accepts only exact `host:port` allowlist entries.
+- Concurrent active jobs are bounded per user (`DSH_INTEGRATION_MAX_ACTIVE_JOBS`, default 2) and platform-wide (`DSH_INTEGRATION_MAX_ACTIVE_JOBS_TOTAL`, default 8); both limits return 429 `job-limit`.
 - Snapshot, workspace, and Job roots must be pairwise disjoint real directories; preflight refuses symlinks and overlap.
 - A non-Linux host cannot start analysis containers; a Windows host using Docker through WSL2 is development-only and is not a production fusion boundary.
 
@@ -88,7 +89,7 @@ See the "system-fusion analysis" block in `deploy/.env.example` and `deploy/inte
 Actual commands and results are in [TEST_REPORT.md](TEST_REPORT.md); per-gate status is in [ACCEPTANCE.md](ACCEPTANCE.md). Executed locally:
 
 - `pnpm run typecheck:platform`: passed.
-- `pnpm run test:platform`: 27 files passed, 1 skipped; 281 tests passed, 4 skipped (including 6 fusion specs).
+- `pnpm run test:platform`: 27 files passed, 1 skipped; 283 tests passed, 4 skipped (including 6 fusion specs).
 - Real Docker negative verification: `deploy/scripts/verify-integration-isolation.sh` passed on WSL2 Ubuntu + Docker Engine 29.7.2, covering read-only root, read-only `/inputs`, writable `/work` and `/scratch`, uid 1000, `--network none`, no Docker socket, and no host `/srv/dsh`.
 - W3 baseline regression: this round's `pnpm run test:platform` covered the original 220 baseline cases, all passed; a real W3 tenant remains externally `BLOCKED`.
 - Native optional UI: `packages/client/ui-integration-workbench` registers one `shell.overlay` launcher, reads status once, and renders nothing when fusion is absent; its API and component specs pass.

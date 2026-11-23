@@ -30,6 +30,7 @@
 | F5-03 | 产物下载重新校验 owner 与哈希 | RUN_PASS | `integration.service.spec.ts` |
 | F5-04 | 权限 epoch 变化拒绝旧快照 | RUN_PASS | `integration.service.spec.ts` |
 | F5-05 | 显式取消不会被容器退出覆盖 | RUN_PASS | `integration.service.spec.ts` 取消竞态用例 |
+| F5-06 | 平台级活跃 Job 上限返回 429 | RUN_PASS | `integration.service.spec.ts` 全局上限用例 |
 | F6-01 | 无融合 API 时工作台隐藏 | RUN_PASS | `Workbench.client.spec.tsx` |
 | F6-02 | ready 与 blocked 面板显示授权资源与缺项代码 | RUN_PASS | `Workbench.client.spec.tsx` |
 | F6-03 | 排队/运行中的 Job 状态更新 | RUN_PASS | `Workbench.client.spec.tsx` 的 2 秒面板轮询 |

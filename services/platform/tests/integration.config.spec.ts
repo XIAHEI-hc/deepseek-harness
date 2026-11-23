@@ -10,6 +10,15 @@ describe('loadIntegrationConfig', () => {
     expect(config.runnerKind).toBe('process')
     expect(config.snapshotsRoot.endsWith('integration\\snapshots') || config.snapshotsRoot.endsWith('integration/snapshots')).toBe(true)
     expect(config.jobNetwork).toBe('none')
+    expect(config.maxActiveJobs).toBe(8)
+  })
+
+  it('reads the platform-wide active job limit', () => {
+    const config = loadIntegrationConfig({
+      DSH_INTEGRATION_ENABLED: 'true',
+      DSH_INTEGRATION_MAX_ACTIVE_JOBS_TOTAL: '3',
+    }, { appEnv: 'testing', dataDir: 'C:/tmp/platform', runtimeDockerCommand: 'docker' })
+    expect(config.maxActiveJobs).toBe(3)
   })
 
   it('ignores stale invalid fusion settings while disabled', () => {

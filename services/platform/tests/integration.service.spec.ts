@@ -1,6 +1,7 @@
 /** System-fusion service: authorization, snapshots, workspaces, jobs, and source metadata. */
 import { afterEach, describe, expect, it } from 'vitest'
 import type { IntegrationService } from '../src/contracts.ts'
+import { IntegrationStore } from '../src/integration/store.ts'
 import {
   CancellableAnalysisExecutor,
   FakeAnalysisExecutor,
@@ -215,6 +216,40 @@ describe('analysis jobs', () => {
     const view = await callFusion(environment.service, sessionFor(USER_A), 'GET', `/api/integration/jobs/${jobId}`)
     const artifactId = requireString((view.body?.['artifacts'] as Record<string, unknown>[])[0] ?? {}, 'id')
     expect((await callFusion(environment.service, sessionFor(USER_B), 'GET', `/api/integration/artifacts/${artifactId}/download`)).status).toBe(404)
+  })
+
+  it('refuses a job when the platform-wide active limit is reached', async () => {
+    environment = await createIntegrationTestEnvironment({ maxActiveJobs: 1 })
+    const workspaceId = await createWorkspace(environment.service, USER_A, 'Busy')
+    const snapshotId = await captureSnapshot(environment.service, USER_A, 'sales-2026')
+    const store = IntegrationStore.open(environment.config.databaseFile)
+    try {
+      store.insertJob({
+        id: 'other-job',
+        ownerUserId: USER_B,
+        sessionId: 'session-b',
+        workspaceId: 'other-ws',
+        inputSnapshotIds: [],
+        language: 'shell',
+        policyEpoch: 1,
+        scriptSha256: 'e'.repeat(64),
+        status: 'running',
+        createdAt: '2026-11-24T00:00:00.000Z',
+        startedAt: '2026-11-24T00:00:00.000Z',
+        finishedAt: null,
+        errorCode: null,
+      })
+    } finally {
+      store.close()
+    }
+    const response = await callFusion(environment.service, sessionFor(USER_A), 'POST', '/api/integration/jobs', {
+      workspaceId,
+      inputSnapshotIds: [snapshotId],
+      language: 'shell',
+      script: 'report\n',
+    })
+    expect(response.status).toBe(429)
+    expect(response.body?.['error']).toMatchObject({ code: 'job-limit' })
   })
 
   it('refuses to start a job when the admission session is no longer live', async () => {

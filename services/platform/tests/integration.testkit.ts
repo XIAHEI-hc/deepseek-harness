@@ -174,6 +174,7 @@ export async function createIntegrationTestEnvironment(options: {
   readonly systems?: unknown
   readonly sessionLive?: (sessionId: string, userId: string, permissionVersion: number) => boolean
   readonly sessionReapIntervalMs?: number
+  readonly maxActiveJobs?: number
 } = {}): Promise<IntegrationTestEnvironment> {
   const root = mkdtempSync(join(tmpdir(), 'dsh-integration-'))
   const systemsFile = join(root, 'systems.json')
@@ -186,6 +187,9 @@ export async function createIntegrationTestEnvironment(options: {
     DSH_INTEGRATION_SYSTEMS_FILE: systemsFile,
     DSH_INTEGRATION_JOB_RUNNER_KIND: 'container',
     DSH_INTEGRATION_JOB_IMAGE: 'dsh-analysis-test:local',
+    ...(options.maxActiveJobs === undefined
+      ? {}
+      : { DSH_INTEGRATION_MAX_ACTIVE_JOBS_TOTAL: String(options.maxActiveJobs) }),
     DSH_INTEGRATION_JOB_NETWORK: 'none',
     DSH_INTEGRATION_JOB_UID: '1000',
   }, {

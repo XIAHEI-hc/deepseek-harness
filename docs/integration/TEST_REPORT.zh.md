@@ -9,7 +9,7 @@
 | 命令 | 结果 | 说明 |
 |---|---|---|
 | `pnpm run typecheck:platform` | PASS | `tsc -p services/platform/tsconfig.json --noEmit` |
-| `pnpm run test:platform` | PASS | 27 个测试文件通过、1 个跳过；281 个用例通过、4 个跳过 |
+| `pnpm run test:platform` | PASS | 27 个测试文件通过、1 个跳过；283 个用例通过、4 个跳过 |
 | `DSH_INTEGRATION_JOB_IMAGE=dsh-runtime:2026.11.23.7 bash deploy/scripts/verify-integration-isolation.sh`（WSL2 Ubuntu） | PASS | 真实 Docker 29.7.2；只读根、只读输入、工作区/scratch 可写、uid 1000、`network none`、无 Docker socket、无宿主部署根 |
 | `pnpm exec vitest run packages/client/ui-integration-workbench/tests` | PASS | 2 个文件、10 个用例：状态/概览/CSRF 解析、面板状态与排队 Job 轮询 |
 | `pnpm exec vitest run packages/client/ui-theme/tests` | PASS | 24 个文件、183 个用例：新样式表满足圆角、发丝边框、阴影、焦点环、圆角形状与滚动条门禁 |
