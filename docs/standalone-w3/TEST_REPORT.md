@@ -100,6 +100,31 @@ Duration    30.59s
 
 同时验证了客户端插件真实进入原生模块清单：页面 `__DSH_BOOT__` 的启动组合包含`@deepseek-ai/dsh-client-ui-platform-identity/client.js`，该启动组合（6.0 MB JS）经 Gateway 代理返回 200 并包含插件代码。
 
+## 3.4 真实容器隔离验证（WSL2 Linux Docker，60 断言全 PASS）
+
+命令（WSL 内执行，使用真实 Docker 守护进程与生产 `createDockerBackend` 代码路径）：
+
+```bash
+wsl -d Ubuntu --exec bash /mnt/d/Vibe_coding/deepseek-harness/deploy/scripts/verify-container-isolation.sh
+```
+
+实测结果：`CONTAINER E2E PASS: 60 assertions`，证据日志 [evidence/container-isolation.log](evidence/container-isolation.log)。
+
+| 覆盖 | 实测断言 |
+|---|---|
+| RUNT-01 一身份一容器 | A/B 两个容器、不同私网 IP、各自独立 6 个空间挂载 |
+| RUNT-02/03 同身份复用 | 第二次 ensure 复用同一 target，同身份只有一个容器 |
+| RUNT-05/08 异常退出与重启 | `docker stop` 后 ensure 为 FAILED 且 retryable；retry 产生新 generation，数据保留 |
+| RUNT-06/07 空闲与 lease | 持有 lease 时 idle reaper 不回收；释放后 reaper 停止容器、数据保留、下次访问新 generation |
+| RUNT-09 Supervisor 重启 | 新 manager 实例 adopt 运行中容器：READY、同 generation、不产生第二个容器 |
+| RUNT-11/12 敏感挂载 | 容器内不可见 `/var/run/docker.sock`、Gateway 私钥、宿主根 `/mnt/d`、B 的空间目录 |
+| RUNT-13 资源限额 | inspect 断言 memory=512MiB、NanoCpus=1e9、PidsLimit=256、固定 uid/gid 1000:1000 |
+| OPS-03 端口 | `NetworkSettings.Ports` 为空，HostConfig.NetworkMode 仅私有网络 |
+| DATA-05 | 容器内 `uid=1000`，只能访问本人 6 个空间挂载，不能访问他人空间/宿主根 |
+| 挂载策略 | 恰好 8 个挂载，其中仅公钥与 runtime overlay 为 `:ro`，不挂载整个 spaces 根 |
+
+限制：验证使用轻量 probe 镜像（只回答就绪探针）驱动真实 docker run argv；完整 DSH Runtime 镜像（`deploy/runtime/Dockerfile`）仍需在 Linux 构建机构建后复验（见 OPEN_ISSUES）。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -115,6 +140,7 @@ Duration    30.59s
 | 文档 gates | `pnpm run test:docs` | PASS（21/21 gates：md wrap、md links、translation pairing、doc budgets、package README、repository references 等） |
 | 文档同步 | `pnpm run doc-sync` | 42/43 gates PASS；唯一失败为既有 Windows 环境限制：`scripts/project-doc-site.spec.ts` 创建符号链接 `EPERM`（与本改动无关） |
 | 平台容器镜像 | `docker build -f deploy/platform/Dockerfile -t dsh-platform:test .` 后 `docker run ... --check` | PASS（镜像构建成功；开发配置校验通过；生产缺配置时按预期列出缺项并非零退出） |
+| 容器隔离（真实 Docker） | `wsl -d Ubuntu --exec bash deploy/scripts/verify-container-isolation.sh` | **PASS：60 assertions**（证据 `evidence/container-isolation.log`） |
 | 源码发布包 | `deploy/release/dsh-platform-source-2026.11.23-dev.tar.gz` | PASS（541,465 bytes，sha256 37f4da64…d44a3；173 条目，无 `.env`/数据库/凭据；含 `.env.example`） |
 | 仓库 lint | `pnpm run lint` | 失败项全部为**既有文件**（`skill-plaza`、`authentication-gateway` 测试、`workspace-controller`、`ui-skill-plaza` 测试），无新代码文件；`pnpm exec oxlint services/platform packages/client/ui-platform-identity` 0 问题 |
 
@@ -154,6 +180,7 @@ Duration    30.59s
 | 13:12 | 平台容器镜像构建 + `--check`（开发/生产） | PASS（生产 fail-closed 列出缺项） |
 | 13:13 | 源码发布包 + SHA256 | PASS（无 `.env`/凭据） |
 | 13:14 | 平台单测最终复跑 | 13 files / 189 passed / 1 skipped |
+| 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 
 ### 结论
 

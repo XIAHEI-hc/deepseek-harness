@@ -63,10 +63,13 @@ Runtime 只读取公钥文件。
   --trusted-host <publicAuthority>
 ```
 
-容器后端（生产）：同一命令在用户容器内执行，`--host <容器 IP>`，端口不对外发布；
-容器只挂载该用户的空间目录（读写）与 Gateway 公钥（只读），不挂 Docker socket、宿主 root、
-Gateway 私钥或平台数据库。空间目录结构：`<root>/<space_key>/{dsh-home,home,agents-home,workspaces,uploads,tmp}`。
+容器后端（生产）：同一命令在用户容器内执行，`--host <容器 IP>`，端口不对外发布；容器内 cwd 是用户工作区，
+所以镜像入口 `deploy/runtime/entrypoint.sh` 用绝对路径解析 tsx loader 与 DSH CLI（`/app/node_modules/tsx/...`、
+`/app/apps/cli/src/bin.ts`），Supervisor 追加 `web --patch ... --host --port ...` 参数。容器只挂载该用户的空间目录
+（读写）与 Gateway 公钥（只读），不挂 Docker socket、宿主 root、Gateway 私钥或平台数据库。
+空间目录结构：`<root>/<space_key>/{dsh-home,home,agents-home,workspaces,uploads,tmp}`。
 `space_key = HMAC-SHA256(realm, user_id)` 的不透明十六进制值，绝不使用显示名或客户端输入。
+真实容器策略由 `deploy/scripts/verify-container-isolation.sh` 在真实 Docker 上验证（60 断言）。
 
 运行时环境变量（每用户唯一）：
 

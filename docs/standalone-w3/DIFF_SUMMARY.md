@@ -14,7 +14,7 @@
 | `src/runtime/` | Runtime Manager（状态机、generation、幂等 ensure、对账、空闲回收、lease）+ Process/Container Supervisor 后端、空间目录与 HMAC space_key |
 | `src/gateway/` | 公网 Gateway：Session/CSRF、Ed25519 v2 断言签发、HTTP/SSE/WS 代理与头清洗、登录页/状态页/CSP、`/api/runtime/*` |
 | `src/app.ts`, `src/main.ts` | 组合根、进程入口（`--check` 校验模式、SIGINT/SIGTERM 关闭） |
-| `tests/` | 13 个 spec / 189 tests（身份、运行时、网关、配置）+ `tests/e2e/` 真实双用户端到端 |
+| `tests/` | 13 个 spec / 189 tests（身份、运行时、网关、配置）+ `tests/e2e/` 真实双用户端到端 + `tests/e2e/container-probe.ts` 真实容器隔离 probe（60 断言） |
 | `ARCHITECTURE.md`, `README.md`, `package.json`, `tsconfig.json`, `vitest*.config.ts` | 模块文档、脚本与测试配置 |
 
 ## 2. 新增：部署 `deploy/`
@@ -22,11 +22,13 @@
 | 文件 | 作用 |
 |---|---|
 | `runtime/platform-runtime.patch.yml` | 每用户 DSH Runtime overlay：禁用 `authentication-token`，插入 `authentication-gateway`（固定 subject/generation/公钥，env 表达式） |
-| `runtime/Dockerfile` | 多阶段构建的 DSH Runtime 镜像（非 root UID，用户数据卷外置） |
+| `runtime/Dockerfile` | 多阶段构建的 DSH Runtime 镜像（非 root UID，用户数据卷外置）；`runtime/entrypoint.sh` 以绝对路径解析 tsx loader 与 CLI（容器 cwd 是用户工作区，相对路径会解析失败） |
+| `tests/probe-runtime/` | 轻量 probe 镜像（只回答就绪探针），用于在真实 Docker 上验证 supervisor 的容器启动策略 |
 | `platform/Dockerfile` | 平台服务镜像（Node 24 type-stripping 直接运行 + docker CLI 供 Supervisor 使用） |
 | `compose.yml` | 生产编排：唯一公网入口、`/srv/dsh` 同路径挂载、`dsh-private` 私有网络、healthcheck |
 | `.env.example` | 全部生产/开发配置项与生产强制项说明 |
 | `scripts/{init,build-image,backup,restore,upgrade,rollback,healthcheck,run-dev}.sh`、`run-dev.ps1` | 一键初始化、离线发布、备份/恢复、升级/回滚、健康检查、本地开发 |
+| `scripts/verify-container-isolation.sh` | 在 WSL/Linux 内运行真实容器隔离验证（60 断言：挂载/端口/UID/限额/lease/空闲回收/adopt/数据保留） |
 
 ## 3. 新增：平台身份前端插件
 

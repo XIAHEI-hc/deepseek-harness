@@ -32,14 +32,17 @@ RUN groupadd --gid 1000 dsh && useradd --uid 1000 --gid 1000 --create-home --hom
 
 WORKDIR /app
 COPY --from=build /src /app
+COPY deploy/runtime/entrypoint.sh /app/entrypoint.sh
+RUN chmod 0555 /app/entrypoint.sh
 
 ENV DSH_HOME=/data/dsh-home \
     HOME=/data/home \
     DSH_AGENTS_HOME=/data/agents-home \
     TMPDIR=/data/tmp \
+    TSX_TSCONFIG_PATH=/app/tsconfig.json \
     NO_COLOR=1
 
-# supervisor 以完整 argv 覆盖 CMD：node --import tsx/esm apps/cli/src/bin.ts web ...
-ENTRYPOINT []
-CMD ["node", "--import", "tsx/esm", "apps/cli/src/bin.ts"]
+# The supervisor appends the app arguments; the entrypoint resolves the loader
+# and CLI absolutely because the container's cwd is the user workspace.
+ENTRYPOINT ["/app/entrypoint.sh"]
 USER 1000:1000

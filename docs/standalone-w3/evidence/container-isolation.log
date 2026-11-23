@@ -1,0 +1,52 @@
+PASS 1: user A runtime is READY
+PASS 2: user A runtime returns a private target
+PASS 3: A target host is the container private IP
+PASS 4: A target port is the container runtime port
+PASS 5: A container runs as fixed non-root uid/gid 1000:1000
+PASS 6: A container publishes no ports
+PASS 7: A container joins only the private network
+PASS 8: A container has the configured 512 MiB memory limit
+PASS 9: A container has the configured 1 CPU limit
+PASS 10: A container has the configured 256 PID limit
+PASS 11: A container has exactly 8 mounts (space dirs + public key + overlay), got 8
+PASS 12: exactly two mounts are read-only (public key and runtime overlay)
+PASS 13: no mount exposes the gateway private key
+PASS 14: no mount exposes the Docker socket
+PASS 15: no container mounts the whole spaces root
+PASS 16: A container mounts /data/dsh-home
+PASS 17: A container mounts /data/home
+PASS 18: A container mounts /data/agents-home
+PASS 19: A container mounts /data/workspaces
+PASS 20: A container mounts /data/uploads
+PASS 21: A container mounts /data/tmp
+PASS 22: A container mounts /run/dsh/gateway-public.pem
+PASS 23: A container mounts /run/dsh/platform-runtime.patch.yml
+PASS 24: A and B resolve different DSH_HOME paths
+PASS 25: A can write inside its own DSH_HOME mount
+PASS 26: A process runs as uid 1000 inside the container
+PASS 27: A container cannot see /var/run/docker.sock
+PASS 28: A container cannot see the gateway private key
+PASS 29: A container has no host filesystem mount
+PASS 30: A container cannot see B's space directory
+PASS 31: user B runtime is READY
+PASS 32: user B runtime returns a private target
+PASS 33: A and B run in containers with different private IPs
+PASS 34: B cannot read A's marker file
+PASS 35: B can read its own marker file
+PASS 36: same-user second ensure runtime is READY
+PASS 37: same-user second ensure runtime returns a private target
+PASS 38: same identity reuses the same container target
+PASS 39: same identity still has exactly one container
+PASS 40: supervisor restart adoption runtime is READY
+PASS 41: supervisor restart adoption runtime returns a private target
+PASS 42: restarted supervisor adopts the running container
+PASS 43: adoption keeps the same generation
+PASS 44: adoption starts no second container
+PASS 45: a stopped container is detected as FAILED
+PASS 46: the FAILED runtime is explicitly retryable
+PASS 47: retry after container stop runtime is READY
+PASS 48: retry after container stop runtime returns a private target
+PASS 49: retry starts a new generation
+PASS 50: retry keeps the persisted user data (read "A" from "/mnt/d/Vibe_coding/deepseek-harness/.dsh-container-test/spaces/d1ef456675ba969112d2988d89cd2f3d9c8582546ddc40cd250b81548e3611ac/dsh-home")
+PASS 51: container probe cleaned up its containers
+CONTAINER E2E PASS: 51 assertions

@@ -99,11 +99,13 @@ bash deploy/scripts/rollback.sh <backup-label>
 | 强制下线 | 撤销 `dsh_sessions` 该用户全部 Session；Gateway ≤20s 内断开现存 WebSocket |
 | 清理空闲 Runtime | 自动：`DSH_RUNTIME_IDLE_SECONDS`（默认 1800s），仅在无 WebSocket/lease 时停止，数据保留 |
 
-## 9. 本地开发（Windows/Linux）
+## 9. 本地开发与容器隔离验证（Windows/Linux）
 
 ```bash
 bash deploy/scripts/run-dev.sh          # Linux/WSL
 pwsh -File deploy/scripts/run-dev.ps1   # Windows
+# 真实容器隔离验证（需要 Docker；WSL 内执行）
+wsl -d Ubuntu --exec bash deploy/scripts/verify-container-isolation.sh
 ```
 
 开发模式：`AUTH_MODE=mock`、`DSH_RUNTIME_KIND=process`（受限进程，非生产安全边界），数据位于仓库根 `.dsh-platform/`。真实 A/B 双用户与隔离验收见`services/platform/tests/e2e/`，真实 W3 登录需要目标环境凭据。

@@ -55,6 +55,7 @@ native/system/test/bin/
 
 # DSH multi-user platform local state and deployment secrets/artifacts.
 .dsh-platform/
+.dsh-container-test/
 deploy/.env
 deploy/release/
 services/platform/evidence/
