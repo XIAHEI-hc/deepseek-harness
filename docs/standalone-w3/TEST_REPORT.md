@@ -343,14 +343,16 @@ Goal/Workflow 没有跨 Runtime 的寻址端点，其隔离边界与 Session 相
 
 ## 5. BLOCKED / NOT_RUN
 
+当前矩阵：**PASS 79 / NOT_RUN 2 / BLOCKED 3**（另有 PostgreSQL 生产后端记录缺口）。
+
 | ID | 状态 | 原因 |
 |---|---|---|
 | AUTH-24 | BLOCKED | 无真实 W3 租户凭据与回调白名单；Mock/脚本化 W3 不替代真实登录 |
-| OPS-02/06/07/10 | BLOCKED | 无生产部署机、内网 Git 地址与凭据 |
-| RUNT-11/12、DATA-05（容器内实测） | BLOCKED | Windows 宿主机无法路由 WSL2 用户自定义网络容器 IP；需 Linux 部署机复验 |
 | OPS-08 | BLOCKED | 需要 7 天真实运行窗口 |
+| OPS-10 | BLOCKED | 无内网 Git 地址与凭据 |
 | PostgreSQL 生产库 | BLOCKED | 当前实现为 SQLite + 版本化迁移；PostgreSQL 后端未实现 |
-| UI 截图证据（UI-01/02/09） | NOT_RUN | 需要真实浏览器 + 真实 W3；组件测试与 e2e HTML 证据已有 |
+| DATA-10 | NOT_RUN | 浏览器自动化上下文需要真实浏览器工具链（browser-use/Chrome）与 Agent 会话 |
+| OPS-09 | NOT_RUN | MCP 与真实模型供应商聊天回归需要目标环境凭据；keyless 已覆盖 Agent Loop/流式事件、Session、Skills、Job 与 WebSocket 隔离 |
 
 ## 6. 更新记录
 
