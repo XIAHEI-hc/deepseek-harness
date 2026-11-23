@@ -30,7 +30,7 @@
 - workbench：无 API 时隐藏、启动器/面板渲染、授权资源列表、快照选择、阻止缺项代码、变更请求 CSRF。
 - 运行时能力：签发/校验/过期/篡改、无浏览器 Session 的 Gateway bearer 路由、Runtime 环境注入与模型工具传输。
 - 会话撤销：注销后的 `isSessionActive`、过期权限版本拒绝、撤销扫描取消运行中的 Job。
-- 融合工具 guard：会话进入融合模式后只允许 `integration_*` 工具名。
+- 融合工具 guard：`/fusion` 在首个动作前标记会话；之后只允许 `integration_*` 工具名。
 
 ## 3. 真实容器负向证据
 

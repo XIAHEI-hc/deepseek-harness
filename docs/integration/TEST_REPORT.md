@@ -30,7 +30,7 @@ Records commands and results actually executed; unexecuted items are explicitly 
 - workbench: hidden without the API, launcher/panel rendering, authorized resource listing, snapshot selection, blocked issue codes, CSRF on mutations.
 - runtime capability: mint/verify/expiry/tamper, gateway bearer route without a browser session, runtime environment injection, and model tool transport.
 - session revocation: `isSessionActive` after logout, stale permission version refused, and a running job cancelled by the revocation sweep.
-- fusion tool guard: only `integration_*` names are admitted after a session enters fusion mode.
+- fusion tool guard: `/fusion` marks the session before the first action; only `integration_*` names are admitted afterwards.
 
 ## 3. Real-container negative evidence
 

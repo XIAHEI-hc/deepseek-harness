@@ -18,6 +18,9 @@
       "path": "../../core/tools"
     },
     {
+      "path": "../../interaction/commands"
+    },
+    {
       "path": "../../util/values"
     }
   ]

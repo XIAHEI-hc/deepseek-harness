@@ -20,7 +20,7 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 | F3-02 | Workspace and scratch are writable; uid is unprivileged | RUN_PASS | same Docker gate |
 | F3-03 | `--network none`, no Docker socket, no host deployment root | RUN_PASS | same Docker gate |
 | F3-04 | Non-Linux host is refused for analysis containers | RUN_PASS | `integration.preflight.spec.ts` host-platform issue |
-| F3-05 | Shell/MCP/PTY/SSH/subagent/schedule bypasses disabled before any fusion tool runs | NOT_RUN | a session is marked only on its first fusion tool call |
+| F3-05 | Shell/MCP/PTY/SSH/subagent/schedule bypasses disabled before any fusion tool runs | RUN_PASS | `/fusion` command marks the session; the guard admits only `integration_*` tools |
 | F3-06 | Non-integration tools denied after a session enters fusion mode | RUN_PASS | `fusionToolAllowed` and `tools/pre-execute` guard in `tool-integration` |
 | F4-01 | Mock ACL isolates users and resources | RUN_PASS | `integration.service.spec.ts` |
 | F4-02 | HTTP adapter refuses redirects, metadata hosts, and oversized bodies | RUN_PASS | `integration.http-adapter.spec.ts` |
@@ -35,7 +35,7 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 | F6-04 | Model tools read resources and run jobs through a runtime capability | RUN_PASS | `integration.capability.spec.ts`, `gateway.integration.spec.ts`, `tool-integration` client tests |
 | F7-01 | Real W3 dual-user fusion isolation | BLOCKED | no real tenant or host system |
 | F7-02 | Revocation/logout mid-job stops the old container | RUN_PASS | identity `isSessionActive` test and reaper case in `integration.service.spec.ts` |
-| F7-03 | Background task, Schedule, MCP, and browser bypasses in a fusion Session | NOT_RUN | depends on restricted tool assembly |
+| F7-03 | Background task, Schedule, MCP, and browser bypasses in a fusion Session | RUN_PASS | `tools/pre-execute` guard denies every non-`integration_*` tool once `/fusion` is entered |
 | F8-01 | Analysis job image builds from `deploy/integration/job/Dockerfile` | BLOCKED | local Docker build could not resolve `python:3.12-alpine` (registry egress timeout) |
 | F8-02 | Backup covers fusion metadata and snapshots | RUN_PASS (design) | `backup.sh` archives `management/`, which contains `integration/`; target-machine rehearsal not run |
 | F8-03 | Upgrade/rollback preserves native users and fusion data | NOT_RUN | reuses existing scripts; no target-machine fusion rehearsal |

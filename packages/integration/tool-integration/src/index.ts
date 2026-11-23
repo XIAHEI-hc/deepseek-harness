@@ -14,6 +14,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { PreToolDecision, ToolRunContext } from '@deepseek-ai/dsh-tools'
+import type {} from '@deepseek-ai/dsh-commands'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import {
   IntegrationClient,
@@ -28,7 +29,7 @@ import {
 export const name = 'tool-integration'
 
 /** Services required by the fusion tools. */
-export const inject = ['tools']
+export const inject = ['tools', 'commands']
 
 /** Default request timeout for one platform API call. */
 export const DEFAULT_INTEGRATION_TIMEOUT_MS = 60_000
@@ -208,6 +209,16 @@ export function apply(ctx: Context, config: Config): void {
       kind: 'deny',
       reason: 'This session is in fusion analysis mode; only integration_* tools are admitted.',
     }
+  })
+  // Explicit opt-in before analysis: /fusion marks the session so the guard is
+  // active before the model's first action, not only after a fusion tool call.
+  ctx.commands.register({
+    name: 'fusion',
+    description: 'Enter fusion analysis mode: only integration_* tools remain available in this session.',
+    handler: (invocation) => {
+      fusionSessions.add(invocation.agent.session.id)
+      return { kind: 'success' }
+    },
   })
 
   ctx.tools.register(defineTool({

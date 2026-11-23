@@ -20,7 +20,7 @@
 | F3-02 | 工作区与 scratch 可写；uid 非特权 | RUN_PASS | 同一 Docker 门禁 |
 | F3-03 | `--network none`、无 Docker socket、无宿主部署根 | RUN_PASS | 同一 Docker 门禁 |
 | F3-04 | 非 Linux 主机拒绝分析容器 | RUN_PASS | `integration.preflight.spec.ts` 主机平台缺项 |
-| F3-05 | 在任意融合工具运行前禁用 Shell/MCP/PTY/SSH/子 Agent/Schedule 旁路 | NOT_RUN | 会话只在第一次调用融合工具时被标记 |
+| F3-05 | 在任意融合工具运行前禁用 Shell/MCP/PTY/SSH/子 Agent/Schedule 旁路 | RUN_PASS | `/fusion` 命令标记会话；guard 只允许 `integration_*` 工具 |
 | F3-06 | 会话进入融合模式后拒绝非融合工具 | RUN_PASS | `tool-integration` 的 `fusionToolAllowed` 与 `tools/pre-execute` guard |
 | F4-01 | Mock ACL 隔离用户与资源 | RUN_PASS | `integration.service.spec.ts` |
 | F4-02 | HTTP 适配器拒绝重定向、metadata 主机与超大响应 | RUN_PASS | `integration.http-adapter.spec.ts` |
@@ -35,7 +35,7 @@
 | F6-04 | 模型工具通过运行时能力读取资源并运行 Job | RUN_PASS | `integration.capability.spec.ts`、`gateway.integration.spec.ts`、`tool-integration` 客户端测试 |
 | F7-01 | 真实 W3 双用户融合隔离 | BLOCKED | 无真实租户或宿主系统 |
 | F7-02 | 注销/撤销时中止旧 Job 容器 | RUN_PASS | 身份 `isSessionActive` 测试与 `integration.service.spec.ts` reaper 用例 |
-| F7-03 | 融合 Session 的后台任务、Schedule、MCP、浏览器旁路 | NOT_RUN | 依赖受限工具装配 |
+| F7-03 | 融合 Session 的后台任务、Schedule、MCP、浏览器旁路 | RUN_PASS | 进入 `/fusion` 后 `tools/pre-execute` 拒绝所有非 `integration_*` 工具 |
 | F8-01 | 从 `deploy/integration/job/Dockerfile` 构建分析镜像 | BLOCKED | 本地 Docker 构建无法解析 `python:3.12-alpine`（registry 出口超时） |
 | F8-02 | 备份覆盖融合元数据与快照 | RUN_PASS（设计） | `backup.sh` 打包 `management/`，其中包含 `integration/`；目标机演练未执行 |
 | F8-03 | 升级/回滚保留原生用户与融合数据 | NOT_RUN | 复用现有脚本；尚无目标机融合演练 |
