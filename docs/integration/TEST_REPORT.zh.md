@@ -17,6 +17,7 @@
 | `pnpm exec vitest run services/platform/tests/admin.integration.spec.ts` | PASS | 2 个用例：关闭状态无副作用；就绪状态报告零元数据计数 |
 | 在合成发布包上运行 `bash deploy/scripts/verify-integration-release.sh` | PASS | 校验和、必需资产、默认关闭 env 与两份 JSON 注册表 |
 | `node --test deploy/integration/broker/proxy.test.mjs` | PASS | 精确白名单转发；其他端口返回 403 |
+| `DSH_INTEGRATION_EGRESS_TEST_IMAGE=dsh-platform:2026.11.23.7 bash deploy/scripts/verify-integration-egress.sh`（WSL2） | PASS | 内部 Job 网络；broker 健康；白名单目标经代理可达；拒绝端口 403；无目标直连路径 |
 | `pnpm run test:gui`（完整套件） | RUN_FAIL（环境） | 14127 个用例中 9 个失败：6 个是新样式表规则违规（已修复，`ui-theme` 复跑通过），3 个与本改动无关的宿主条件（符号链接 EPERM、secret-mask 超时、pnpm pack 超时） |
 
 ## 2. 融合单元/合同覆盖

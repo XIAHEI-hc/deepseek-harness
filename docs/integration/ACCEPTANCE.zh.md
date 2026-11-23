@@ -22,7 +22,7 @@
 | F3-04 | 非 Linux 主机拒绝分析容器 | RUN_PASS | `integration.preflight.spec.ts` 主机平台缺项 |
 | F3-05 | 在任意融合工具运行前禁用 Shell/MCP/PTY/SSH/子 Agent/Schedule 旁路 | RUN_PASS | `/fusion` 命令标记会话；guard 只允许 `integration_*` 工具 |
 | F3-06 | 会话进入融合模式后拒绝非融合工具 | RUN_PASS | `tool-integration` 的 `fusionToolAllowed` 与 `tools/pre-execute` guard |
-| F3-07 | 可选 broker 只接受精确白名单 host:port | RUN_PASS | `deploy/integration/broker/proxy.test.mjs`、runner argv 与预检 broker 测试 |
+| F3-07 | 可选 broker 只接受精确白名单 host:port | RUN_PASS | 真实 `verify-integration-egress.sh` Docker 运行，加单元、runner argv 与预检测试 |
 | F4-01 | Mock ACL 隔离用户与资源 | RUN_PASS | `integration.service.spec.ts` |
 | F4-02 | HTTP 适配器拒绝重定向、metadata 主机与超大响应 | RUN_PASS | `integration.http-adapter.spec.ts` |
 | F5-01 | 快照哈希、来源版本、授权记录与 epoch 被保存 | RUN_PASS | `integration.service.spec.ts` |

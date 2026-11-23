@@ -17,6 +17,7 @@ Records commands and results actually executed; unexecuted items are explicitly 
 | `pnpm exec vitest run services/platform/tests/admin.integration.spec.ts` | PASS | 2 tests: disabled status is inert; ready status reports zero metadata counts |
 | `bash deploy/scripts/verify-integration-release.sh` on a synthetic bundle | PASS | checksums, required assets, disabled-by-default env, and both JSON registries |
 | `node --test deploy/integration/broker/proxy.test.mjs` | PASS | exact allowlist forwarded; another port refused with 403 |
+| `DSH_INTEGRATION_EGRESS_TEST_IMAGE=dsh-platform:2026.11.23.7 bash deploy/scripts/verify-integration-egress.sh` (WSL2) | PASS | internal job network; broker health; allowlisted target through proxy; denied port 403; no direct target route |
 | `pnpm run test:gui` (full suite) | RUN_FAIL (environment) | 9/14127 failed: 6 were new-stylesheet rule violations (fixed; `ui-theme` re-run passed), 3 are unrelated host conditions (symlink EPERM, secret-mask timeout, pnpm pack timeout) |
 
 ## 2. Fusion unit/contract coverage

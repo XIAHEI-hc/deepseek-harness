@@ -81,7 +81,7 @@ DSH_INTEGRATION_EGRESS_BROKER_URL=http://fusion-broker:3128
 DSH_FUSION_EGRESS_ALLOWLIST=api.example.test:443,batch.example.test:8443
 ```
 
-The broker never follows redirects, refuses any target not in the exact `host:port` allowlist, and rejects metadata hosts. Preflight probes `/healthz` and stays blocked if the broker is missing or unhealthy. Build it with `docker build -t dsh-fusion-broker:local deploy/integration/broker`; compose starts it without publishing a port.
+The broker never follows redirects, refuses any target not in the exact `host:port` allowlist, and rejects metadata hosts. Preflight probes `/healthz` and stays blocked if the broker is missing or unhealthy. Build it with `docker build -t dsh-fusion-broker:local deploy/integration/broker`; compose starts it without publishing a port. Verify the network path with `DSH_INTEGRATION_EGRESS_TEST_IMAGE=<node-image> bash deploy/scripts/verify-integration-egress.sh`.
 
 ## Boundaries
 

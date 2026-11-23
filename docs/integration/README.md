@@ -96,10 +96,11 @@ Actual commands and results are in [TEST_REPORT.md](TEST_REPORT.md); per-gate st
 - Session revocation: runtime tokens are re-checked against the current permission version, and the job reaper cancels a running container after logout, disable, or permission change.
 - Fusion tool guard: `/fusion` marks a session before the first action, and its `tools/pre-execute` guard then denies shell, MCP, PTY, SSH, subagent, Schedule, browser, and dynamic-plugin tools; the first `integration_*` call also marks the session.
 - Offline release: `make-integration-release.sh` packages the image tar, registry examples, job Dockerfile, disabled-by-default env template, and checksums; `verify-integration-release.sh` validates the bundle.
+- Controlled egress: `verify-integration-egress.sh` passed on a real WSL2 Docker network with an internal job network, allowlisted target, denied port, and no direct route.
 
 Not complete, and must not be claimed production-ready:
 
 - `/fusion` is an explicit opt-in; without it, the guard activates only on the first `integration_*` call. The marker persists under `DSH_HOME` but is an application guard, not a physical sandbox rule.
-- Controlled egress is opt-in and contract-tested; the broker image has not run in a target Docker network.
+- Controlled egress is opt-in; the proxy network path passed a real local Docker test, but no target-environment business host has been exercised.
 - Real W3 tenant A/B, a seven-day target-machine run, and internal Git are external `BLOCKED` items.
 - Production deployment, upgrade, backup, and rollback reuse the existing scripts; a fusion-specific rehearsal on the target machine has not run.

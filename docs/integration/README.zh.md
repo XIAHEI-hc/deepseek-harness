@@ -96,10 +96,11 @@ GET  /api/integration/audit?jobId=...
 - 会话撤销：运行时 token 会按当前权限版本复验；注销、禁用或权限变化后，Job reaper 会取消运行中的容器。
 - 融合工具 guard：`/fusion` 在首个动作前标记会话，其 `tools/pre-execute` 会拒绝 Shell、MCP、PTY、SSH、子 Agent、Schedule、浏览器与动态插件工具；首次 `integration_*` 调用也会标记会话。
 - 离线发布：`make-integration-release.sh` 打包镜像 tar、注册表样例、Job Dockerfile、默认关闭的 env 模板与校验和；`verify-integration-release.sh` 验证发布包。
+- 受控出口：`verify-integration-egress.sh` 在真实 WSL2 Docker 网络上通过，验证内部 Job 网络、白名单目标、拒绝端口与无直连路径。
 
 尚未完成、不得声称生产可用：
 
 - `/fusion` 是显式 opt-in；未使用它时，guard 只在首次 `integration_*` 调用后生效。标记持久化在 `DSH_HOME` 下，但仍是应用层 guard，不是物理沙箱规则。
-- 受控出口是 opt-in 且只做了合同测试；broker 镜像尚未在目标 Docker 网络运行。
+- 受控出口是 opt-in；代理网络路径已通过本地真实 Docker 测试，但尚未在目标环境访问真实业务主机。
 - 真实 W3 租户 A/B、目标机 7 天运行、内网 Git 属外部 `BLOCKED`。
 - 生产部署、升级、备份与回滚仅复用现有脚本，尚未在目标机完成融合专用演练。

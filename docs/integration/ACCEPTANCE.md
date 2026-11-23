@@ -22,7 +22,7 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 | F3-04 | Non-Linux host is refused for analysis containers | RUN_PASS | `integration.preflight.spec.ts` host-platform issue |
 | F3-05 | Shell/MCP/PTY/SSH/subagent/schedule bypasses disabled before any fusion tool runs | RUN_PASS | `/fusion` command marks the session; the guard admits only `integration_*` tools |
 | F3-06 | Non-integration tools denied after a session enters fusion mode | RUN_PASS | `fusionToolAllowed` and `tools/pre-execute` guard in `tool-integration` |
-| F3-07 | Optional broker accepts only exact allowlisted host:port targets | RUN_PASS | `deploy/integration/broker/proxy.test.mjs`, runner argv, and preflight broker tests |
+| F3-07 | Optional broker accepts only exact allowlisted host:port targets | RUN_PASS | real `verify-integration-egress.sh` Docker run plus unit, runner argv, and preflight tests |
 | F4-01 | Mock ACL isolates users and resources | RUN_PASS | `integration.service.spec.ts` |
 | F4-02 | HTTP adapter refuses redirects, metadata hosts, and oversized bodies | RUN_PASS | `integration.http-adapter.spec.ts` |
 | F5-01 | Snapshot hash, source version, grant record, and epoch are stored | RUN_PASS | `integration.service.spec.ts` |

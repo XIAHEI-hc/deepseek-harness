@@ -81,7 +81,7 @@ DSH_INTEGRATION_EGRESS_BROKER_URL=http://fusion-broker:3128
 DSH_FUSION_EGRESS_ALLOWLIST=api.example.test:443,batch.example.test:8443
 ```
 
-broker 从不跟随重定向，拒绝不在精确 `host:port` 白名单中的目标，并拒绝 metadata 主机。预检探测 `/healthz`，broker 缺失或不健康时保持 blocked。可用 `docker build -t dsh-fusion-broker:local deploy/integration/broker` 构建；compose 启动它但不发布端口。
+broker 从不跟随重定向，拒绝不在精确 `host:port` 白名单中的目标，并拒绝 metadata 主机。预检探测 `/healthz`，broker 缺失或不健康时保持 blocked。可用 `docker build -t dsh-fusion-broker:local deploy/integration/broker` 构建；compose 启动它但不发布端口。用 `DSH_INTEGRATION_EGRESS_TEST_IMAGE=<node-image> bash deploy/scripts/verify-integration-egress.sh` 验证真实网络路径。
 
 ## 边界
 
