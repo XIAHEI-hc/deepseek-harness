@@ -220,6 +220,24 @@ wsl -d Ubuntu --exec bash deploy/scripts/verify-container-runtime.sh
 | 供应商账户分离（UI-05） | 模型供应商 signed-out 时平台身份正常；调用 `account/signOut` 后平台 Session 仍有效、原生 UI 可用 |
 | 注销 | 平台注销后 `/auth/me` 401；B 继续正常工作 |
 
+## 3.11 版本化发布包与真实离线升级（3 断言 PASS）
+
+```bash
+# 构建版本化发布包（平台镜像 + 运行时镜像 + SHA256SUMS + compose/env/overlay）
+wsl -d Ubuntu --exec bash deploy/scripts/build-image.sh 2026.11.23.1
+# 用真实发布包演练离线升级
+wsl -d Ubuntu --exec bash deploy/scripts/verify-release-upgrade.sh 2026.11.23.1
+```
+
+实测结果：`RELEASE UPGRADE PASS: 3 assertions`，证据 [evidence/release-upgrade.log](evidence/release-upgrade.log)。
+
+| 项 | 结果 |
+|---|---|
+| 发布包 | `dsh-runtime-2026.11.23.1.tar` 962MB sha256 `b2ba90cf…`；`dsh-platform-2026.11.23.1.tar` 89MB sha256 `652db637…`；含 SHA256SUMS、版本化 compose、env.example、runtime overlay |
+| 离线升级 | 临时部署先运行旧镜像并登录 Mock 会话；`upgrade.sh` 校验 SHA256、`docker load` 两个镜像、切换为发布版本，健康检查通过 |
+| 数据连续 | 升级后既有 Mock 会话 `/auth/me` 仍 200；运行镜像已是 `dsh-platform:2026.11.23.1` |
+| 包安全 | 源码发布包无 `.env`/数据库/凭据；运行时镜像 tar 不含部署密钥（密钥在部署机卷内） |
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -240,6 +258,7 @@ wsl -d Ubuntu --exec bash deploy/scripts/verify-container-runtime.sh
 | 部署生命周期（真实 Docker） | `wsl -d Ubuntu --exec bash deploy/scripts/verify-deploy-lifecycle.sh` | **PASS：9 assertions**（证据 `evidence/deploy-lifecycle.log`） |
 | 运行时镜像构建 | `bash deploy/scripts/build-runtime-image.sh dev` | **PASS**（多阶段构建成功，`dsh-runtime:dev` 4.24GB） |
 | 容器模式端到端 | `wsl -d Ubuntu --exec bash deploy/scripts/verify-container-runtime.sh` | **PASS：46 assertions**（证据 `evidence/container-runtime-e2e.log`） |
+| 版本化发布包 + 离线升级 | `build-image.sh 2026.11.23.1` + `verify-release-upgrade.sh 2026.11.23.1` | **PASS：3 assertions**（真实 tar/SHA256，证据 `evidence/release-upgrade.log`） |
 | 源码发布包 | `deploy/release/dsh-platform-source-2026.11.23-dev.tar.gz` | PASS（541,465 bytes，sha256 37f4da64…d44a3；173 条目，无 `.env`/数据库/凭据；含 `.env.example`） |
 | 仓库 lint | `pnpm run lint` | 失败项全部为**既有文件**（`skill-plaza`、`authentication-gateway` 测试、`workspace-controller`、`ui-skill-plaza` 测试），无新代码文件；`pnpm exec oxlint services/platform packages/client/ui-platform-identity` 0 问题 |
 
@@ -285,6 +304,8 @@ wsl -d Ubuntu --exec bash deploy/scripts/verify-container-runtime.sh
 | 14:28 | e2e 扩展：双身份 Session/搜索/IDOR/历史恢复隔离 | PASS：7/7 tests |
 | 14:50 | 构建生产运行时镜像（多阶段 DSH build） | PASS（dsh-runtime:dev，4.24GB） |
 | 15:00 | 真实运行时镜像 + 容器模式双用户 e2e | **PASS：46 assertions**（原生 UI/Session/Skills/文件/凭据/供应商分离） |
+| 15:18 | 构建版本化发布包（平台+运行时镜像 tar/SHA256） | PASS（runtime 962MB / platform 89MB） |
+| 15:22 | 真实发布包离线升级演练 | **PASS：3 assertions**（会话与数据连续） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

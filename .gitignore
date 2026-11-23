@@ -57,6 +57,7 @@ native/system/test/bin/
 .dsh-platform/
 .dsh-container-test/
 .dsh-container-runtime-test/
+.dsh-release-smoke/
 .dsh-deploy-smoke/
 .dsh-migrate-smoke/
 .dsh-data-probe/
