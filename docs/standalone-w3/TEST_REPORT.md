@@ -265,6 +265,25 @@ bash deploy/scripts/verify-agent-isolation.sh            # Linux/WSL
 
 MCP 与真实模型供应商的聊天回归仍需目标环境凭据，OPS-09 保持 NOT_RUN。
 
+## 3.14 Session WebSocket 事件隔离与实时撤销（DATA-12，10 断言 PASS）
+
+```bash
+pwsh -File deploy/scripts/verify-ws-stream-isolation.ps1   # Windows
+bash deploy/scripts/verify-ws-stream-isolation.sh          # Linux/WSL
+```
+
+实测结果：`WS STREAM ISOLATION PASS: 10 assertions`，证据 [evidence/ws-stream-isolation/](evidence/ws-stream-isolation/)。
+
+做法：两个身份在 Playwright 中分别登录并进入自己的原生 DSH 页面；每个页面在浏览器内通过 Gateway 的 `/api/remote.mux` 打开 `session/follow` 流，订阅本人 Session 事件。
+
+| 断言 | 实测 |
+|---|---|
+| A 的 Session 流保持打开 | PASS |
+| A 通过 Gateway rename 自己的 Session 后，A 的流收到该事件（帧含新标题，`frames=2`） | PASS |
+| B 的原生页面从不出现 A 的 Session 标题 | PASS |
+| B 用 A 的 sessionId 请求 `session/follow` → `session/not-found` 错误帧（`result.json`） | PASS |
+| A 注销后，其 WebSocket 在 Gateway 复验周期内被实时关闭 | PASS |
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -288,6 +307,7 @@ MCP 与真实模型供应商的聊天回归仍需目标环境凭据，OPS-09 保
 | 版本化发布包 + 离线升级 | `build-image.sh 2026.11.23.1` + `verify-release-upgrade.sh 2026.11.23.1` | **PASS：3 assertions**（真实 tar/SHA256，证据 `evidence/release-upgrade.log`） |
 | 并发 Agent 隔离 | `pwsh -File deploy/scripts/verify-agent-isolation.ps1` | **PASS：22 assertions**（证据 `evidence/agent-isolation.log`） |
 | 原生 GUI 回归 | `pnpm run test:gui` | 14108 passed / 4 Windows 环境失败（证据 `evidence/gui-regression.log`） |
+| Session WebSocket 隔离与撤销 | `pwsh -File deploy/scripts/verify-ws-stream-isolation.ps1` | **PASS：10 assertions**（证据 `evidence/ws-stream-isolation/`） |
 | 源码发布包 | `deploy/release/dsh-platform-source-2026.11.23-dev.tar.gz` | PASS（541,465 bytes，sha256 37f4da64…d44a3；173 条目，无 `.env`/数据库/凭据；含 `.env.example`） |
 | 仓库 lint | `pnpm run lint` | 失败项全部为**既有文件**（`skill-plaza`、`authentication-gateway` 测试、`workspace-controller`、`ui-skill-plaza` 测试），无新代码文件；`pnpm exec oxlint services/platform packages/client/ui-platform-identity` 0 问题 |
 
@@ -338,6 +358,7 @@ MCP 与真实模型供应商的聊天回归仍需目标环境凭据，OPS-09 保
 | 15:29 | 原生 GUI 回归 `pnpm run test:gui` | 14108 passed，4 个 Windows 环境失败 |
 | 15:35 | 并发 Agent 文件/会话隔离（Mock LLM） | **PASS：22 assertions** |
 | 15:48 | 浏览器验收“退出所有设备”确认流程 | **PASS**（截图 `evidence/sign-out-all/`，确认后旧 Cookie 401） |
+| 16:10 | 浏览器 WebSocket 流事件隔离与注销实时撤销 | **PASS：10 assertions**（证据 `evidence/ws-stream-isolation/`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

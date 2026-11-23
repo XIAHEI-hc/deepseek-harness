@@ -1,0 +1,11 @@
+PASS 1: identity a is signed in and its runtime is READY
+PASS 2: identity b is signed in and its runtime is READY
+PASS 3: both identities create a native Session through the Gateway
+PASS 4: A's Session event stream stays open
+PASS 5: A renames its own Session through the Gateway
+PASS 6: A's Session stream receives its own rename event
+PASS 7: B's page never shows A's Session title
+PASS 8: B's Session stream request for A's Session is refused as not-found
+PASS 9: identity A signs out its browser session
+PASS 10: A's Session WebSocket is closed after sign-out
+WS STREAM ISOLATION PASS: 10 assertions

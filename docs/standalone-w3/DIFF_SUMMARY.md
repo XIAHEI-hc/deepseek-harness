@@ -37,6 +37,7 @@
 | `scripts/verify-container-runtime.sh` | 真实运行时镜像 + 容器模式双用户 e2e（46 断言：原生 UI、Session/Skills、文件/凭据、供应商分离、注销） |
 | `scripts/verify-release-upgrade.sh` | 用真实版本化发布包演练离线升级（SHA256 校验、双镜像导入、版本切换、既有会话/数据连续） |
 | `scripts/verify-agent-isolation.{sh,ps1}` | Keyless Mock LLM 并发 Agent 隔离验证（22 断言：产物、原生 Session 列表、IDOR） |
+| `scripts/verify-ws-stream-isolation.{sh,ps1}` | 浏览器内 Session WebSocket 流事件隔离与注销实时撤销（10 断言：只订阅本人、跨用户 not-found、注销关闭 WS） |
 
 ## 3. 新增：平台身份前端插件
 
