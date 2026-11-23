@@ -435,6 +435,15 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 - 演练发现构图上下文包含 `deploy/release/*.tar`，运行时镜像一度膨胀到 17GB、镜像 tar 达 17GB；`.dockerignore` 增加 `deploy/release` 后重建，运行时镜像 tar 恢复为 **962MB**、平台镜像 90MB，发布包 SHA256 重新生成。
 - 平台镜像改为按 `services/platform/package-lock.json` 执行 `npm ci --omit=dev`，PostgreSQL 驱动安装可复现。
 
+## 3.27 最终发布包验证（2026.11.23.6）
+
+证据 [evidence/release-manifest-2026.11.23.6.txt](evidence/release-manifest-2026.11.23.6.txt)、[evidence/final-release-2026.11.23.6.log](evidence/final-release-2026.11.23.6.log)。
+
+- 从提交 `fa98e1e9a8` 重新构建：`dsh-runtime-2026.11.23.6.tar`（1,008,215,552 bytes，sha256 `41f34abf…`）、`dsh-platform-2026.11.23.6.tar`（93,328,896 bytes，sha256 `46965057…`），含 `SHA256SUMS`、compose、env 模板、runtime overlay。
+- 平台镜像内置 PostgreSQL 驱动（镜像内 `require.resolve('pg')` 指向 `/app/services/platform/node_modules/pg/lib/index.js`），核验 PG 后端在发布包中可用。
+- 部署机一键安装 v6 后：Mock 登录 302、`/auth/me=200`、用户 Runtime READY、原生 UI `__DSH_BOOT__`、Runtime 容器 `dsh-runtime:2026.11.23.6`。
+- 发布包不包含 `deploy/release` 历史 tar（构建上下文已排除），镜像尺寸稳定为平台约 93MB、运行时约 1.0GB。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -524,6 +533,7 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 20:12 | 部署机备份一致性 + 真实发布包离线升级 v3→v4 | PASS（Session/标题保留、Runtime adopt + 重启到新镜像，证据 `evidence/backup-upgrade-rehearsal.log`） |
 | 20:31 | 部署机安装栈 W3 双身份 A/B（测试 Provider + 2 个真实 Runtime 容器） | PASS（姓名/隔离/注销撤销，证据 `evidence/install-w3-ab.log`） |
 | 21:05 | PostgreSQL 身份库后端（本地 PostgreSQL 16） | PASS（迁移/登录/Session/审计/重启保持，证据 `evidence/postgres-identity.log`） |
+| 21:57 | 最终发布包 2026.11.23.6 安装与冒烟 | PASS（PG 驱动内置、Mock 登录、Runtime READY、原生 UI，证据 `evidence/release-manifest-2026.11.23.6.txt`、`evidence/final-release-2026.11.23.6.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 
