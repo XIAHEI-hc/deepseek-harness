@@ -496,6 +496,23 @@ export class IdentityStore {
   }
 
   /**
+   * Report whether a user still has one live browser session.
+   * @param userId - owning internal user id.
+   * @param atIso - current ISO instant.
+   * @returns true when at least one session is unrevoked and unexpired.
+   */
+  hasLiveSession(userId: string, atIso: string): boolean {
+    const row = this.database
+      .prepare(
+        `SELECT 1 AS live FROM dsh_sessions
+         WHERE user_id = ? AND revoked_at IS NULL AND expires_at > ? AND absolute_expires_at > ?
+         LIMIT 1`,
+      )
+      .get(userId, atIso, atIso)
+    return row !== undefined
+  }
+
+  /**
    * Find one session by id.
    * @param id - session id.
    * @returns the session row, or undefined when unknown.

@@ -327,6 +327,20 @@ class IdentityHttpService implements IdentityService {
     return constantTimeEquals(digest(csrfCookie), stored.csrfTokenHash)
   }
 
+  /** @inheritDoc */
+  isSessionActive(sessionId: string, userId: string, permissionVersion: number): boolean {
+    const user = this.store.findUserById(userId)
+    if (user === undefined || user.status !== 'active' || user.permissionVersion !== permissionVersion) return false
+    // Runtime tool calls use a synthetic actor. Its HMAC token carries its own
+    // expiry, while this check also requires a live browser session so logout
+    // and admin revocation stop old work.
+    if (sessionId === `runtime:${userId}`) return this.store.hasLiveSession(userId, toIso(this.clock()))
+    const session = this.store.findSessionById(sessionId)
+    if (session === undefined || session.userId !== userId || session.revokedAt !== null) return false
+    const nowMs = this.clock()
+    return parseIso(session.expiresAt) > nowMs && parseIso(session.absoluteExpiresAt) > nowMs
+  }
+
   /** Release the database handle. */
   async close(): Promise<void> {
     this.store.close()

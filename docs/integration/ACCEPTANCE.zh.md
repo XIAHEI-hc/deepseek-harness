@@ -8,7 +8,7 @@
 
 | ID | 检查 | 状态 | 证据 |
 |---|---|---|---|
-| F0-01 | 现有 W3 平台套件仍通过 | RUN_PASS | `pnpm run test:platform`：271 通过、4 跳过 |
+| F0-01 | 现有 W3 平台套件仍通过 | RUN_PASS | `pnpm run test:platform`：274 通过、4 跳过 |
 | F0-02 | 真实 W3 租户 A/B 登录 | BLOCKED | 无 W3 租户凭据 |
 | F1-01 | 关闭开关无融合副作用 | RUN_PASS | `integration.config.spec.ts`、`integration.service.spec.ts` |
 | F1-02 | 开启但预检不完整时 blocked，原生平台继续运行 | RUN_PASS | `integration.preflight.spec.ts`、blocked 路由测试 |
@@ -33,7 +33,7 @@
 | F6-03 | 服务端作业流式推送 | NOT_RUN | 面板只在用户操作时刷新 |
 | F6-04 | 模型工具通过运行时能力读取资源并运行 Job | RUN_PASS | `integration.capability.spec.ts`、`gateway.integration.spec.ts`、`tool-integration` 客户端测试 |
 | F7-01 | 真实 W3 双用户融合隔离 | BLOCKED | 无真实租户或宿主系统 |
-| F7-02 | 注销/撤销时中止旧 Job 容器 | NOT_RUN | 有 Job 取消；会话撤销传播未验证 |
+| F7-02 | 注销/撤销时中止旧 Job 容器 | RUN_PASS | 身份 `isSessionActive` 测试与 `integration.service.spec.ts` reaper 用例 |
 | F7-03 | 融合 Session 的后台任务、Schedule、MCP、浏览器旁路 | NOT_RUN | 依赖受限工具装配 |
 | F8-01 | 从 `deploy/integration/job/Dockerfile` 构建分析镜像 | BLOCKED | 本地 Docker 构建无法解析 `python:3.12-alpine`（registry 出口超时） |
 | F8-02 | 备份覆盖融合元数据与快照 | RUN_PASS（设计） | `backup.sh` 打包 `management/`，其中包含 `integration/`；目标机演练未执行 |

@@ -278,6 +278,17 @@ export class FakeIdentityService implements IdentityService {
     return { ok: true, session: stored.session }
   }
 
+  isSessionActive(sessionId: string, userId: string, permissionVersion: number): boolean {
+    for (const stored of this.sessions.values()) {
+      if (stored.session.sessionId !== sessionId) continue
+      return !stored.revoked
+        && stored.session.user.id === userId
+        && stored.session.permissionVersion === permissionVersion
+        && stored.session.expiresAt > Date.now()
+    }
+    return false
+  }
+
   verifyCsrf(session: ValidatedSession, csrfHeader: string | undefined, csrfCookie: string | undefined): boolean {
     if (!this.csrfValid) return false
     for (const stored of this.sessions.values()) {

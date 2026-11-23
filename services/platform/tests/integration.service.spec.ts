@@ -217,6 +217,49 @@ describe('analysis jobs', () => {
     expect((await callFusion(environment.service, sessionFor(USER_B), 'GET', `/api/integration/artifacts/${artifactId}/download`)).status).toBe(404)
   })
 
+  it('refuses to start a job when the admission session is no longer live', async () => {
+    environment = await createIntegrationTestEnvironment({ sessionLive: () => false })
+    const workspaceId = await createWorkspace(environment.service, USER_A, 'No session')
+    const snapshotId = await captureSnapshot(environment.service, USER_A, 'sales-2026')
+    const response = await callFusion(environment.service, sessionFor(USER_A), 'POST', '/api/integration/jobs', {
+      workspaceId,
+      inputSnapshotIds: [snapshotId],
+      language: 'shell',
+      script: 'sleep 1\n',
+    })
+    expect(response.status).toBe(403)
+  })
+
+  it('cancels a running job after its admission session is revoked', async () => {
+    let live = true
+    const executor = new CancellableAnalysisExecutor()
+    environment = await createIntegrationTestEnvironment({
+      executor,
+      sessionLive: () => live,
+      sessionReapIntervalMs: 20,
+    })
+    const workspaceId = await createWorkspace(environment.service, USER_A, 'Revoked')
+    const snapshotId = await captureSnapshot(environment.service, USER_A, 'sales-2026')
+    const start = await callFusion(environment.service, sessionFor(USER_A), 'POST', '/api/integration/jobs', {
+      workspaceId,
+      inputSnapshotIds: [snapshotId],
+      language: 'shell',
+      script: 'sleep 60\n',
+    })
+    const jobId = requireString(start.body?.['job'] as Record<string, unknown>, 'id')
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const view = await callFusion(environment.service, sessionFor(USER_A), 'GET', `/api/integration/jobs/${jobId}`)
+      const job = view.body?.['job'] as Record<string, unknown> | undefined
+      if (job?.['status'] === 'running') break
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+    live = false
+    const settled = await waitForJob(environment.service, sessionFor(USER_A), jobId)
+    expect(settled['status']).toBe('cancelled')
+    expect(settled['errorCode']).toBe('SESSION_REVOKED')
+    expect(executor.calls.some(args => args[0] === 'rm')).toBe(true)
+  })
+
   it('keeps an explicit cancellation instead of overwriting it with the container exit', async () => {
     const executor = new CancellableAnalysisExecutor()
     environment = await createIntegrationTestEnvironment({ executor })

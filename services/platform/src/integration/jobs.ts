@@ -67,8 +67,11 @@ export class JobService {
   private readonly runner: AnalysisJobRunner
   private readonly adapters: ReadonlyMap<string, HostAdapter>
   private readonly audit: JobAuditSink | undefined
+  private readonly sessionLive: ((sessionId: string, userId: string, permissionVersion: number) => boolean) | undefined
   private readonly active = new Map<string, Promise<void>>()
   private readonly now: () => number
+  private reapHandle: ReturnType<typeof setInterval> | null = null
+  private readonly reconcileBefore: number
   private closed = false
 
   /**
@@ -82,6 +85,8 @@ export class JobService {
     readonly runner: AnalysisJobRunner
     readonly adapters: ReadonlyMap<string, HostAdapter>
     readonly audit?: JobAuditSink | undefined
+    readonly sessionLive?: ((sessionId: string, userId: string, permissionVersion: number) => boolean) | undefined
+    readonly reapIntervalMs?: number | undefined
     readonly now?: (() => number) | undefined
   }) {
     this.config = parts.config
@@ -91,7 +96,17 @@ export class JobService {
     this.runner = parts.runner
     this.adapters = parts.adapters
     this.audit = parts.audit
+    this.sessionLive = parts.sessionLive
     this.now = parts.now ?? Date.now
+    this.reconcileBefore = this.now()
+    const interval = parts.reapIntervalMs ?? 5_000
+    if (this.sessionLive !== undefined && interval > 0) {
+      this.reapHandle = setInterval(() => {
+        void this.reapRevoked().catch(() => undefined)
+      }, interval)
+      this.reapHandle.unref()
+    }
+    void this.reconcileInterrupted().catch(() => undefined)
   }
 
   /**
@@ -102,6 +117,9 @@ export class JobService {
    */
   async start(actor: IntegrationActor, request: StartJobRequest): Promise<JobRecord> {
     if (this.closed) throw new IntegrationError('integration-blocked', 'integration service is closed', 503)
+    if (this.sessionLive !== undefined && !this.sessionLive(actor.sessionId, actor.userId, actor.permissionVersion)) {
+      throw new IntegrationError('resource-forbidden', 'the admission session is no longer active', 403)
+    }
     const scriptBytes = new TextEncoder().encode(request.script)
     if (scriptBytes.byteLength === 0 || scriptBytes.byteLength > this.config.maxScriptBytes) {
       throw new IntegrationError('invalid-request', 'analysis script is empty or too large', 413)
@@ -135,6 +153,7 @@ export class JobService {
       workspaceId: workspace.id,
       inputSnapshotIds: uniqueIds,
       language: request.language,
+      policyEpoch: actor.permissionVersion,
       scriptSha256: sha256Hex(scriptBytes),
       status: 'queued',
       createdAt: new Date(this.now()).toISOString(),
@@ -201,6 +220,10 @@ export class JobService {
   artifact(actor: IntegrationActor, artifactId: string): { artifact: ArtifactRecord; bytes: Uint8Array } {
     const artifact = this.store.findArtifact(artifactId, actor.userId)
     if (artifact === undefined) throw new IntegrationError('artifact-not-found', 'unknown artifact', 404)
+    const job = this.store.findJob(artifact.jobId, actor.userId)
+    if (job !== undefined && this.sessionLive !== undefined && !this.sessionLive(job.sessionId, job.ownerUserId, job.policyEpoch)) {
+      throw new IntegrationError('resource-forbidden', 'the session that produced this artifact is no longer active', 403)
+    }
     const workspace = this.workspaces.require(actor, artifact.workspaceId)
     const path = this.workspaces.artifactPath(workspace, artifact.jobId, artifact.relativePath)
     let bytes: Uint8Array
@@ -226,11 +249,44 @@ export class JobService {
   /** Cancel active containers and wait for in-flight executions. */
   async close(): Promise<void> {
     this.closed = true
+    if (this.reapHandle !== null) {
+      clearInterval(this.reapHandle)
+      this.reapHandle = null
+    }
     for (const jobId of [...this.active.keys()]) {
       await this.runner.cancel(jobId).catch(() => false)
     }
     await Promise.allSettled([...this.active.values()])
     await this.runner.close()
+  }
+
+  /** Cancel jobs whose admission session is no longer live. */
+  private async reapRevoked(): Promise<void> {
+    if (this.closed || this.sessionLive === undefined) return
+    for (const job of this.store.listActiveJobs()) {
+      if (this.sessionLive(job.sessionId, job.ownerUserId, job.policyEpoch)) continue
+      await this.runner.cancel(job.id)
+      this.store.updateJob(job.id, {
+        status: 'cancelled',
+        finishedAt: new Date(this.now()).toISOString(),
+        errorCode: 'SESSION_REVOKED',
+      })
+      this.auditEvent('JOB_REVOKED', 'success', job.ownerUserId, job.id, 'SESSION_REVOKED')
+    }
+  }
+
+  /** Mark jobs left by a previous process as interrupted and remove their containers. */
+  private async reconcileInterrupted(): Promise<void> {
+    for (const job of this.store.listActiveJobs()) {
+      if (Date.parse(job.createdAt) >= this.reconcileBefore) continue
+      await this.runner.cancel(job.id)
+      this.store.updateJob(job.id, {
+        status: 'failed',
+        finishedAt: new Date(this.now()).toISOString(),
+        errorCode: 'JOB_INTERRUPTED',
+      })
+      this.auditEvent('JOB_INTERRUPTED', 'failure', job.ownerUserId, job.id, 'JOB_INTERRUPTED')
+    }
   }
 
   /**
@@ -270,6 +326,15 @@ export class JobService {
         language: job.language,
       })
       if (this.isCancelled(job.id)) return
+      if (this.isRevoked(job)) {
+        this.store.updateJob(job.id, {
+          status: 'cancelled',
+          finishedAt: new Date(this.now()).toISOString(),
+          errorCode: 'SESSION_REVOKED',
+        })
+        this.auditEvent('JOB_REVOKED', 'success', actor.userId, job.id, 'SESSION_REVOKED')
+        return
+      }
       if (result.exitCode !== 0) {
         this.store.updateJob(job.id, {
           status: 'failed',
@@ -305,6 +370,16 @@ export class JobService {
    */
   private isCancelled(jobId: string): boolean {
     return this.store.findJob(jobId, null)?.status === 'cancelled'
+  }
+
+  /**
+   * Report whether the job's admission session is no longer live.
+   * @param job - job whose session is checked.
+   * @returns true when the session is known to be inactive.
+   */
+  private isRevoked(job: JobRecord): boolean {
+    return this.sessionLive !== undefined
+      && !this.sessionLive(job.sessionId, job.ownerUserId, job.policyEpoch)
   }
 
   /**

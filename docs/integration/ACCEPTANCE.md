@@ -8,7 +8,7 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 
 | ID | Check | Status | Evidence |
 |---|---|---|---|
-| F0-01 | Existing W3 platform suite still passes | RUN_PASS | `pnpm run test:platform`: 271 passed, 4 skipped |
+| F0-01 | Existing W3 platform suite still passes | RUN_PASS | `pnpm run test:platform`: 274 passed, 4 skipped |
 | F0-02 | Real W3 tenant A/B login | BLOCKED | no W3 tenant credentials |
 | F1-01 | Disabled switch has no fusion side effect | RUN_PASS | `integration.config.spec.ts`, `integration.service.spec.ts` |
 | F1-02 | Enabled but incomplete preflight is blocked, native platform stays up | RUN_PASS | `integration.preflight.spec.ts`, blocked-route test |
@@ -33,7 +33,7 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 | F6-03 | Server-sent job streaming | NOT_RUN | panel refreshes on user action |
 | F6-04 | Model tools read resources and run jobs through a runtime capability | RUN_PASS | `integration.capability.spec.ts`, `gateway.integration.spec.ts`, `tool-integration` client tests |
 | F7-01 | Real W3 dual-user fusion isolation | BLOCKED | no real tenant or host system |
-| F7-02 | Revocation/logout mid-job stops the old container | NOT_RUN | job cancel exists; session-revocation propagation is not exercised |
+| F7-02 | Revocation/logout mid-job stops the old container | RUN_PASS | identity `isSessionActive` test and reaper case in `integration.service.spec.ts` |
 | F7-03 | Background task, Schedule, MCP, and browser bypasses in a fusion Session | NOT_RUN | depends on restricted tool assembly |
 | F8-01 | Analysis job image builds from `deploy/integration/job/Dockerfile` | BLOCKED | local Docker build could not resolve `python:3.12-alpine` (registry egress timeout) |
 | F8-02 | Backup covers fusion metadata and snapshots | RUN_PASS (design) | `backup.sh` archives `management/`, which contains `integration/`; target-machine rehearsal not run |

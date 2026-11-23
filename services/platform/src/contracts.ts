@@ -163,6 +163,14 @@ export interface IdentityService {
     csrfCookie: string | undefined,
   ): boolean
   /**
+   * Report whether a session is still live for its user and permission version.
+   * @param sessionId - session id recorded when the work was admitted.
+   * @param userId - owning internal user id.
+   * @param permissionVersion - permission version the work was admitted with.
+   * @returns true only while the session, account, and version remain valid.
+   */
+  isSessionActive(sessionId: string, userId: string, permissionVersion: number): boolean
+  /**
    * Append one platform audit event (for example a runtime lifecycle transition).
    * @param event - JSON-safe audit facts.
    */

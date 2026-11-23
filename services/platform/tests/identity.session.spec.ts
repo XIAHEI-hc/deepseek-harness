@@ -197,6 +197,22 @@ describe('session lifecycle', () => {
     expect(revoked.code).toBe('session-revoked')
   })
 
+  it('reports a live session and refuses it after logout', async () => {
+    const fixture = createTestIdentity()
+    const { service } = await startIdentity(fixture)
+    const browser = newBrowser(fixture, service)
+    requireResult(await browser.get('/auth/login'))
+    const token = browser.cookieValue(fixture.config.sessionCookieName) ?? ''
+    const lookup = await service.authenticate(token)
+    if (!lookup.ok) throw new Error('expected a live session')
+    expect(service.isSessionActive(lookup.session.sessionId, lookup.session.user.id, lookup.session.permissionVersion)).toBe(true)
+    expect(service.isSessionActive(`runtime:${lookup.session.user.id}`, lookup.session.user.id, lookup.session.permissionVersion)).toBe(true)
+    const csrf = browser.cookieValue(fixture.config.csrfCookieName) ?? ''
+    requireResult(await browser.post('/auth/logout', { headers: { 'x-csrf-token': csrf } }))
+    expect(service.isSessionActive(lookup.session.sessionId, lookup.session.user.id, lookup.session.permissionVersion)).toBe(false)
+    expect(service.isSessionActive(`runtime:${lookup.session.user.id}`, lookup.session.user.id, lookup.session.permissionVersion)).toBe(false)
+  })
+
   it('AUTH-22 revokes every session of the user on logout-all after confirmation', async () => {
     const fixture = createTestIdentity()
     const { service } = await startIdentity(fixture)

@@ -9,7 +9,7 @@ Records commands and results actually executed; unexecuted items are explicitly 
 | Command | Result | Notes |
 |---|---|---|
 | `pnpm run typecheck:platform` | PASS | `tsc -p services/platform/tsconfig.json --noEmit` |
-| `pnpm run test:platform` | PASS | 24 test files passed, 1 skipped; 271 tests passed, 4 skipped |
+| `pnpm run test:platform` | PASS | 24 test files passed, 1 skipped; 274 tests passed, 4 skipped |
 | `DSH_INTEGRATION_JOB_IMAGE=dsh-runtime:2026.11.23.7 bash deploy/scripts/verify-integration-isolation.sh` (WSL2 Ubuntu) | PASS | real Docker 29.7.2; read-only root, read-only inputs, writable workspace/scratch, uid 1000, `network none`, no Docker socket, no host deployment root |
 | `pnpm exec vitest run packages/client/ui-integration-workbench/tests` | PASS | 2 files, 9 tests: status/overview/CSRF parsing, unavailable/ready/blocked panel states |
 | `pnpm exec vitest run packages/client/ui-theme/tests` | PASS | 24 files, 183 tests: the new stylesheet satisfies radius, hairline, elevation, focus-ring, corner-shape, and scrollbar gates |
@@ -29,6 +29,7 @@ Records commands and results actually executed; unexecuted items are explicitly 
 - gateway: unauthenticated 401, missing CSRF 403, cross-origin 403, authenticated forwarding, disabled 404 without falling into the native proxy.
 - workbench: hidden without the API, launcher/panel rendering, authorized resource listing, snapshot selection, blocked issue codes, CSRF on mutations.
 - runtime capability: mint/verify/expiry/tamper, gateway bearer route without a browser session, runtime environment injection, and model tool transport.
+- session revocation: `isSessionActive` after logout, stale permission version refused, and a running job cancelled by the revocation sweep.
 
 ## 3. Real-container negative evidence
 

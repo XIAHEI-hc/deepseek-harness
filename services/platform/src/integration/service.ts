@@ -69,6 +69,10 @@ export interface IntegrationServiceOptions {
    * expired.
    */
   readonly resolveRuntimeUser?: ((userId: string) => { readonly permissionVersion: number } | undefined) | undefined
+  /** Live-session check used to cancel jobs after logout, disable, or revocation. */
+  readonly sessionLive?: ((sessionId: string, userId: string, permissionVersion: number) => boolean) | undefined
+  /** Revocation sweep interval in milliseconds; 0 disables the sweep. */
+  readonly sessionReapIntervalMs?: number | undefined
 }
 
 /**
@@ -595,6 +599,8 @@ export function createIntegrationService(
     runner,
     adapters,
     now,
+    sessionLive: options.sessionLive,
+    reapIntervalMs: options.sessionReapIntervalMs,
     ...(options.audit === undefined ? {} : { audit: event => {
       options.audit?.({
         action: event.action,

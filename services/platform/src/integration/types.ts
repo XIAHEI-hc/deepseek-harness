@@ -96,6 +96,8 @@ export interface JobRecord {
   readonly workspaceId: string
   readonly inputSnapshotIds: readonly string[]
   readonly language: JobLanguage
+  /** Permission version the session held when the job was admitted. */
+  readonly policyEpoch: number
   readonly scriptSha256: string
   readonly status: JobStatus
   readonly createdAt: string

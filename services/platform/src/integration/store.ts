@@ -93,6 +93,12 @@ const FUSION_MIGRATIONS: readonly FusionMigration[] = [
       CREATE INDEX idx_integration_artifacts_job ON dsh_integration_artifacts(job_id);
     `,
   },
+  {
+    version: 2,
+    statements: `
+      ALTER TABLE dsh_integration_jobs ADD COLUMN policy_epoch INTEGER NOT NULL DEFAULT 1;
+    `,
+  },
 ]
 
 /**
@@ -247,6 +253,7 @@ function toJob(row: Record<string, unknown>): JobRecord {
     workspaceId: text(row, 'workspace_id'),
     inputSnapshotIds: parseIdArray(text(row, 'input_snapshot_ids')),
     language: parseJobLanguage(text(row, 'language')),
+    policyEpoch: integer(row, 'policy_epoch'),
     scriptSha256: text(row, 'script_sha256'),
     status: parseJobStatus(text(row, 'status')),
     createdAt: text(row, 'created_at'),
@@ -436,9 +443,9 @@ export class IntegrationStore {
     this.database
       .prepare(
         `INSERT INTO dsh_integration_jobs
-          (id, owner_user_id, session_id, workspace_id, input_snapshot_ids, language, script_sha256,
+          (id, owner_user_id, session_id, workspace_id, input_snapshot_ids, language, policy_epoch, script_sha256,
            status, created_at, started_at, finished_at, error_code)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         job.id,
@@ -447,6 +454,7 @@ export class IntegrationStore {
         job.workspaceId,
         JSON.stringify(job.inputSnapshotIds),
         job.language,
+        job.policyEpoch,
         job.scriptSha256,
         job.status,
         job.createdAt,
@@ -502,6 +510,17 @@ export class IntegrationStore {
     return this.database
       .prepare('SELECT * FROM dsh_integration_jobs WHERE owner_user_id = ? ORDER BY created_at DESC, id DESC')
       .all(ownerUserId)
+      .map(row => toJob(row))
+  }
+
+  /**
+   * List every queued or running job across users for session reconciliation.
+   * @returns jobs that may still own a container.
+   */
+  listActiveJobs(): JobRecord[] {
+    return this.database
+      .prepare("SELECT * FROM dsh_integration_jobs WHERE status IN ('queued', 'running') ORDER BY created_at ASC")
+      .all()
       .map(row => toJob(row))
   }
 

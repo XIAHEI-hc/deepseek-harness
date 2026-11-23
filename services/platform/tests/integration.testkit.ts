@@ -172,6 +172,8 @@ export interface IntegrationTestEnvironment {
 export async function createIntegrationTestEnvironment(options: {
   readonly executor?: TestAnalysisExecutor
   readonly systems?: unknown
+  readonly sessionLive?: (sessionId: string, userId: string, permissionVersion: number) => boolean
+  readonly sessionReapIntervalMs?: number
 } = {}): Promise<IntegrationTestEnvironment> {
   const root = mkdtempSync(join(tmpdir(), 'dsh-integration-'))
   const systemsFile = join(root, 'systems.json')
@@ -199,6 +201,8 @@ export async function createIntegrationTestEnvironment(options: {
     dockerExecutor: executor.execute.bind(executor) as DockerExecutor,
     capabilitySecret: 'test-runtime-capability-secret-0123456789abcdef',
     resolveRuntimeUser: userId => userId === USER_A || userId === USER_B ? { permissionVersion: 1 } : undefined,
+    ...(options.sessionLive === undefined ? {} : { sessionLive: options.sessionLive }),
+    ...(options.sessionReapIntervalMs === undefined ? {} : { sessionReapIntervalMs: options.sessionReapIntervalMs }),
   })
   return {
     root,

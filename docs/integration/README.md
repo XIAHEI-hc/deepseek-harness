@@ -71,7 +71,7 @@ GET  /api/integration/audit?jobId=...
 
 A cross-user read returns 404 and does not distinguish "absent" from "unauthorized". `GET /api/integration/audit` returns the Job, input snapshots, and artifact metadata for source tracing.
 
-The per-user runtime's model tools call the same paths under `/api/integration/runtime/` with `Authorization: Bearer <capability>`. The gateway resolves the short-lived HMAC token to a session-shaped actor and re-checks the user's current permission version, so a revoked token is refused before expiry; no browser cookie or CSRF token is involved, and the route never falls through to the native runtime proxy.
+The per-user runtime's model tools call the same paths under `/api/integration/runtime/` with `Authorization: Bearer <capability>`. The gateway resolves the short-lived HMAC token to a session-shaped actor and re-checks the user's current permission version and live browser session, so logout or revocation refuses the token before expiry; no browser cookie or CSRF token is involved, and the route never falls through to the native runtime proxy.
 
 ## 6. Configuration
 
@@ -88,11 +88,12 @@ See the "system-fusion analysis" block in `deploy/.env.example` and `deploy/inte
 Actual commands and results are in [TEST_REPORT.md](TEST_REPORT.md); per-gate status is in [ACCEPTANCE.md](ACCEPTANCE.md). Executed locally:
 
 - `pnpm run typecheck:platform`: passed.
-- `pnpm run test:platform`: 24 files passed, 1 skipped; 271 tests passed, 4 skipped (including 6 fusion specs).
+- `pnpm run test:platform`: 24 files passed, 1 skipped; 274 tests passed, 4 skipped (including 6 fusion specs).
 - Real Docker negative verification: `deploy/scripts/verify-integration-isolation.sh` passed on WSL2 Ubuntu + Docker Engine 29.7.2, covering read-only root, read-only `/inputs`, writable `/work` and `/scratch`, uid 1000, `--network none`, no Docker socket, and no host `/srv/dsh`.
 - W3 baseline regression: this round's `pnpm run test:platform` covered the original 220 baseline cases, all passed; a real W3 tenant remains externally `BLOCKED`.
 - Native optional UI: `packages/client/ui-integration-workbench` registers one `shell.overlay` launcher, reads status once, and renders nothing when fusion is absent; its API and component specs pass.
 - Model tools: `packages/integration/tool-integration` exposes discovery, snapshot, isolated-job, status, and artifact tools; the platform injects a short-lived HMAC capability into the per-user runtime and the gateway resolves it without a browser session.
+- Session revocation: runtime tokens are re-checked against the current permission version, and the job reaper cancels a running container after logout, disable, or permission change.
 
 Not complete, and must not be claimed production-ready:
 
