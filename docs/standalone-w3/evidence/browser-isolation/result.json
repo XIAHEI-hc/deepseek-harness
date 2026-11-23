@@ -1,0 +1,7 @@
+{
+  "sessionA": "session-6587e019-6720-449a-935b-fd5ed2ea7813",
+  "sessionB": "session-c8c678de-c7e8-415c-894a-2f3b9bc85eed",
+  "firstA": "### Ran Playwright code\n```js\nawait page.goto('http://127.0.0.1:58439/probe');\n```\n### Page\n- Page URL: http://127.0.0.1:58439/probe\n- Page Title: probe-cookie-none\n### Snapshot\n- [Snapshot](.playwright-mcp\\page-2026-11-23T09-58-59-754Z.yml)",
+  "secondA": "### Ran Playwright code\n```js\nawait page.goto('http://127.0.0.1:58439/probe');\n```\n### Page\n- Page URL: http://127.0.0.1:58439/probe\n- Page Title: probe-cookie-yes\n### Snapshot\n- [Snapshot](.playwright-mcp\\page-2026-11-23T09-59-00-808Z.yml)",
+  "firstB": "### Ran Playwright code\n```js\nawait page.goto('http://127.0.0.1:58439/probe');\n```\n### Page\n- Page URL: http://127.0.0.1:58439/probe\n- Page Title: probe-cookie-none\n### Snapshot\n- [Snapshot](.playwright-mcp\\page-2026-11-23T09-59-06-075Z.yml)"
+}

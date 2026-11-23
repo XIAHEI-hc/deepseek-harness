@@ -135,6 +135,9 @@ pwsh -File deploy/scripts/verify-ws-stream-isolation.ps1
 pwsh -File deploy/scripts/verify-job-isolation.ps1
 # 原生 MCP stdio 工具往返（keyless）
 pwsh -File deploy/scripts/verify-mcp-native.ps1
+# 浏览器自动化原生往返 / 跨用户上下文隔离（需要本机 Chromium）
+pwsh -File deploy/scripts/verify-browser-native.ps1
+pwsh -File deploy/scripts/verify-browser-isolation.ps1
 ```
 
 开发模式：`AUTH_MODE=mock`、`DSH_RUNTIME_KIND=process`（受限进程，非生产安全边界），数据位于仓库根 `.dsh-platform/`。真实 A/B 双用户与隔离验收见`services/platform/tests/e2e/`，真实 W3 登录需要目标环境凭据。

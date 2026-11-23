@@ -1,0 +1,5 @@
+{
+  "sessionId": "session-4d1efeec-da9d-4fe7-9253-fffd42b79eed",
+  "toolCall": "mcp__playwright-mcp__browser_navigate",
+  "toolResult": "### Ran Playwright code\n```js\nawait page.goto('data:text/html,<title>DSH Browser Probe</title><h1>browser automation works</h1>');\n```\n### Page\n- Page URL: data:text/html,<title>DSH Browser Probe</title><h1>browser automation works</h1>\n- Page Title: DSH Browser Probe\n### Snapshot\n- [Snapshot](.playwright-mcp\\page-2026-11-23T09-59-41-925Z.yml)"
+}

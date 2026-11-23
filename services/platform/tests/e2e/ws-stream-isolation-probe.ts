@@ -203,9 +203,26 @@ async function closeStream(page: PageLike): Promise<void> {
   })
 }
 
+/**
+ * Resolve the Web shell's Playwright package, tolerating a pruned workspace link.
+ * @returns the Playwright module face the probes use.
+ */
+function loadPlaywright(): PlaywrightLike {
+  const requireFromRepo = createRequire(join(REPO_ROOT, 'package.json'))
+  try {
+    return requireFromRepo('playwright') as PlaywrightLike
+  } catch (_error) {}
+  for (const candidate of [join(REPO_ROOT, 'apps/web/node_modules/playwright'), join(REPO_ROOT, 'node_modules/.pnpm/node_modules/playwright')]) {
+    try {
+      return requireFromRepo(candidate) as PlaywrightLike
+    } catch (_error) {}
+  }
+  throw new Error('playwright is not installed; run pnpm install')
+}
+
 /** Run the probe. */
 async function main(): Promise<void> {
-  const playwright = createRequire(join(REPO_ROOT, 'apps/web/package.json'))('playwright') as PlaywrightLike
+  const playwright = loadPlaywright()
   const dataDir = await mkdtemp(join(tmpdir(), 'dsh-ws-stream-'))
   const evidence = join(REPO_ROOT, 'docs/standalone-w3/evidence/ws-stream-isolation')
   await mkdir(evidence, { recursive: true })

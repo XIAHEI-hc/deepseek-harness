@@ -327,6 +327,25 @@ bash deploy/scripts/verify-mcp-native.sh          # Linux/WSL
 
 至此 OPS-09 的原生聊天/Agent Loop、Session、Skills、MCP 四类能力均由 keyless 真实运行覆盖；真实模型供应商通路未改，凭据相关 e2e 仍属目标环境项。
 
+## 3.17 浏览器自动化：原生往返与跨用户上下文隔离（DATA-10，13 断言 PASS）
+
+```bash
+pwsh -File deploy/scripts/verify-browser-native.ps1     # 单用户原生往返（8 断言）
+pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔离（13 断言）
+```
+
+实测结果：`BROWSER NATIVE PASS: 8 assertions`、`BROWSER ISOLATION PASS: 13 assertions`，证据 [evidence/browser-native/](evidence/browser-native/)、[evidence/browser-isolation/](evidence/browser-isolation/)。
+
+做法：两个用户的 DSH home web profile 各配置 Playwright MCP browser-use provider（launch + 本机 Chromium 可执行文件），平台注入脚本化 LLM；A 在同一 Session 两次导航同一探针页，该页把请求 Cookie 状态写进页面标题；B 随后首次导航同一页。
+
+| 断言 | 实测 |
+|---|---|
+| Runtime 在 browser-use provider 配置下启动，Session 初始化浏览器 MCP 连接 | PASS |
+| 模型面向工具名 `mcp__playwright-mcp__browser_navigate`，Per-Session Chromium 真实导航 | PASS |
+| A 首次访问 `probe-cookie-none`，第二次访问 `probe-cookie-yes`（A 的浏览器 Cookie 在自身 Session 内保持） | PASS |
+| B 首次访问 `probe-cookie-none`（A 的浏览器状态不会到达 B） | PASS |
+| 两个身份的原生页面均保持可用 | PASS（截图 `a-native-page.png`、`b-native-page.png`） |
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -353,6 +372,7 @@ bash deploy/scripts/verify-mcp-native.sh          # Linux/WSL
 | Session WebSocket 隔离与撤销 | `pwsh -File deploy/scripts/verify-ws-stream-isolation.ps1` | **PASS：10 assertions**（证据 `evidence/ws-stream-isolation/`） |
 | 后台 Job 跨用户隔离 | `pwsh -File deploy/scripts/verify-job-isolation.ps1` | **PASS：11 assertions**（证据 `evidence/job-isolation/`） |
 | 原生 MCP 往返 | `pwsh -File deploy/scripts/verify-mcp-native.ps1` | **PASS：8 assertions**（证据 `evidence/mcp-native/`） |
+| 浏览器自动化隔离 | `pwsh -File deploy/scripts/verify-browser-isolation.ps1` | **PASS：13 assertions**（证据 `evidence/browser-isolation/`） |
 | 源码发布包 | `deploy/release/dsh-platform-source-2026.11.23-dev.tar.gz` | PASS（541,465 bytes，sha256 37f4da64…d44a3；173 条目，无 `.env`/数据库/凭据；含 `.env.example`） |
 | 仓库 lint | `pnpm run lint` | 失败项全部为**既有文件**（`skill-plaza`、`authentication-gateway` 测试、`workspace-controller`、`ui-skill-plaza` 测试），无新代码文件；`pnpm exec oxlint services/platform packages/client/ui-platform-identity` 0 问题 |
 
@@ -365,7 +385,7 @@ bash deploy/scripts/verify-mcp-native.sh          # Linux/WSL
 
 ## 5. BLOCKED / NOT_RUN
 
-当前矩阵：**PASS 80 / NOT_RUN 1 / BLOCKED 3**（另有 PostgreSQL 生产后端记录缺口）。
+当前矩阵：**PASS 81 / NOT_RUN 0 / BLOCKED 3**（另有 PostgreSQL 生产后端记录缺口）。
 
 | ID | 状态 | 原因 |
 |---|---|---|
@@ -373,7 +393,6 @@ bash deploy/scripts/verify-mcp-native.sh          # Linux/WSL
 | OPS-08 | BLOCKED | 需要 7 天真实运行窗口 |
 | OPS-10 | BLOCKED | 无内网 Git 地址与凭据 |
 | PostgreSQL 生产库 | BLOCKED | 当前实现为 SQLite + 版本化迁移；PostgreSQL 后端未实现 |
-| DATA-10 | NOT_RUN | 浏览器自动化上下文需要真实浏览器工具链（browser-use/Chrome）与 Agent 会话 |
 
 ## 6. 更新记录
 
@@ -407,6 +426,7 @@ bash deploy/scripts/verify-mcp-native.sh          # Linux/WSL
 | 16:10 | 浏览器 WebSocket 流事件隔离与注销实时撤销 | **PASS：10 assertions**（证据 `evidence/ws-stream-isolation/`） |
 | 16:38 | 后台 Job 跨用户隔离（Mock LLM 驱动真实 Runtime） | **PASS：11 assertions**（证据 `evidence/job-isolation/`） |
 | 16:58 | 原生 MCP stdio 工具往返（Mock LLM + 真实 Runtime） | **PASS：8 assertions**（证据 `evidence/mcp-native/`） |
+| 17:58 | 浏览器自动化原生往返 + 双用户上下文隔离（真实 Chromium） | **PASS：8 + 13 assertions**（证据 `evidence/browser-native/`、`browser-isolation/`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

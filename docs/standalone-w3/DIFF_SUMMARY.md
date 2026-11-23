@@ -40,6 +40,7 @@
 | `scripts/verify-ws-stream-isolation.{sh,ps1}` | 浏览器内 Session WebSocket 流事件隔离与注销实时撤销（10 断言：只订阅本人、跨用户 not-found、注销关闭 WS） |
 | `scripts/verify-job-isolation.{sh,ps1}` | 后台 Job 跨用户隔离（11 断言：A 的 Job 只对 A 可见、B 的 kill 被拒） |
 | `scripts/verify-mcp-native.{sh,ps1}` | 原生 MCP stdio 往返（8 断言：用户 profile 配置 MCP server、`mcp__fixtures__add` 执行并回写 Session） |
+| `scripts/verify-browser-isolation.{sh,ps1}` | 浏览器自动化跨用户隔离（13 断言：Per-Session Chromium、Cookie 留在本人 Session、B 不见 A 状态） |
 | `services/platform/src/runtime/*`、`app.ts` | 显式 `runtimeEnv` 注入（进程后端）：内嵌部署/探针为 Runtime 提供模型端点或测试凭据；容器后端拒绝该注入，宿主敏感环境仍不会隐式继承 |
 
 ## 3. 新增：平台身份前端插件
