@@ -51,3 +51,4 @@
 | 内网 Git 推送 | BLOCKED | 无内网地址与凭据 |
 | 模型侧受限工具装配 | NOT_RUN | 尚未实现 |
 | PostgreSQL 后端融合元数据 | NOT_RUN | 融合元数据当前为节点本地 SQLite，与运行时注册表一致 |
+| 分析 Job 镜像构建 | BLOCKED | 本机访问 Docker Hub 解析 `python:3.12-alpine` 元数据超时 |

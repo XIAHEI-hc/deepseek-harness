@@ -51,3 +51,4 @@ Output summary: `analysis probe passed` / `verify-integration-isolation: PASS`.
 | Internal Git push | BLOCKED | no internal address or credentials |
 | Model-side restricted tool assembly | NOT_RUN | not implemented |
 | PostgreSQL-backed fusion metadata | NOT_RUN | fusion metadata is node-local SQLite, matching the runtime registry |
+| Analysis job image build | BLOCKED | `python:3.12-alpine` metadata request timed out against Docker Hub from this host |

@@ -6,8 +6,8 @@
   en: a858c0e32b495bb0
   zh: 3eb9a57cfb6183ac
 /system-fusion-deployment/prerequisites:
-  en: 35f97eb6cc4c7871
-  zh: 9a074039eb84529a
+  en: 427720ffd3967b21
+  zh: 8d5940ca40848caf
 /system-fusion-deployment/enable:
   en: b83c0573f2e087b0
   zh: 0a55c2c5a90de7eb
@@ -17,6 +17,9 @@
 /system-fusion-deployment/verify:
   en: 64b99fddbcaf94f6
   zh: b6d19474dd580cd5
+/system-fusion-deployment/backup-upgrade-and-rollback:
+  en: e01c7b2c654fc5fc
+  zh: e5c08f35eedb2ab5
 /system-fusion-deployment/boundaries:
   en: 633649366eba079c
   zh: 632e7dc53b3222ce

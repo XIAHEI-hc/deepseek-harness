@@ -8,7 +8,7 @@ This directory holds the optional host-fusion assets. The native W3 platform run
 
 1. Linux host with Docker Engine and `docker compose`; the platform process needs the Docker CLI and socket to start analysis containers. Fusion preflight refuses a non-Linux host because bind-mount paths and isolation flags must be authoritative.
 2. `APP_ENV=production`, `AUTH_MODE=w3`, and `DSH_RUNTIME_KIND=container`.
-3. A fixed analysis image built from [`job/Dockerfile`](job/Dockerfile) or an equivalent image with `/bin/sh` and `python3`.
+3. A fixed analysis image built from [`job/Dockerfile`](job/Dockerfile) with `bash deploy/scripts/build-integration-job-image.sh [tag]`, or an equivalent image with `/bin/sh` and `python3`.
 4. A connector registry copied from [`systems.http.example.json`](systems.http.example.json). Remove the example host and users before deployment. ACL keys may be the internal user id, the W3 subject, or the W3 uid; `uid` is the practical choice for administrators.
 5. Snapshot, workspace, and job roots on a persistent volume. They must be pairwise disjoint real directories; preflight refuses overlap or symlinks.
 6. A backup plan for `DSH_INTEGRATION_DATA_DIR`. Snapshots and job metadata are required for source tracing, not for the native chat history.
@@ -40,6 +40,13 @@ DSH_INTEGRATION_JOB_IMAGE=dsh-analysis@sha256:<digest> \
 ```
 
 The gate inspects the daemon-resolved container and fails if the root is writable, the network is not `none`, capabilities or `no-new-privileges` are missing, the user is not the configured uid, a Docker socket or host deployment root is visible, or the input snapshot is writable.
+
+## Backup, upgrade, and rollback
+
+- `backup.sh` archives `management/`, which contains the fusion metadata database, snapshots, and job records; keep the same backup schedule as the native platform.
+- Upgrade with the existing `upgrade.sh`. It preserves `.env`, keys, user spaces, and `management/integration`; update `DSH_INTEGRATION_JOB_IMAGE` only after the new analysis image is imported and pinned by digest.
+- To roll back, set `DSH_INTEGRATION_ENABLED=false`, restart, confirm that no analysis container remains, then restore the previous platform release. Fusion snapshots and job records are additive and remain readable.
+- Disabling fusion is the emergency stop: it removes every fusion route and cancels active job containers while keeping native users and data untouched.
 
 ## Boundaries
 

@@ -83,7 +83,7 @@ GET  /api/integration/audit?jobId=...
 
 ## 7. 已验证与未完成
 
-实际命令与结果见 [TEST_REPORT.zh.md](TEST_REPORT.zh.md)。已在本机执行：
+实际命令与结果见 [TEST_REPORT.zh.md](TEST_REPORT.zh.md)，逐项状态见 [ACCEPTANCE.zh.md](ACCEPTANCE.zh.md)。已在本机执行：
 
 - `pnpm run typecheck:platform`：通过。
 - `pnpm run test:platform`：24 个文件通过、1 个跳过；262 个用例通过、4 个跳过（含 6 个融合 spec）。

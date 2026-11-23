@@ -8,7 +8,7 @@
 
 1. 具有 Docker Engine 与 `docker compose` 的 Linux 主机；平台进程需要 Docker CLI 与 socket 才能启动分析容器。融合预检拒绝非 Linux 主机，因为绑定挂载路径与隔离参数必须具有权威性。
 2. `APP_ENV=production`、`AUTH_MODE=w3`、`DSH_RUNTIME_KIND=container`。
-3. 由 [`job/Dockerfile`](job/Dockerfile) 构建的固定分析镜像，或提供 `/bin/sh` 与 `python3` 的等价镜像。
+3. 用 `bash deploy/scripts/build-integration-job-image.sh [tag]` 从 [`job/Dockerfile`](job/Dockerfile) 构建的固定分析镜像，或提供 `/bin/sh` 与 `python3` 的等价镜像。
 4. 从 [`systems.http.example.json`](systems.http.example.json) 复制的连接器注册表。部署前删除示例主机与用户。ACL 键可以是内部 user id、W3 subject 或 W3 uid；管理员实际使用 `uid` 最方便。
 5. 持久卷上的快照、工作区与 Job 根目录。它们必须是互不重叠的真实目录；预检拒绝重叠与符号链接。
 6. `DSH_INTEGRATION_DATA_DIR` 的备份方案。快照与 Job 元数据是来源追溯所必需的，但不是原生聊天历史所必需的。
@@ -40,6 +40,13 @@ DSH_INTEGRATION_JOB_IMAGE=dsh-analysis@sha256:<digest> \
 ```
 
 该门禁检查 daemon 解析后的容器：根可写、网络不是 `none`、缺少 capability 或 `no-new-privileges`、用户不是配置 uid、Docker socket 或宿主部署根可见、输入快照可写，任一情况都会失败。
+
+## 备份、升级与回滚
+
+- `backup.sh` 打包 `management/`，其中包含融合元数据库、快照与 Job 记录；沿用原生平台的同一备份计划。
+- 使用现有 `upgrade.sh` 升级。它保留 `.env`、密钥、用户空间与 `management/integration`；只有在新的分析镜像已导入并按 digest 固定后，才更新 `DSH_INTEGRATION_JOB_IMAGE`。
+- 回滚时先设置 `DSH_INTEGRATION_ENABLED=false` 并重启，确认没有分析容器残留，再恢复上一平台版本。融合快照与 Job 记录是增量数据，仍可读取。
+- 停用融合就是紧急停止：移除所有融合路由并取消活动 Job 容器，同时不动原生用户与数据。
 
 ## 边界
 

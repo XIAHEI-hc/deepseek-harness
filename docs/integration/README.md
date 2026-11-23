@@ -83,7 +83,7 @@ See the "system-fusion analysis" block in `deploy/.env.example` and `deploy/inte
 
 ## 7. Verified and outstanding
 
-Actual commands and results are in [TEST_REPORT.md](TEST_REPORT.md). Executed locally:
+Actual commands and results are in [TEST_REPORT.md](TEST_REPORT.md); per-gate status is in [ACCEPTANCE.md](ACCEPTANCE.md). Executed locally:
 
 - `pnpm run typecheck:platform`: passed.
 - `pnpm run test:platform`: 24 files passed, 1 skipped; 262 tests passed, 4 skipped (including 6 fusion specs).
