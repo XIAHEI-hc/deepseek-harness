@@ -8,7 +8,7 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 
 | ID | Check | Status | Evidence |
 |---|---|---|---|
-| F0-01 | Existing W3 platform suite still passes | RUN_PASS | `pnpm run test:platform`: 262 passed, 4 skipped |
+| F0-01 | Existing W3 platform suite still passes | RUN_PASS | `pnpm run test:platform`: 263 passed, 4 skipped |
 | F0-02 | Real W3 tenant A/B login | BLOCKED | no W3 tenant credentials |
 | F1-01 | Disabled switch has no fusion side effect | RUN_PASS | `integration.config.spec.ts`, `integration.service.spec.ts` |
 | F1-02 | Enabled but incomplete preflight is blocked, native platform stays up | RUN_PASS | `integration.preflight.spec.ts`, blocked-route test |
@@ -27,6 +27,7 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 | F5-02 | Workspace switch reads the same snapshot and writes only the selected workspace | RUN_PASS | `integration.service.spec.ts` |
 | F5-03 | Artifact download re-checks owner and hash | RUN_PASS | `integration.service.spec.ts` |
 | F5-04 | Permission epoch change refuses an old snapshot | RUN_PASS | `integration.service.spec.ts` |
+| F5-05 | Explicit cancellation is not overwritten by the container exit | RUN_PASS | `integration.service.spec.ts` cancellation race case |
 | F6-01 | Workbench hidden without the fusion API | RUN_PASS | `Workbench.client.spec.tsx` |
 | F6-02 | Ready and blocked panels render authorized resources and issue codes | RUN_PASS | `Workbench.client.spec.tsx` |
 | F6-03 | Server-sent job streaming | NOT_RUN | panel refreshes on user action |

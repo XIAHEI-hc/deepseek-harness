@@ -8,7 +8,7 @@
 
 | ID | 检查 | 状态 | 证据 |
 |---|---|---|---|
-| F0-01 | 现有 W3 平台套件仍通过 | RUN_PASS | `pnpm run test:platform`：262 通过、4 跳过 |
+| F0-01 | 现有 W3 平台套件仍通过 | RUN_PASS | `pnpm run test:platform`：263 通过、4 跳过 |
 | F0-02 | 真实 W3 租户 A/B 登录 | BLOCKED | 无 W3 租户凭据 |
 | F1-01 | 关闭开关无融合副作用 | RUN_PASS | `integration.config.spec.ts`、`integration.service.spec.ts` |
 | F1-02 | 开启但预检不完整时 blocked，原生平台继续运行 | RUN_PASS | `integration.preflight.spec.ts`、blocked 路由测试 |
@@ -27,6 +27,7 @@
 | F5-02 | 切工作区读同一快照，只写选中工作区 | RUN_PASS | `integration.service.spec.ts` |
 | F5-03 | 产物下载重新校验 owner 与哈希 | RUN_PASS | `integration.service.spec.ts` |
 | F5-04 | 权限 epoch 变化拒绝旧快照 | RUN_PASS | `integration.service.spec.ts` |
+| F5-05 | 显式取消不会被容器退出覆盖 | RUN_PASS | `integration.service.spec.ts` 取消竞态用例 |
 | F6-01 | 无融合 API 时工作台隐藏 | RUN_PASS | `Workbench.client.spec.tsx` |
 | F6-02 | ready 与 blocked 面板显示授权资源与缺项代码 | RUN_PASS | `Workbench.client.spec.tsx` |
 | F6-03 | 服务端作业流式推送 | NOT_RUN | 面板只在用户操作时刷新 |

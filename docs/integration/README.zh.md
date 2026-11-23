@@ -86,7 +86,7 @@ GET  /api/integration/audit?jobId=...
 实际命令与结果见 [TEST_REPORT.zh.md](TEST_REPORT.zh.md)，逐项状态见 [ACCEPTANCE.zh.md](ACCEPTANCE.zh.md)。已在本机执行：
 
 - `pnpm run typecheck:platform`：通过。
-- `pnpm run test:platform`：24 个文件通过、1 个跳过；262 个用例通过、4 个跳过（含 6 个融合 spec）。
+- `pnpm run test:platform`：24 个文件通过、1 个跳过；263 个用例通过、4 个跳过（含 6 个融合 spec）。
 - 真实 Docker 负向验证：`deploy/scripts/verify-integration-isolation.sh` 在 WSL2 Ubuntu + Docker Engine 29.7.2 上通过，验证只读根、只读 `/inputs`、`/work`/`/scratch` 可写、uid 1000、`--network none`、无 Docker socket、无宿主 `/srv/dsh`。
 - W3 基线回归：本轮 `pnpm run test:platform` 覆盖原 220 个基线用例，全部通过；真实 W3 租户仍为外部 `BLOCKED`。
 - 原生可选 UI：`packages/client/ui-integration-workbench` 注册一个 `shell.overlay` 启动器，只读取一次状态，融合不存在时不渲染任何内容；其 API 与组件测试通过。

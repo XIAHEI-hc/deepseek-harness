@@ -70,8 +70,14 @@ export function mockSystemsDocument(): unknown {
   }
 }
 
+/** Shared surface of the test Docker executors. */
+export interface TestAnalysisExecutor {
+  readonly calls: string[][]
+  execute(args: readonly string[]): Promise<DockerCommandResult>
+}
+
 /** A fake Docker executor that writes one artifact per successful job. */
-export class FakeAnalysisExecutor {
+export class FakeAnalysisExecutor implements TestAnalysisExecutor {
   readonly calls: string[][] = []
   readonly removed: string[][] = []
   exitCode = 0
@@ -125,13 +131,36 @@ function valueAfter(args: readonly string[], flag: string): string | undefined {
   return index < 0 ? undefined : args[index + 1]
 }
 
+/** Executor that holds one run open until it is cancelled. */
+export class CancellableAnalysisExecutor implements TestAnalysisExecutor {
+  readonly calls: string[][] = []
+  private releaseRun: ((result: DockerCommandResult) => void) | undefined
+
+  /**
+   * @param args - Docker argv.
+   * @returns a run that settles only when `rm -f` arrives.
+   */
+  async execute(args: readonly string[]): Promise<DockerCommandResult> {
+    this.calls.push([...args])
+    if (args[0] === 'rm') {
+      const release = this.releaseRun
+      this.releaseRun = undefined
+      release?.({ stdout: '', stderr: '', exitCode: 1 })
+      return { stdout: '', stderr: '', exitCode: 0 }
+    }
+    return await new Promise<DockerCommandResult>((resolve) => {
+      this.releaseRun = resolve
+    })
+  }
+}
+
 /** One running test environment. */
 export interface IntegrationTestEnvironment {
   readonly root: string
   readonly config: IntegrationConfig
   readonly service: IntegrationService
   readonly audit: PlatformAuditEvent[]
-  readonly executor: FakeAnalysisExecutor
+  readonly executor: TestAnalysisExecutor
   close(): Promise<void>
 }
 
@@ -141,7 +170,7 @@ export interface IntegrationTestEnvironment {
  * @returns the environment.
  */
 export async function createIntegrationTestEnvironment(options: {
-  readonly executor?: FakeAnalysisExecutor
+  readonly executor?: TestAnalysisExecutor
   readonly systems?: unknown
 } = {}): Promise<IntegrationTestEnvironment> {
   const root = mkdtempSync(join(tmpdir(), 'dsh-integration-'))

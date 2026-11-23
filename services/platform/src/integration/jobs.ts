@@ -269,6 +269,7 @@ export class JobService {
         scratchDirectory: scratch,
         language: job.language,
       })
+      if (this.isCancelled(job.id)) return
       if (result.exitCode !== 0) {
         this.store.updateJob(job.id, {
           status: 'failed',
@@ -286,6 +287,7 @@ export class JobService {
       })
       this.auditEvent('JOB_FINISH', 'success', actor.userId, job.id, null)
     } catch (error) {
+      if (this.isCancelled(job.id)) return
       const code = error instanceof IntegrationError ? error.code : 'job-failed'
       this.store.updateJob(job.id, {
         status: 'failed',
@@ -294,6 +296,15 @@ export class JobService {
       })
       this.auditEvent('JOB_FINISH', 'failure', actor.userId, job.id, code)
     }
+  }
+
+  /**
+   * Report whether an explicit cancellation already settled the job.
+   * @param jobId - job id.
+   * @returns true when the stored job is cancelled.
+   */
+  private isCancelled(jobId: string): boolean {
+    return this.store.findJob(jobId, null)?.status === 'cancelled'
   }
 
   /**

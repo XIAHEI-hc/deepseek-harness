@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { IntegrationService } from '../src/contracts.ts'
 import {
+  CancellableAnalysisExecutor,
   FakeAnalysisExecutor,
   USER_A,
   USER_B,
@@ -197,6 +198,33 @@ describe('analysis jobs', () => {
     const view = await callFusion(environment.service, sessionFor(USER_A), 'GET', `/api/integration/jobs/${jobId}`)
     const artifactId = requireString((view.body?.['artifacts'] as Record<string, unknown>[])[0] ?? {}, 'id')
     expect((await callFusion(environment.service, sessionFor(USER_B), 'GET', `/api/integration/artifacts/${artifactId}/download`)).status).toBe(404)
+  })
+
+  it('keeps an explicit cancellation instead of overwriting it with the container exit', async () => {
+    const executor = new CancellableAnalysisExecutor()
+    environment = await createIntegrationTestEnvironment({ executor })
+    const workspaceId = await createWorkspace(environment.service, USER_A, 'Cancel')
+    const snapshotId = await captureSnapshot(environment.service, USER_A, 'sales-2026')
+    const start = await callFusion(environment.service, sessionFor(USER_A), 'POST', '/api/integration/jobs', {
+      workspaceId,
+      inputSnapshotIds: [snapshotId],
+      language: 'shell',
+      script: 'sleep 60\n',
+    })
+    const jobId = requireString(start.body?.['job'] as Record<string, unknown>, 'id')
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const view = await callFusion(environment.service, sessionFor(USER_A), 'GET', `/api/integration/jobs/${jobId}`)
+      const job = view.body?.['job'] as Record<string, unknown> | undefined
+      if (job?.['status'] === 'running') break
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+    const cancelled = await callFusion(environment.service, sessionFor(USER_A), 'POST', `/api/integration/jobs/${jobId}/cancel`, {})
+    expect(cancelled.status).toBe(200)
+    const settled = await waitForJob(environment.service, sessionFor(USER_A), jobId)
+    expect(settled['status']).toBe('cancelled')
+    expect(executor.calls.some(args => args[0] === 'rm')).toBe(true)
+    const view = await callFusion(environment.service, sessionFor(USER_A), 'GET', `/api/integration/jobs/${jobId}`)
+    expect(view.body?.['artifacts']).toEqual([])
   })
 
   it('marks a nonzero container exit as failed without artifacts', async () => {
