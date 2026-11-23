@@ -69,7 +69,9 @@ Runtime 只读取公钥文件。
 （读写）与 Gateway 公钥（只读），不挂 Docker socket、宿主 root、Gateway 私钥或平台数据库。
 空间目录结构：`<root>/<space_key>/{dsh-home,home,agents-home,workspaces,uploads,tmp}`。
 `space_key = HMAC-SHA256(realm, user_id)` 的不透明十六进制值，绝不使用显示名或客户端输入。
-真实容器策略由 `deploy/scripts/verify-container-isolation.sh` 在真实 Docker 上验证（60 断言）。
+真实容器策略由 `deploy/scripts/verify-container-isolation.sh` 在真实 Docker 上验证（60 断言）；
+完整运行时镜像由 `deploy/scripts/build-runtime-image.sh` 构建，`deploy/scripts/verify-container-runtime.sh`
+用该镜像跑双用户容器模式 e2e（46 断言：原生 UI、Session/Skills 隔离、文件/凭据不可跨容器、供应商账户分离）。
 
 运行时 overlay 同时把 `session-query-sqlite` 指向该用户 `$DSH_HOME/state/session-query.sqlite` 并在首次搜索时打开，
 因此每个身份的内容搜索只建立在自己的 Session 数据上（shipped Web profile 默认关闭内容搜索）。

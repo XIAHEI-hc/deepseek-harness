@@ -124,6 +124,9 @@ bash deploy/scripts/run-dev.sh          # Linux/WSL
 pwsh -File deploy/scripts/run-dev.ps1   # Windows
 # 真实容器隔离验证（需要 Docker；WSL 内执行）
 wsl -d Ubuntu --exec bash deploy/scripts/verify-container-isolation.sh
+# 完整运行时镜像构建 + 真实容器模式双用户 e2e
+bash deploy/scripts/build-runtime-image.sh dev
+wsl -d Ubuntu --exec bash deploy/scripts/verify-container-runtime.sh
 ```
 
 开发模式：`AUTH_MODE=mock`、`DSH_RUNTIME_KIND=process`（受限进程，非生产安全边界），数据位于仓库根 `.dsh-platform/`。真实 A/B 双用户与隔离验收见`services/platform/tests/e2e/`，真实 W3 登录需要目标环境凭据。

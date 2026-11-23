@@ -17,6 +17,10 @@ RUN apt-get update \
 
 WORKDIR /src
 RUN corepack enable
+# The image build context excludes .git, so the client build environment takes
+# the source commit explicitly; build-image.sh passes the repository HEAD.
+ARG DSH_CLIENT_COMMIT_HASH=0000000000000000000000000000000000000000
+ENV DSH_CLIENT_COMMIT_HASH=$DSH_CLIENT_COMMIT_HASH
 COPY . .
 # 完整的 DSH 构建：host/client 产物与 Web 前端 dist。
 RUN pnpm install --frozen-lockfile

@@ -20,7 +20,7 @@
 5. **gzip/压缩与 HTTP/2**：Gateway 透传原始流，未做压缩；由反代负责。
 6. **前端快照/浏览器冒烟**：平台身份插件的组件/apply 测试与 Playwright 真实浏览器验收（登录、姓名、退出、刷新、第二身份）已通过并留存 `docs/standalone-w3/evidence/` 截图；仓库自带 `test:web` 快照套件未运行（需要构建后的 Web host 与模型凭据）。
 7. **平台审计事件表**：认证失败/运行时状态/连接归属的审计落库未实现（日志已脱敏记录稳定 code）。
-8. **容器化生产验证**：平台镜像可构建且 `--check` 通过；容器启动策略已用真实 Docker + 生产 `createDockerBackend` 路径验证（60 断言，见 TEST_REPORT §3.4），包括挂载/端口/UID/限额/不可见 socket 与私钥、空闲回收、adopt 与数据保留。**完整 DSH Runtime 镜像**（`deploy/runtime/Dockerfile` 的多阶段 pnpm 构建）仍需在 Linux 构建机执行并用真实 Runtime 容器跑双用户 e2e；本机受构建时长与 Windows↔WSL 网络限制未执行。
+8. **容器化生产验证**：平台镜像与完整 DSH 运行时镜像都已成功构建；用真实运行时镜像跑通容器模式双用户 e2e（46 断言，见 TEST_REPORT §3.10），覆盖原生 UI、Session/Skills 隔离、文件/凭据/Docker socket/宿主根/Gateway 私钥不可见、供应商账户与平台身份分离、注销撤销。仍待目标环境完成的是：镜像推送/离线分发到部署机、compose 全栈部署、真实 W3 与内网 Git（见 §1 BLOCKED 项）。
 9. **仓库级既有红**（与本次改动无关）：`verify-cordis-config`（`apps/cli/tests/profiles/acp/cordis.yml` 夹具）、`verify-client-domain-graph`（ui-workspace sibling import）、`pnpm run lint` 中 skill-plaza/authentication-gateway 测试/workspace-controller 的既有告警；新增代码定向 oxlint 为 0 问题。
 
 ## 3. 与开发包的已知偏差

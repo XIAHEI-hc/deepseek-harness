@@ -33,6 +33,8 @@
 | `scripts/{init,build-image,backup,restore,upgrade,rollback,healthcheck,run-dev}.sh`、`run-dev.ps1` | 一键初始化、离线发布、备份/恢复、升级/回滚、健康检查、本地开发 |
 | `scripts/verify-container-isolation.sh` | 在 WSL/Linux 内运行真实容器隔离验证（60 断言：挂载/端口/UID/限额/lease/空闲回收/adopt/数据保留） |
 | `scripts/verify-deploy-lifecycle.sh` | 部署生命周期演练（9 断言：版本化迁移、备份/恢复、离线镜像升级、失败自动回滚与数据一致性） |
+| `scripts/build-runtime-image.sh` | 本地/CI 构建完整运行时镜像（传递 commit、非 root node 用户、绝对路径 entrypoint） |
+| `scripts/verify-container-runtime.sh` | 真实运行时镜像 + 容器模式双用户 e2e（46 断言：原生 UI、Session/Skills、文件/凭据、供应商分离、注销） |
 
 ## 3. 新增：平台身份前端插件
 

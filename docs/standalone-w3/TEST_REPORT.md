@@ -198,6 +198,28 @@ node --import tsx/esm services/platform/src/main.ts admin session revoke-all --s
 
 生产 overlay 还显式把 `session-query-sqlite` 配为每个用户 `$DSH_HOME/state/` 下的独立索引（shipped Web profile 默认关闭搜索），保证搜索数据不跨身份。
 
+## 3.10 完整运行时镜像 + 容器模式端到端（46 断言 PASS）
+
+```bash
+# 构建生产运行时镜像（多阶段：pnpm install + 完整 DSH build）
+bash deploy/scripts/build-runtime-image.sh dev     # dsh-runtime:dev（4.24GB）
+# 平台以容器后端 + 真实 DSH 运行时镜像跑双用户 e2e
+wsl -d Ubuntu --exec bash deploy/scripts/verify-container-runtime.sh
+```
+
+实测结果：`CONTAINER RUNTIME E2E PASS: 46 assertions`，证据 [evidence/container-runtime-e2e.log](evidence/container-runtime-e2e.log)。
+
+| 覆盖 | 实测断言 |
+|---|---|
+| 镜像构建 | `deploy/runtime/Dockerfile` 多阶段构建成功（内置 commit 传递、非 root node 用户、绝对路径 entrypoint） |
+| 容器 Runtime | 平台 Supervisior 用真实镜像为两个 W3 身份启动两个 DSH 容器，`/health`、探针、Gateway 代理全部就绪；容器以 1000:1000 运行、无发布端口、8 个显式挂载 |
+| 原生 UI | A/B 通过 Gateway 拿到原生 DSH `__DSH_BOOT__` 页面，可创建/列出原生 Session（`session/create`、`session/list`） |
+| Session 隔离 | A/B Session id 不同且列表互不可见；A 用 B id 调 `session/state`、`session/rename` 均失败 |
+| Skills 隔离（DATA-07） | A 保存个人草稿后，A 列表含、B 列表不含；B 用 A 的 draftId 更新被拒绝，A 的草稿不被修改 |
+| 文件/凭据隔离 | B 在自己容器写文件并自读成功；A 容器读 B 文件失败；A 看不到宿主根、Docker socket、Gateway 私钥 |
+| 供应商账户分离（UI-05） | 模型供应商 signed-out 时平台身份正常；调用 `account/signOut` 后平台 Session 仍有效、原生 UI 可用 |
+| 注销 | 平台注销后 `/auth/me` 401；B 继续正常工作 |
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -216,6 +238,8 @@ node --import tsx/esm services/platform/src/main.ts admin session revoke-all --s
 | 平台容器镜像 | `docker build -f deploy/platform/Dockerfile -t dsh-platform:test .` 后 `docker run ... --check` | PASS（镜像构建成功；开发配置校验通过；生产缺配置时按预期列出缺项并非零退出） |
 | 容器隔离（真实 Docker） | `wsl -d Ubuntu --exec bash deploy/scripts/verify-container-isolation.sh` | **PASS：60 assertions**（证据 `evidence/container-isolation.log`） |
 | 部署生命周期（真实 Docker） | `wsl -d Ubuntu --exec bash deploy/scripts/verify-deploy-lifecycle.sh` | **PASS：9 assertions**（证据 `evidence/deploy-lifecycle.log`） |
+| 运行时镜像构建 | `bash deploy/scripts/build-runtime-image.sh dev` | **PASS**（多阶段构建成功，`dsh-runtime:dev` 4.24GB） |
+| 容器模式端到端 | `wsl -d Ubuntu --exec bash deploy/scripts/verify-container-runtime.sh` | **PASS：46 assertions**（证据 `evidence/container-runtime-e2e.log`） |
 | 源码发布包 | `deploy/release/dsh-platform-source-2026.11.23-dev.tar.gz` | PASS（541,465 bytes，sha256 37f4da64…d44a3；173 条目，无 `.env`/数据库/凭据；含 `.env.example`） |
 | 仓库 lint | `pnpm run lint` | 失败项全部为**既有文件**（`skill-plaza`、`authentication-gateway` 测试、`workspace-controller`、`ui-skill-plaza` 测试），无新代码文件；`pnpm exec oxlint services/platform packages/client/ui-platform-identity` 0 问题 |
 
@@ -259,6 +283,8 @@ node --import tsx/esm services/platform/src/main.ts admin session revoke-all --s
 | 13:45 | 部署生命周期演练（备份/恢复/离线升级/失败回滚） | **PASS：9 assertions** |
 | 13:48 | e2e 扩展：管理员 disable/enable 触发 HTTP/WS 撤销 | PASS：6/6 tests，3 个真实 Runtime |
 | 14:28 | e2e 扩展：双身份 Session/搜索/IDOR/历史恢复隔离 | PASS：7/7 tests |
+| 14:50 | 构建生产运行时镜像（多阶段 DSH build） | PASS（dsh-runtime:dev，4.24GB） |
+| 15:00 | 真实运行时镜像 + 容器模式双用户 e2e | **PASS：46 assertions**（原生 UI/Session/Skills/文件/凭据/供应商分离） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

@@ -17,13 +17,14 @@ OUT="$REPO_ROOT/deploy/release"
 mkdir -p "$OUT"
 
 cd "$REPO_ROOT"
+COMMIT="$(git rev-parse HEAD 2>/dev/null || echo 0000000000000000000000000000000000000000)"
 
 echo "== 构建运行时镜像 dsh-runtime:$VERSION =="
-docker build -f deploy/runtime/Dockerfile -t "dsh-runtime:$VERSION" .
+docker build --build-arg "DSH_CLIENT_COMMIT_HASH=$COMMIT" -f deploy/runtime/Dockerfile -t "dsh-runtime:$VERSION" .
 docker save "dsh-runtime:$VERSION" -o "$OUT/dsh-runtime-$VERSION.tar"
 
 echo "== 构建平台镜像 dsh-platform:$VERSION =="
-docker build -f deploy/platform/Dockerfile -t "dsh-platform:$VERSION" .
+docker build --build-arg "DSH_CLIENT_COMMIT_HASH=$COMMIT" -f deploy/platform/Dockerfile -t "dsh-platform:$VERSION" .
 docker save "dsh-platform:$VERSION" -o "$OUT/dsh-platform-$VERSION.tar"
 
 ( cd "$OUT" && sha256sum "dsh-runtime-$VERSION.tar" "dsh-platform-$VERSION.tar" > "SHA256SUMS-$VERSION" )
