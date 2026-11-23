@@ -11,6 +11,7 @@
 
 import { createPlatformApp } from './app.ts'
 import { listAuditEvents } from './admin/audit.ts'
+import { readIntegrationStatus } from './admin/integration.ts'
 import { runIdentityCleanup } from './admin/cleanup.ts'
 import { migrateHome, MigrationError } from './admin/migrate-home.ts'
 import { readRuntimeStatus, restartRuntime } from './admin/runtime.ts'
@@ -87,6 +88,9 @@ function printAdminHelp(): number {
     '',
     '  session cleanup [--retention-days <n>] [--confirm]',
     '      count (or with --confirm delete) expired sessions and login transactions',
+    '',
+    '  integration status',
+    '      print fusion preflight state, issue codes, system count, and metadata counts',
     '',
   ].join('\n'))
   return 0
@@ -204,6 +208,17 @@ async function runAdmin(argv: readonly string[], config: PlatformConfig): Promis
   }
   if (argv[0] === 'session' && argv[1] === 'cleanup') {
     return await runSessionCleanup(argv, config)
+  }
+  if (argv[0] === 'integration') {
+    if (argv[1] !== 'status') {
+      process.stderr.write(`unknown admin command ${JSON.stringify(['integration', argv[1]])}\n`)
+      return 2
+    }
+    const report = await readIntegrationStatus(config)
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
+    process.stdout.write(`integration: ${report.state}${report.enabled ? '' : ' (disabled)'}`
+      + `${report.counts === null ? '' : `, ${String(report.counts.activeJobs)} active job(s), ${String(report.counts.snapshots)} snapshot(s)`}\n`)
+    return 0
   }
   if (argv[0] === 'runtime') {
     if (argv[1] === 'status') {

@@ -51,6 +51,16 @@ DSH_INTEGRATION_JOB_IMAGE=dsh-analysis@sha256:<digest> \
 - 回滚时先设置 `DSH_INTEGRATION_ENABLED=false` 并重启，确认没有分析容器残留，再恢复上一平台版本。融合快照与 Job 记录是增量数据，仍可读取。
 - 停用融合就是紧急停止：移除所有融合路由并取消活动 Job 容器，同时不动原生用户与数据。
 
+## 运维状态
+
+使用平台容器内的只读管理命令检查融合状态，不启动分析任务：
+
+```bash
+docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin integration status
+```
+
+输出 `enabled`、`state`、缺项代码、已登记系统数与元数据计数（`workspaces`、`snapshots`、`jobs`、`artifacts`、`activeJobs`）。命令不启动容器，也不暴露宿主路径。
+
 ## 边界
 
 - 分析容器只接收 `/inputs`（只读）、`/work`（选中的工作区，读写）、`/scratch`（Job 私有，读写）。`/app`、平台配置与 `/secrets` 从不挂载。

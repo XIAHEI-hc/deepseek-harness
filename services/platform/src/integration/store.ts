@@ -514,6 +514,32 @@ export class IntegrationStore {
   }
 
   /**
+   * Read row counts for administrative status output.
+   * @returns object, snapshot, job, artifact, and active-job counts.
+   */
+  stats(): { workspaces: number; snapshots: number; jobs: number; artifacts: number; activeJobs: number } {
+    const count = (table: string): number => {
+      const row = this.database.prepare(`SELECT COUNT(*) AS total FROM ${table}`).get()
+      return row === undefined ? 0 : integer(row, 'total')
+    }
+    return {
+      workspaces: count('dsh_integration_workspaces'),
+      snapshots: count('dsh_integration_snapshots'),
+      jobs: count('dsh_integration_jobs'),
+      artifacts: count('dsh_integration_artifacts'),
+      activeJobs: this.countActiveJobsAll(),
+    }
+  }
+
+  /** @returns the number of queued or running jobs across all users. */
+  private countActiveJobsAll(): number {
+    const row = this.database
+      .prepare("SELECT COUNT(*) AS total FROM dsh_integration_jobs WHERE status IN ('queued', 'running')")
+      .get()
+    return row === undefined ? 0 : integer(row, 'total')
+  }
+
+  /**
    * List every queued or running job across users for session reconciliation.
    * @returns jobs that may still own a container.
    */

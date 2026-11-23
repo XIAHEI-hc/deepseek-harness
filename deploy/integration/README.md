@@ -51,6 +51,16 @@ The gate inspects the daemon-resolved container and fails if the root is writabl
 - To roll back, set `DSH_INTEGRATION_ENABLED=false`, restart, confirm that no analysis container remains, then restore the previous platform release. Fusion snapshots and job records are additive and remain readable.
 - Disabling fusion is the emergency stop: it removes every fusion route and cancels active job containers while keeping native users and data untouched.
 
+## Operations status
+
+Use the platform container's read-only admin command to inspect fusion state without starting analysis work:
+
+```bash
+docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin integration status
+```
+
+It prints `enabled`, `state`, issue codes, registered system count, and metadata counts (`workspaces`, `snapshots`, `jobs`, `artifacts`, `activeJobs`). It does not start a container or expose host paths.
+
 ## Boundaries
 
 - Analysis containers receive only `/inputs` (read-only), `/work` (the selected workspace, read-write), and `/scratch` (job-private, read-write). `/app`, the platform configuration, and `/secrets` are never mounted.
