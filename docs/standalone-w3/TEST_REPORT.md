@@ -453,13 +453,23 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 - 实测（Mock/process）：打开 Runtime 后 `admin audit list` 可见 `runtime.start`（generation 1）与 `runtime.ready`（generation 1、runtimeId、errorCode=null），与登录审计同表可查。
 - 单元测试覆盖 start/ready/stop 审计记录；平台测试 220 passed / 4 skipped（PG 集成测试默认跳过）。
 
+## 3.29 最终安装栈 W3 浏览器 A/B 姓名验证（实测）
+
+证据 [evidence/browser-w3-installed.log](evidence/browser-w3-installed.log)、截图 [identity-a.png](evidence/browser-w3-installed/identity-a.png)、[identity-b.png](evidence/browser-w3-installed/identity-b.png)。
+
+- 部署机安装 2026.11.23.7 发布包，`AUTH_MODE=w3`，W3 测试 Provider 对浏览器暴露 `authorize`、对平台容器暴露 `token/userinfo`。
+- 本机 Windows Chromium（Playwright）以两个独立浏览器上下文完成 W3 授权码登录：`User A` 与 `User B`。
+- 左下角平台 launcher 实测文本分别是 `U User A W3 · uid-a` 与 `U User B W3 · uid-b`；`/auth/me` 返回两个不同内部 userId。
+- 两个身份各自启动独立 `dsh-runtime:2026.11.23.7` 容器，Runtime 均 READY；平台审计流出现各自的 `runtime.start`/`runtime.ready`。
+- 真实 W3 租户（AUTH-24）仍 BLOCKED；本项使用仓库内 W3 测试 Provider 验证最终发布包 + 浏览器呈现，不冒称真实租户登录。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
 |---|---|---|
 | 平台类型检查 | `pnpm exec tsc -p services/platform/tsconfig.json --noEmit` | PASS（0 错误） |
-| 平台测试 | `pnpm exec vitest run --config services/platform/vitest.config.ts` | PASS（15 files / 204 passed / 1 skipped） |
-| 平台 e2e | `pnpm run test:platform:e2e` | PASS（5 passed，真实双 Runtime） |
+| 平台测试 | `pnpm exec vitest run --config services/platform/vitest.config.ts` | PASS（18 files / 220 passed / 4 skipped；启用 PostgreSQL 时 222 passed / 1 skipped） |
+| 平台 e2e | `pnpm exec vitest run --config services/platform/vitest.e2e.config.ts` | PASS（7 passed，真实双 Runtime） |
 | 平台 lint | `pnpm exec oxlint services/platform` | PASS |
 | 前端包测试 | `vitest run packages/client/ui-platform-identity/tests packages/client/ui-settings-general/tests packages/bundle/web-app/tests packages/host/authentication-gateway/tests` | 24/25 files，282 passed；1 个既有环境超时（web-app product-analytics 5s 超时，与本改动无关） |
 | 前端包 lint | `pnpm exec oxlint packages/client/ui-platform-identity` | PASS（frontend 子代理复跑） |
