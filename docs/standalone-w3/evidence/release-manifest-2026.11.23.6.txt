@@ -1,5 +1,5 @@
 # 最终发布包 2026.11.23.6
-commit=fa98e1e9a874decbe36fe902b1901b9da117b821
+release=2026.11.23.6
 built_at=2026-11-23T21:57Z
 
 --- SHA256SUMS ---

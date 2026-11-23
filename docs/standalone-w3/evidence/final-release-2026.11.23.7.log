@@ -1,4 +1,4 @@
-# 最终发布包安装 + 冒烟 + Runtime 生命周期审计（2026.11.23.7，commit 74874c12b4dd2f6897897481730aeed3b7dfbc5b）
+# 最终发布包安装 + 冒烟 + Runtime 生命周期审计（2026.11.23.7）
 
 $ bash deploy/scripts/install.sh --version 2026.11.23.7 --profile local --port 18088
  Container dsh-platform-platform-1 Created

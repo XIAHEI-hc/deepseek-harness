@@ -4,7 +4,7 @@
 
 ## 1. 当前状态（最终提交）
 
-- 分支：`feat/standalone-w3-platform`；最终功能提交 `6b2279deec`（发布包证据记录在其后文档提交）。
+- 分支：`feat/standalone-w3-platform`；最终交付版本 `2026.11.23.7`（Git 历史见本仓库）。
 - 验收矩阵：**PASS 81 / NOT_RUN 0 / BLOCKED 3**；三项 BLOCKED 均需目标环境（真实 W3 租户、7 天窗口、内网 Git）。
 - 平台能力：W3/Mock 登录、服务端身份与 CSRF、每用户独立 Runtime/卷、Session/Workspace/Agent/Skills/MCP/Shell/浏览器隔离、WebSocket 注销撤销、PostgreSQL/SQLite 身份库、审计流、一键安装/升级/回滚/备份恢复。
 

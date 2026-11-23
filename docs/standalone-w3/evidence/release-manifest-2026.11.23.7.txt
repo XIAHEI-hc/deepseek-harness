@@ -1,5 +1,5 @@
 # 最终发布包 2026.11.23.7（含 Runtime 生命周期审计）
-commit=74874c12b4dd2f6897897481730aeed3b7dfbc5b
+release=2026.11.23.7
 built_at=2026-11-23T22:20Z
 
 --- SHA256SUMS ---

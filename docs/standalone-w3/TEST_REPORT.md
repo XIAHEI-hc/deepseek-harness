@@ -439,7 +439,7 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 
 证据 [evidence/release-manifest-2026.11.23.7.txt](evidence/release-manifest-2026.11.23.7.txt)、[evidence/final-release-2026.11.23.7.log](evidence/final-release-2026.11.23.7.log)；前一版 2026.11.23.6 的清单与冒烟记录保留在同目录。
 
-- 从提交 `74874c12b4` 重新构建：`dsh-runtime-2026.11.23.7.tar`（1,008,221,696 bytes，sha256 `02a36530…`）、`dsh-platform-2026.11.23.7.tar`（93,329,408 bytes，sha256 `32308213…`），含 `SHA256SUMS`、compose、env 模板、runtime overlay。
+- 基于最终发布版本重新构建：`dsh-runtime-2026.11.23.7.tar`（1,008,221,696 bytes，sha256 `02a36530…`）、`dsh-platform-2026.11.23.7.tar`（93,329,408 bytes，sha256 `32308213…`），含 `SHA256SUMS`、compose、env 模板、runtime overlay。
 - 平台镜像内置 PostgreSQL 驱动（镜像内 `require.resolve('pg')` 指向 `/app/services/platform/node_modules/pg/lib/index.js`），核验 PG 后端在发布包中可用。
 - 部署机一键安装 v7 后：Mock 登录 302、`/auth/me=200`、用户 Runtime READY、原生 UI `__DSH_BOOT__`、Runtime 容器 `dsh-runtime:2026.11.23.7`；`admin audit list` 可见 `runtime.start`/`runtime.ready`（generation 1、容器 runtimeId）。
 - 发布包不包含 `deploy/release` 历史 tar（构建上下文已排除），镜像尺寸稳定为平台约 93MB、运行时约 1.0GB。

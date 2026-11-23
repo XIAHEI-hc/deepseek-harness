@@ -1,4 +1,4 @@
-# 最终发布包安装 + 冒烟（2026.11.23.6，commit fa98e1e9a874decbe36fe902b1901b9da117b821）
+# 最终发布包安装 + 冒烟（2026.11.23.6）
 
 $ bash deploy/scripts/install.sh --version 2026.11.23.6 --profile local --port 18086
  Network dsh-platform_default Created

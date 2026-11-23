@@ -1,5 +1,5 @@
 # 源码发布包 2026.11.23.7
-commit=6b2279deec884db81e927a4f6594c31cf872d7a5
+release=2026.11.23.7
 created_at=2026-11-23T14:46:40Z
 
 $ cat deploy/release/SHA256SUMS-source-2026.11.23.7
