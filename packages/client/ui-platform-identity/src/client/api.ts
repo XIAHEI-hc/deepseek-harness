@@ -22,6 +22,8 @@ const RUNTIME_WAKE_PATH = '/api/runtime/wake'
 const RUNTIME_RETRY_PATH = '/api/runtime/retry'
 /** Browser-session revocation. */
 const LOGOUT_PATH = '/auth/logout'
+/** Every browser session of the signed-in identity. */
+const LOGOUT_ALL_PATH = '/auth/logout-all'
 /** Platform sign-in page. */
 const LOGIN_PATH = '/login'
 
@@ -157,8 +159,9 @@ async function requestPlatform(
   method: 'GET' | 'POST',
   csrfToken: string | undefined,
   readBody: boolean,
+  extraHeaders: Readonly<Record<string, string>> = {},
 ): Promise<PlatformResponse<unknown>> {
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = { ...extraHeaders }
   if (csrfToken !== undefined) headers['x-csrf-token'] = csrfToken
   let response: Response
   try {
@@ -282,5 +285,27 @@ export async function retryRuntimeStatus(transport: PlatformTransport): Promise<
  */
 export async function logoutPlatform(transport: PlatformTransport): Promise<PlatformResponse<undefined>> {
   const response = await requestPlatform(transport, LOGOUT_PATH, 'POST', readCsrfToken(transport), false)
+  return response.kind === 'ok' ? { kind: 'ok', value: undefined } : response
+}
+
+/**
+ * Revoke every browser session of the signed-in identity, including this one.
+ *
+ * The identity service requires the explicit confirmation header so this
+ * irreversible operation cannot be reached by a cross-site form submission,
+ * and the CSRF token still guards the request.
+ *
+ * @param transport - platform transport.
+ * @returns the platform status classification for the revocation.
+ */
+export async function logoutAllPlatform(transport: PlatformTransport): Promise<PlatformResponse<undefined>> {
+  const response = await requestPlatform(
+    transport,
+    LOGOUT_ALL_PATH,
+    'POST',
+    readCsrfToken(transport),
+    false,
+    { 'x-dsh-confirm': 'logout-all' },
+  )
   return response.kind === 'ok' ? { kind: 'ok', value: undefined } : response
 }

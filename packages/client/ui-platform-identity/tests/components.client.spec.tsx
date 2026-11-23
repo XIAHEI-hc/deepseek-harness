@@ -33,6 +33,7 @@ interface LauncherOptions {
   withSettingsNavigation?: boolean
   snapshot?: PlatformIdentitySnapshot
   logout?: () => Promise<'ok' | 'failed'>
+  logoutAll?: () => Promise<'ok' | 'failed'>
   openSettingsFallback?: () => void
 }
 
@@ -48,6 +49,7 @@ function launcherProps(options: LauncherOptions = {}): {
     ...(options.withSettingsNavigation === false ? {} : { openSettings }),
     usePlatformIdentity: selector => selector(options.snapshot ?? snapshotOf()),
     logout: options.logout ?? (async () => 'ok'),
+    logoutAll: options.logoutAll ?? (async () => 'ok'),
     openSettingsFallback: options.openSettingsFallback ?? vi.fn(),
     t: makeTranslate(en),
   }
@@ -85,7 +87,7 @@ describe('PlatformLauncher', () => {
     render(<PlatformLauncher {...props} />)
     openLauncherMenu()
     const rows = screen.getAllByRole('menuitem').map(row => row.textContent)
-    expect(rows).toEqual([en['menu.account'], en['menu.modelSettings'], en['menu.signOut']])
+    expect(rows).toEqual([en['menu.account'], en['menu.modelSettings'], en['menu.signOut'], en['menu.signOutAll']])
 
     fireEvent.click(screen.getByRole('menuitem', { name: en['menu.account'] }))
     const dialog = screen.getByRole('dialog', { name: en['account.title'] })
@@ -129,6 +131,36 @@ describe('PlatformLauncher', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: en['menu.signOut'] }))
     await Promise.resolve()
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('confirms before signing out of every platform session', async () => {
+    const logoutAll = vi.fn(async () => 'ok' as const)
+    const { props } = launcherProps({ logoutAll })
+    render(<PlatformLauncher {...props} />)
+    openLauncherMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: en['menu.signOutAll'] }))
+    expect(screen.getByRole('dialog', { name: en['signOutAll.title'] })).toBeTruthy()
+    expect(screen.getByText(en['signOutAll.body'])).toBeTruthy()
+
+    fireEvent.click(screen.getAllByRole('button', { name: en['signOutAll.cancel'] })[0]!)
+    expect(logoutAll).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    openLauncherMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: en['menu.signOutAll'] }))
+    fireEvent.click(screen.getByRole('button', { name: en['signOutAll.confirm'] }))
+    expect(logoutAll).toHaveBeenCalledOnce()
+  })
+
+  it('reports a failed sign-out of every platform session', async () => {
+    const logoutAll = vi.fn(async () => 'failed' as const)
+    const { props } = launcherProps({ logoutAll })
+    render(<PlatformLauncher {...props} />)
+    openLauncherMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: en['menu.signOutAll'] }))
+    fireEvent.click(screen.getByRole('button', { name: en['signOutAll.confirm'] }))
+    const toast = await screen.findByRole('alert')
+    expect(toast.textContent).toContain(en['error.signOutAllFailed'])
   })
 
   it('renders only the avatar in the collapsed rail, named for assistive technology', () => {

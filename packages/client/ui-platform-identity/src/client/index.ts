@@ -52,6 +52,7 @@ export function apply(ctx: ClientContext): void {
   const launcherInjected = (): PlatformLauncherInjected => ({
     hooks: { platformIdentity: controller },
     logout: () => controller.logout(),
+    logoutAll: () => controller.logoutAll(),
     // The settings shell occupant owns settings navigation; a shell that does
     // not expose it returns the page to the application root instead.
     openSettingsFallback: () => { globalThis.location.assign('/') },

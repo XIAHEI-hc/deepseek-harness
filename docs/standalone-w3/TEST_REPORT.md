@@ -94,8 +94,9 @@ Duration    41.96s
 | 等待 Runtime | 状态层在 Runtime 未就绪时覆盖页面，READY 后自动消失，原生客户端可用 |
 | 侧栏底部平台身份 | 显示 `本地开发用户` + `W3 · local-001` + 首字母头像（`evidence/native-ui-with-platform-identity.png`） |
 | 刷新页面 | 平台身份保持同一用户，无旧用户数据闪现 |
-| 账号菜单 | 含“账号信息 / 模型供应商设置 / 退出 DSH”（`evidence/platform-account-menu.png`） |
+| 账号菜单 | 含“账号信息 / 模型供应商设置 / 退出 DSH / 退出所有设备”（`evidence/platform-account-menu.png`、`evidence/sign-out-all/02-menu.png`） |
 | 平台退出 | 回到 `/login`，平台身份入口消失（`evidence/after-platform-logout.png`） |
+| 退出所有设备 | 菜单项打开确认对话框（`evidence/sign-out-all/03-confirm.png`）；取消不发请求，确认“Sign out everywhere”后回到 `/login`、旧 Cookie `/auth/me` 401（`evidence/sign-out-all/04-after-sign-out-all.png`、`result.json`） |
 | 第二个身份 | 以另一 Mock subject 重启平台后，侧栏显示 `User B` + `W3 · local-002`（`evidence/native-ui-with-user-b.png`） |
 | 模型供应商未登录 | 原生“Get started”供应商对话框未完成登录，平台登录与原生界面仍可用 |
 
@@ -336,6 +337,7 @@ MCP 与真实模型供应商的聊天回归仍需目标环境凭据，OPS-09 保
 | 15:22 | 真实发布包离线升级演练 | **PASS：3 assertions**（会话与数据连续） |
 | 15:29 | 原生 GUI 回归 `pnpm run test:gui` | 14108 passed，4 个 Windows 环境失败 |
 | 15:35 | 并发 Agent 文件/会话隔离（Mock LLM） | **PASS：22 assertions** |
+| 15:48 | 浏览器验收“退出所有设备”确认流程 | **PASS**（截图 `evidence/sign-out-all/`，确认后旧 Cookie 401） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

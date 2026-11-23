@@ -69,7 +69,7 @@
 "UI-03","P0","P4","Frontend","未登录访问深链接","登录后回到同站内页面","automatic + E2E","PASS","e2e：匿名页面 302 /login?return_to=，登录后回原站内路径"
 "UI-04","P0","P4","Frontend","模型供应商未登录","不阻止 DSH W3 平台登录","automatic + E2E","PASS","Playwright 实测：模型供应商未登录（原生 Get started 对话框未完成）仍可完成平台登录并进入 DSH"
 "UI-05","P0","P4","Frontend","模型供应商退出","不等于 DSH 平台登出","automatic + E2E","PASS","真实 DSH 容器：模型供应商处于 signed-out 状态下平台身份正常；调用 account/signOut 后平台 /auth/me 仍 200、原生 UI 仍可打开（模型账户与平台身份互不影响）"
-"UI-06","P0","P4","Frontend","DSH 平台退出","立刻清理可见用户数据与订阅","automatic + E2E","PASS","Playwright 实测：退出 DSH 后回到 /login 且平台身份入口消失；e2e 验证旧 Cookie 401"
+"UI-06","P0","P4","Frontend","DSH 平台退出","立刻清理可见用户数据与订阅","automatic + E2E","PASS","Playwright 实测：退出 DSH 后回 /login、旧 Cookie 401；另验证“退出所有设备”确认对话框与撤销（截图 evidence/sign-out-all/，确认后 /auth/me 401）"
 "UI-07","P0","P4","Frontend","Runtime 启动中","友好状态并可恢复","automatic + E2E","PASS","gateway 单测：STARTING 状态页 meta refresh"
 "UI-08","P0","P4","Frontend","Runtime 启动失败","有错误码和受限重试","automatic + E2E","PASS","gateway 单测：FAILED 错误码 + CSRF 保护的 /api/runtime/retry"
 "UI-09","P0","P4","Frontend","刷新/断网恢复","平台身份正确且不闪现旧用户数据","automatic + E2E","PASS","Playwright 实测：刷新后左下角仍显示同一平台身份，无旧用户数据"

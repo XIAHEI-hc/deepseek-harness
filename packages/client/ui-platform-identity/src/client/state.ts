@@ -7,7 +7,7 @@
  * the injected hook compartment.
  */
 import {
-  fetchPlatformIdentity, fetchRuntimeStatus, logoutPlatform, redirectToLogin, redirectToLoginRoot,
+  fetchPlatformIdentity, fetchRuntimeStatus, logoutAllPlatform, logoutPlatform, redirectToLogin, redirectToLoginRoot,
   retryRuntimeStatus, wakeRuntimeStatus, type PlatformTransport, type RuntimeStatusResponse,
 } from './api.ts'
 import type { PlatformIdentitySnapshot, PlatformUser, RuntimePhase, RuntimeView } from './contract.ts'
@@ -47,6 +47,12 @@ export interface PlatformIdentityController {
    * @returns `'ok'` when sign-in navigation was requested, `'failed'` otherwise.
    */
   logout(): Promise<'ok' | 'failed'>
+  /**
+   * Revoke every browser session of this identity (including this browser) and
+   * clear local state.
+   * @returns `'ok'` when sign-in navigation was requested, `'failed'` otherwise.
+   */
+  logoutAll(): Promise<'ok' | 'failed'>
   /** Stop polling and drop listeners. */
   dispose(): void
 }
@@ -95,6 +101,14 @@ export function createPlatformIdentityController(
     if (redirecting) return
     redirecting = true
     redirectToLogin(transport)
+  }
+  // A completed sign-out (this browser or every session) ends local state and
+  // returns to the bare sign-in page, never to the page that 401'd.
+  const settleRevoked = (): void => {
+    clearPoll()
+    polls = 0
+    publish({ identity: { status: 'unauthorized' }, runtime: { status: 'idle' } })
+    redirectToLoginRoot(transport)
   }
   const schedulePoll = (phase: RuntimePhase): void => {
     polls += 1
@@ -246,10 +260,16 @@ export function createPlatformIdentityController(
       const response = await logoutPlatform(transport)
       if (disposedNow()) return 'failed'
       if (response.kind === 'ok' || response.kind === 'unauthorized') {
-        clearPoll()
-        polls = 0
-        publish({ identity: { status: 'unauthorized' }, runtime: { status: 'idle' } })
-        redirectToLoginRoot(transport)
+        settleRevoked()
+        return 'ok'
+      }
+      return 'failed'
+    },
+    logoutAll: async () => {
+      const response = await logoutAllPlatform(transport)
+      if (disposedNow()) return 'failed'
+      if (response.kind === 'ok' || response.kind === 'unauthorized') {
+        settleRevoked()
         return 'ok'
       }
       return 'failed'

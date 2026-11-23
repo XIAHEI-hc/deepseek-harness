@@ -40,7 +40,7 @@
 
 ## 3. 新增：平台身份前端插件
 
-`packages/client/ui-platform-identity/`：`dsh.client` 客户端插件（平台启动器、运行状态 overlay、`/auth/me` 状态机、CSRF 退出、8 语言字典、README 双语对、tsdown 构建、18+18 个测试）。原生页面与既有功能全部保留。
+`packages/client/ui-platform-identity/`：`dsh.client` 客户端插件（平台启动器、运行状态 overlay、`/auth/me` 状态机、CSRF 退出、退出所有设备确认、8 语言字典、README 双语对、tsdown 构建、20+20 个测试）。原生页面与既有功能全部保留。
 
 ## 4. 修改（最小接入）
 

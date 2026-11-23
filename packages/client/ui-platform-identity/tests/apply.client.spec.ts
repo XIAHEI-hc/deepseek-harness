@@ -298,6 +298,36 @@ describe('platform identity state machine', () => {
     expect(b.snapshot().identity.status).toBe('ready')
   })
 
+  it('revokes every platform session with the confirmation header', async () => {
+    const b = benchController((path) => {
+      if (path === '/auth/me') return json(200, IDENTITY)
+      if (path === '/api/runtime/me') return json(200, runtimeBody('READY'))
+      return json(200)
+    })
+    b.controller.start()
+    await vi.waitFor(() => { expect(b.snapshot().runtime.status).toBe('ready') })
+    await expect(b.controller.logoutAll()).resolves.toBe('ok')
+    const revoke = requestOf(b.fetchMock, '/auth/logout-all')
+    expect(revoke).toMatchObject({ method: 'POST', credentials: 'same-origin' })
+    expect(headersOf(revoke)['x-csrf-token']).toBe('csrf-token')
+    expect(headersOf(revoke)['x-dsh-confirm']).toBe('logout-all')
+    expect(b.assign).toHaveBeenCalledExactlyOnceWith('/login')
+    expect(b.snapshot().identity).toEqual({ status: 'unauthorized' })
+  })
+
+  it('reports a failed revoke-every-session without navigating', async () => {
+    const b = benchController((path) => {
+      if (path === '/auth/me') return json(200, IDENTITY)
+      if (path === '/api/runtime/me') return json(200, runtimeBody('READY'))
+      return json(500)
+    })
+    b.controller.start()
+    await vi.waitFor(() => { expect(b.snapshot().runtime.status).toBe('ready') })
+    await expect(b.controller.logoutAll()).resolves.toBe('failed')
+    expect(b.assign).not.toHaveBeenCalled()
+    expect(b.snapshot().identity.status).toBe('ready')
+  })
+
   it('stops polling and drops listeners when disposed', async () => {
     vi.useFakeTimers()
     const b = benchController(path => path === '/auth/me' ? json(200, IDENTITY) : json(200, runtimeBody('STARTING')))

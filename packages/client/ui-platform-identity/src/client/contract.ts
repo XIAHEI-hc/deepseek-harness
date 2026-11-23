@@ -82,6 +82,13 @@ export interface PlatformLauncherInjected {
    */
   logout(): Promise<'ok' | 'failed'>
   /**
+   * Revoke every platform browser session of this identity, including this
+   * browser, and return to the sign-in page.
+   * @returns `'ok'` when the page is navigating to sign-in, `'failed'` when the
+   * request did not complete and the caller should report it.
+   */
+  logoutAll(): Promise<'ok' | 'failed'>
+  /**
    * Open the model-provider settings when the shell occupant supplies no
    * settings navigation. Reaching the native settings surface is the owner's
    * capability; without it, this returns to the application root.
