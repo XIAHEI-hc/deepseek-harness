@@ -13,6 +13,7 @@
 import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
+import { loadIntegrationConfig, type IntegrationConfig } from './integration/config.ts'
 
 /** Deployment environment class. */
 export type AppEnv = 'development' | 'testing' | 'production'
@@ -178,6 +179,8 @@ export interface PlatformConfig {
   readonly identity: IdentityConfig
   readonly runtime: RuntimeConfig
   readonly gateway: GatewayConfig
+  /** Optional system-fusion settings; disabled unless explicitly enabled. */
+  readonly integration: IntegrationConfig
 }
 
 /** Per-section overrides accepted by {@link createPlatformConfig}. */
@@ -188,6 +191,7 @@ export interface PlatformConfigOverrides {
   readonly identity?: Partial<IdentityConfig>
   readonly runtime?: Partial<RuntimeConfig>
   readonly gateway?: Partial<GatewayConfig>
+  readonly integration?: Partial<IntegrationConfig>
 }
 
 /** Raised when startup configuration is incomplete or unsafe for its environment. */
@@ -462,6 +466,12 @@ export function loadPlatformConfig(env: NodeJS.ProcessEnv = process.env): Platfo
   const processCommand = readEnv(env, 'DSH_RUNTIME_PROCESS_COMMAND', '') === ''
     ? defaultProcessCommand(repoRoot)
     : parseCommand(readEnv(env, 'DSH_RUNTIME_PROCESS_COMMAND', ''), 'DSH_RUNTIME_PROCESS_COMMAND')
+  const dockerCommand = readEnv(env, 'DSH_RUNTIME_DOCKER_COMMAND', 'docker')
+  const integration = loadIntegrationConfig(env, {
+    appEnv,
+    dataDir,
+    runtimeDockerCommand: dockerCommand,
+  })
   const config: PlatformConfig = {
     appEnv,
     realm: readEnv(env, 'DSH_PLATFORM_REALM', 'dsh'),
@@ -500,7 +510,7 @@ export function loadPlatformConfig(env: NodeJS.ProcessEnv = process.env): Platfo
       repoRoot,
       processCommand,
       image: runtimeImage,
-      dockerCommand: readEnv(env, 'DSH_RUNTIME_DOCKER_COMMAND', 'docker'),
+      dockerCommand,
       network: readEnv(env, 'DSH_RUNTIME_NETWORK', 'dsh-private'),
       containerDataRoot: readEnv(env, 'DSH_RUNTIME_CONTAINER_DATA_ROOT', '/data'),
       containerPublicKeyPath: readEnv(env, 'DSH_RUNTIME_CONTAINER_PUBLIC_KEY_PATH', '/run/dsh/gateway-public.pem'),
@@ -535,6 +545,7 @@ export function loadPlatformConfig(env: NodeJS.ProcessEnv = process.env): Platfo
       maxBodyBytes: parseInteger(readEnv(env, 'DSH_GATEWAY_MAX_BODY_BYTES', ''), 'DSH_GATEWAY_MAX_BODY_BYTES', DEFAULT_MAX_BODY_BYTES),
       generateKeyPairIfMissing: !production,
     },
+    integration,
   }
   if (config.gateway.assertionTtlSeconds > config.gateway.maxAssertionLifetimeSeconds) {
     problems.push('DSH_GATEWAY_ASSERTION_TTL_SECONDS must not exceed the runtime policy lifetime of 300 seconds')
@@ -583,6 +594,7 @@ export function createPlatformConfig(overrides: PlatformConfigOverrides = {}): P
       publicAuthority: new URL(gateway.publicOrigin).host,
     },
     gateway,
+    integration: { ...base.integration, ...overrides.integration },
   }
 }
 

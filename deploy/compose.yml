@@ -25,6 +25,8 @@ services:
       DSH_PLATFORM_REPO_ROOT: /srv/dsh/current
       DSH_RUNTIME_ROOT: /srv/dsh/spaces
       DSH_RUNTIME_PATCH_FILE: /srv/dsh/current/deploy/runtime/platform-runtime.patch.yml
+      DSH_INTEGRATION_DATA_DIR: /srv/dsh/management/integration
+      DSH_INTEGRATION_SYSTEMS_FILE: /srv/dsh/management/integration/systems.json
       DSH_GATEWAY_LISTEN_HOST: 0.0.0.0
       DSH_GATEWAY_LISTEN_PORT: "8080"
       DSH_GATEWAY_SIGNING_PRIVATE_KEY_FILE: /srv/dsh/management/keys/gateway-ed25519-private.pem

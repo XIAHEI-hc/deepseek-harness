@@ -104,12 +104,12 @@ export function sendIdentityResult(response: ServerResponse, result: PlatformHtt
   const headers: Record<string, string | string[]> = { ...result.headers }
   const cookies = serializeCookies(result.cookies)
   if (cookies.length > 0) headers['set-cookie'] = cookies
-  if (headers['content-type'] === undefined && result.body !== undefined) {
-    headers['content-type'] = 'text/plain; charset=utf-8'
+  if (headers['content-type'] === undefined && (result.body !== undefined || result.bodyBytes !== undefined)) {
+    headers['content-type'] = result.bodyBytes === undefined ? 'text/plain; charset=utf-8' : 'application/octet-stream'
   }
   if (headers['cache-control'] === undefined) headers['cache-control'] = 'no-store'
   response.writeHead(result.status, headers)
-  response.end(result.body ?? '')
+  response.end(result.bodyBytes ?? result.body ?? '')
 }
 
 /**

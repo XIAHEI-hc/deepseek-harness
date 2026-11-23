@@ -14,6 +14,7 @@
 | [SECURITY_MODEL.md](SECURITY_MODEL.md) | 信任边界、身份/Session 不变量、断言 v2、隔离设计、负向验证矩阵 |
 | [TEST_REPORT.md](TEST_REPORT.md) | 实际执行的测试、命令、结果与证据；BLOCKED/NOT_RUN 说明 |
 | [OPEN_ISSUES.md](OPEN_ISSUES.md) | 客观阻塞、代码缺口、与开发包的已知偏差 |
+| [系统融合](../integration/README.md) | 默认关闭的只读宿主资源与受限分析 Job；开关、ACL、快照、执行边界与验收 |
 | [ACCEPTANCE_MATRIX.csv](ACCEPTANCE_MATRIX.csv) | 逐条验收矩阵与真实状态 |
 | [DIFF_SUMMARY.md](DIFF_SUMMARY.md) | 相对基线的文件变更与设计差异摘要 |
 

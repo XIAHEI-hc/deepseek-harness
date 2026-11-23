@@ -12,7 +12,8 @@ services/platform/
   src/identity/         # W3/Mock 身份核心：用户、Session、OAuth state、CSRF、SQLite 迁移、/auth/* 与 /internal/*
   src/runtime/          # Runtime Manager + Supervisor：注册表、状态机、幂等 ensure、进程/容器后端、空间目录、空闲回收
   src/gateway/          # 公网网关：Session 校验、Ed25519 v2 断言、HTTP/SSE/WS 代理、登录页、/api/runtime/*
-  src/app.ts            # 组合 identity + runtime + gateway（lead 维护）
+  src/integration/      # 可选系统融合：配置/预检、只读 Adapter、快照、工作区、分析 Job、/api/integration/*
+  src/app.ts            # 组合 identity + runtime + integration + gateway（lead 维护）
   src/main.ts           # 进程入口（lead 维护）
   tests/                # vitest 测试（各模块自己的 *.spec.ts）
 deploy/                 # compose、Dockerfile、运行时 overlay、部署/升级/回滚脚本
@@ -124,7 +125,21 @@ pnpm exec tsc -p services/platform/tsconfig.json --noEmit
 沿用仓库根 `AGENTS.md`：ESM、`.ts` 相对导入后缀、严格类型、禁止 `as unknown`、导出写 JSDoc、
 空 catch 说明原因、文件末尾一个换行、无分号风格、单引号。所有用户可见文案中文与英文成对出现（前端）。
 
-## 8. 明确决策与偏差
+## 8. 可选系统融合
+
+`DSH_INTEGRATION_ENABLED=false` 时 `createPlatformApp()` 不构造融合服务，网关对 `/api/integration/*` 直接返回 404。开启后按以下顺序组合：
+
+1. `runPreflight()` 校验注册表、互不重叠的真实根目录、固定镜像、`--network none`、Linux 主机与 Docker daemon；缺项返回 `blocked` 而不是让原生平台启动失败。
+2. `createIntegrationService()` 打开节点本地 `integration.sqlite`，按注册表构造 `MockHostAdapter` 或 `HttpReadOnlyAdapter`，并把 `/api/integration/*` 交给 Gateway。
+3. Gateway 先校验 Session，`POST` 再校验 CSRF 与同源 Origin，然后才调用融合服务；融合请求不会落进原生 Runtime 代理。
+4. 每次资源发现、快照、Job、下载都按 `ValidatedSession.user.id` 做 owner 查询；ACL 键可以是内部 user id、W3 subject 或 W3 uid，动作只有 `list/read/export`。
+5. 快照写入后不可变并带 SHA-256/来源/授权 epoch；Job 启动前重新授权并校验 epoch。
+6. 分析 Job 由 `AnalysisJobRunner` 启动短生命周期容器：只读根、只读输入、工作区输出、Job scratch、`--network none`、drop capabilities、no-new-privileges、非 root uid。容器镜像 entrypoint 被清空。
+7. 关闭顺序为 Gateway → integration → runtime → identity；融合关闭会移除活动 Job 的容器并保留快照/元数据。
+
+融合的 HTTP 契约、配置与验收状态见 [docs/integration/README.md](../../docs/integration/README.md)。
+
+## 9. 明确决策与偏差
 
 - 身份库使用 `node:sqlite` + 版本化 DDL 迁移；生产 PostgreSQL 后端是已记录的生产化缺口
   （见 `docs/standalone-w3/OPEN_ISSUES.md`），代码不静默降级。

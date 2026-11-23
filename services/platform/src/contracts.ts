@@ -8,6 +8,8 @@
  * @module @deepseek-ai/dsh-platform-services/contracts
  */
 
+import type { IntegrationStatus } from './integration/types.ts'
+
 /** One DSH platform identity, owned by the identity service. */
 export interface PlatformUser {
   /** Stable internal DSH user id (UUID); never derived from a browser parameter. */
@@ -108,6 +110,8 @@ export interface PlatformHttpResult {
   readonly cookies?: readonly SetCookie[] | undefined
   /** Textual body; JSON and HTML are both shipped as text with an explicit content type. */
   readonly body?: string | undefined
+  /** Binary body for bounded downloads; mutually exclusive with `body`. */
+  readonly bodyBytes?: Uint8Array | undefined
 }
 
 /** One audit event a platform component appends to the identity audit stream. */
@@ -238,6 +242,30 @@ export interface RuntimeManager {
    */
   lease(userId: string): () => void
   /** Stop every runtime this manager owns and release its registry. */
+  close(): Promise<void>
+}
+
+/**
+ * Optional system-fusion API.
+ *
+ * Built only when fusion is enabled. The gateway authenticates every request and
+ * verifies CSRF before forwarding a state-changing call; the service re-checks
+ * object ownership on every lookup and download.
+ */
+export interface IntegrationService {
+  /** Anonymous service state for the status endpoint. */
+  status(): IntegrationStatus
+  /**
+   * Handle one `/api/integration/*` request.
+   * @param request - method, URL, headers, cookies, and buffered body.
+   * @param session - already validated browser session.
+   * @returns the response, or undefined when the path is outside the fusion API.
+   */
+  handle(
+    request: PlatformHttpRequest,
+    session: ValidatedSession,
+  ): Promise<PlatformHttpResult | undefined>
+  /** Stop the metadata store, active job containers, and any pending work. */
   close(): Promise<void>
 }
 

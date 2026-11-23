@@ -13,14 +13,17 @@ import { join } from 'node:path'
 import { createPlatformConfig, ensureGatewayKeyPair, loadPlatformConfig, type PlatformConfig } from './config.ts'
 import { createGateway, type GatewayHandle } from './gateway/index.ts'
 import { createIdentityService } from './identity/index.ts'
+import { createIntegrationService, runPreflight } from './integration/index.ts'
 import { createRuntimeManager } from './runtime/index.ts'
-import type { IdentityService, RuntimeManager } from './contracts.ts'
+import type { IdentityService, IntegrationService, RuntimeManager } from './contracts.ts'
 
 /** Everything a running platform process owns. */
 export interface PlatformApp {
   readonly config: PlatformConfig
   readonly identity: IdentityService
   readonly runtime: RuntimeManager
+  /** Present only when `DSH_INTEGRATION_ENABLED=true`. */
+  readonly integration: IntegrationService | undefined
   readonly gateway: GatewayHandle
   /**
    * Start the public listener.
@@ -84,12 +87,26 @@ export async function createPlatformApp(
       ...(options.runtimeEnv === undefined ? {} : { runtimeEnv: options.runtimeEnv }),
     },
   )
-  const gateway = await createGateway(config, { identity, runtime })
+  let integration: IntegrationService | undefined
+  if (config.integration.enabled) {
+    const preflight = await runPreflight(config.integration)
+    integration = createIntegrationService(config.integration, preflight, {
+      audit: (event) => {
+        identity.recordAudit(event)
+      },
+    })
+  }
+  const gateway = await createGateway(config, {
+    identity,
+    runtime,
+    ...(integration === undefined ? {} : { integration }),
+  })
   let closed = false
   const close = async (): Promise<void> => {
     if (closed) return
     closed = true
     await gateway.close().catch(() => undefined)
+    await integration?.close().catch(() => undefined)
     await runtime.close().catch(() => undefined)
     await identity.close().catch(() => undefined)
   }
@@ -97,6 +114,7 @@ export async function createPlatformApp(
     config,
     identity,
     runtime,
+    integration,
     gateway,
     listen: () => gateway.listen(),
     close,

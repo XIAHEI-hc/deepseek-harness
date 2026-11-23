@@ -20,6 +20,7 @@ import type { Duplex } from 'node:stream'
 import { ensureGatewayKeyPair, type PlatformConfig } from '../config.ts'
 import type {
   IdentityService,
+  IntegrationService,
   PlatformHttpRequest,
   RuntimeEnsureResult,
   RuntimeManager,
@@ -27,6 +28,7 @@ import type {
   SessionLookup,
   ValidatedSession,
 } from '../contracts.ts'
+import { INTEGRATION_API_PREFIX } from '../integration/service.ts'
 import { parseCookieHeader } from './cookies.ts'
 import { hashUserId, noopGatewayLogger, type GatewayLogger } from './log.ts'
 import {
@@ -72,6 +74,8 @@ export interface GatewayDeps {
   readonly identity: IdentityService
   /** Per-user runtime lifecycle owner. */
   readonly runtime: RuntimeManager
+  /** Optional system-fusion API; absent when fusion is disabled. */
+  readonly integration?: IntegrationService | undefined
   /**
    * Injected signer; tests and embedded deployments may supply one instead of
    * the key pair named by the gateway configuration.
@@ -341,6 +345,86 @@ export async function createGateway(config: PlatformConfig, deps: GatewayDeps): 
   }
 
   /**
+   * Answer one `/api/integration/*` request.
+   *
+   * The gateway authenticates and enforces CSRF/origin before the fusion
+   * service sees a request. The service then performs every object-ownership
+   * check; the route never falls through to the native runtime proxy.
+   * @param request - incoming request.
+   * @param response - browser response.
+   * @param url - parsed request URL.
+   */
+  const handleIntegration = async (request: IncomingMessage, response: ServerResponse, url: URL): Promise<void> => {
+    const method = (request.method ?? 'GET').toUpperCase()
+    let lookup: SessionLookup
+    try {
+      lookup = await authenticate(request)
+    } catch (error) {
+      void error
+      log({ code: 'identity-unavailable' })
+      sendApiError(response, 502, 'identity-unavailable')
+      return
+    }
+    if (!lookup.ok) {
+      sendApiError(response, 401, lookup.code)
+      return
+    }
+    if (deps.integration === undefined) {
+      sendApiError(response, 404, 'not-found')
+      return
+    }
+    const cookies = requestCookies(request)
+    if (!isReadMethod(method)) {
+      const csrfHeader = headerValue(request.headers, 'x-csrf-token')
+      if (!deps.identity.verifyCsrf(lookup.session, csrfHeader, cookies[facts.csrfCookieName])) {
+        log({ code: 'csrf-invalid', userIdHash: hashUserId(lookup.session.user.id) })
+        sendApiError(response, 403, 'csrf-invalid')
+        return
+      }
+      const origin = headerValue(request.headers, 'origin')
+      if (origin !== undefined && !isSameOrigin(origin, facts.publicOrigin)) {
+        log({ code: 'integration-origin-refused', userIdHash: hashUserId(lookup.session.user.id) })
+        sendApiError(response, 403, 'origin-invalid')
+        return
+      }
+    }
+    let body: string | undefined
+    if (!isReadMethod(method)) {
+      try {
+        body = await readRequestBody(request, facts.maxBodyBytes)
+      } catch (error) {
+        if (error instanceof BodyTooLargeError) {
+          sendApiError(response, 413, 'body-too-large')
+          return
+        }
+        throw error
+      }
+    }
+    const integrationRequest: PlatformHttpRequest = {
+      method,
+      url,
+      headers: request.headers,
+      cookies,
+      ...(body === undefined ? {} : { body }),
+      ...(request.socket.remoteAddress === undefined ? {} : { clientAddress: request.socket.remoteAddress }),
+    }
+    let result
+    try {
+      result = await deps.integration.handle(integrationRequest, lookup.session)
+    } catch (error) {
+      void error
+      log({ code: 'integration-unavailable', userIdHash: hashUserId(lookup.session.user.id) })
+      sendApiError(response, 502, 'integration-unavailable')
+      return
+    }
+    if (result === undefined) {
+      sendApiError(response, 404, 'not-found')
+      return
+    }
+    sendIdentityResult(response, result)
+  }
+
+  /**
    * Route one unauthenticated or authenticated non-platform request.
    * @param request - incoming request.
    * @param response - browser response.
@@ -461,6 +545,10 @@ export async function createGateway(config: PlatformConfig, deps: GatewayDeps): 
     }
     if (pathname.startsWith(RUNTIME_API_PREFIX)) {
       sendApiError(response, 404, 'not-found')
+      return
+    }
+    if (pathname === INTEGRATION_API_PREFIX || pathname.startsWith(`${INTEGRATION_API_PREFIX}/`)) {
+      await handleIntegration(request, response, url)
       return
     }
     await handleProxiedRoute(request, response, url)

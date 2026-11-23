@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "systems": [
+    {
+      "id": "warehouse",
+      "name": "Warehouse read-only API",
+      "adapter": "http",
+      "baseUrl": "https://warehouse.internal.example",
+      "endpoints": [
+        {
+          "id": "devices",
+          "name": "Device catalogue",
+          "path": "/api/devices",
+          "resourceType": "api",
+          "version": "1",
+          "classification": "internal",
+          "acl": {
+            "uid-10001": ["list", "read"],
+            "uid-10002": ["list", "read"]
+          }
+        },
+        {
+          "id": "batches",
+          "name": "Batch history",
+          "path": "/api/batches",
+          "resourceType": "dataset",
+          "version": "1",
+          "classification": "confidential",
+          "acl": {
+            "uid-10001": ["read"]
+          }
+        }
+      ]
+    }
+  ]
+}

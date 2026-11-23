@@ -22,6 +22,7 @@ import type { Duplex } from 'node:stream'
 import { createPlatformConfig, type GatewayConfig, type PlatformConfig } from '../src/config.ts'
 import type {
   IdentityService,
+  IntegrationService,
   PlatformAuditEvent,
   PlatformHttpRequest,
   PlatformHttpResult,
@@ -803,9 +804,16 @@ export async function startTestGateway(
     runtime: RuntimeManager
     signer: AssertionSigner
     log?: GatewayLogger
+    integration?: IntegrationService
   },
 ): Promise<RunningTestGateway> {
-  const gateway = await createGateway(config, deps)
+  const gateway = await createGateway(config, {
+    identity: deps.identity,
+    runtime: deps.runtime,
+    signer: deps.signer,
+    ...(deps.log === undefined ? {} : { log: deps.log }),
+    ...(deps.integration === undefined ? {} : { integration: deps.integration }),
+  })
   const bound = await gateway.listen()
   return {
     gateway,

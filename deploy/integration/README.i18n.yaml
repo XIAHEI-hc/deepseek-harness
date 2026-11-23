@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write deploy/integration/README.md
+/system-fusion-deployment:
+  en: a858c0e32b495bb0
+  zh: 3eb9a57cfb6183ac
+/system-fusion-deployment/prerequisites:
+  en: d658024db7d3d1e6
+  zh: 9a074039eb84529a
+/system-fusion-deployment/enable:
+  en: b83c0573f2e087b0
+  zh: 0a55c2c5a90de7eb
+/system-fusion-deployment/disable:
+  en: aa0d62b991775829
+  zh: 955551d03a213824
+/system-fusion-deployment/verify:
+  en: 64b99fddbcaf94f6
+  zh: b6d19474dd580cd5
+/system-fusion-deployment/boundaries:
+  en: 633649366eba079c
+  zh: 632e7dc53b3222ce
