@@ -1,0 +1,10 @@
+PASS 1: 平台容器从 dsh-platform:test 启动并通过 /health（版本化迁移已在启动时应用）
+PASS 2: alice 登录成功且身份可读（备份前状态）
+PASS 3: backup.sh 生成 management 归档、用户空间归档与 MANIFEST，并恢复在线
+PASS 4: bob 在备份之后登录（用于验证恢复会撤销其 Session）
+PASS 5: restore.sh 恢复数据库：备份内会话保持有效，备份后的新会话被撤销
+PASS 6: 生成离线发布包（SHA256SUMS-v2）并移除本地 v2 镜像，证明升级从 tar 导入
+PASS 7: upgrade.sh 离线导入 v2 并启动，数据库与既有会话保持不变
+PASS 8: 失败升级触发 rollback.sh，平台恢复到上一版本且数据一致
+PASS 9: 演练环境已清理
+DEPLOY LIFECYCLE PASS: 9 assertions

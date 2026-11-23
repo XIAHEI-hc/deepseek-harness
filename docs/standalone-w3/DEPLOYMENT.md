@@ -69,6 +69,22 @@ curl -fsS http://127.0.0.1:8080/health
 
 > 生产 PostgreSQL 后端为已记录缺口（见 `docs/standalone-w3/OPEN_ISSUES.md`）：当前版本生产同样使用 SQLite（WAL），并保留版本化迁移表；切换到 PostgreSQL 必须提供等价迁移与验收证据后才可声明完成。
 
+### 旧历史数据归属迁移（一次性，OPS-05）
+
+旧单用户部署的 `$DSH_HOME` 不会被自动归给首位登录用户。先让目标用户登录一次以建立稳定 `user_id`，再显式迁移：
+
+```bash
+# 默认 dry-run：只打印目标 space 与将复制的条目，不写任何数据
+node --import tsx/esm services/platform/src/main.ts admin migrate-home \
+  --from /home/legacy/.dsh --subject <W3 stable subject>
+
+# 确认后执行复制，并在 <dataDir>/migrations/ 写 manifest
+node --import tsx/esm services/platform/src/main.ts admin migrate-home \
+  --from /home/legacy/.dsh --subject <W3 stable subject> --confirm
+```
+
+规则：`--subject` 与 `--user` 必须二选一；未知用户/未知 subject 直接拒绝；源不得位于托管 spaces 或平台数据目录内；目标已存在同名条目时需 `--overwrite`；符号链接不复制；迁移只复制、不删除旧 home，便于核对后再人工清理。
+
 ## 6. 升级（离线）
 
 ```bash

@@ -24,12 +24,19 @@ tar -C "$ROOT" -czf "$DEST/management.tar.gz" management
 echo "== 备份用户空间 =="
 mkdir -p "$DEST/spaces"
 if [ -d "$ROOT/spaces" ]; then
-  for space in "$ROOT"/spaces/*/; do
-    [ -d "$space" ] || continue
-    key="$(basename "$space")"
-    tar -C "$ROOT/spaces" -czf "$DEST/spaces/$key.tar.gz" "$key"
-  done
-  ( cd "$DEST/spaces" && sha256sum ./*.tar.gz > SHA256SUMS )
+  shopt -s nullglob
+  archives=("$ROOT"/spaces/*/. )
+  spaces=("$ROOT"/spaces/*/)
+  if [ "${#spaces[@]}" -gt 0 ]; then
+    for space in "${spaces[@]}"; do
+      [ -d "$space" ] || continue
+      key="$(basename "$space")"
+      tar -C "$ROOT/spaces" -czf "$DEST/spaces/$key.tar.gz" "$key"
+    done
+    ( cd "$DEST/spaces" && sha256sum -- *.tar.gz > SHA256SUMS )
+  fi
+  shopt -u nullglob
+  unset archives
 fi
 
 echo "== 记录部署事实 =="

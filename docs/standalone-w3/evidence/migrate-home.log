@@ -1,0 +1,13 @@
+command: dsh-platform admin migrate-home --from <legacy> --subject <w3-subject> [--confirm]
+
+    "subject": "dev-user-001",
+  "targetDshHome": "D:\\Vibe_coding\\deepseek-harness\\.dsh-migrate-smoke\\data\\spaces\\f2941124d41c0951c9413e7c1572d7f264517c3d063352496fa233efc09a86c0\\dsh-home",
+  "entries": [
+  "conflicts": [],
+  "copied": [],
+dry run: 2 entries would be copied to D:\Vibe_coding\deepseek-harness\.dsh-migrate-smoke\data\spaces\f2941124d41c0951c9413e7c1572d7f264517c3d063352496fa233efc09a86c0\dsh-home; re-run with --confirm to write
+
+  "targetDshHome": "D:\\Vibe_coding\\deepseek-harness\\.dsh-migrate-smoke\\data\\spaces\\f2941124d41c0951c9413e7c1572d7f264517c3d063352496fa233efc09a86c0\\dsh-home",
+  "copied": [
+  "manifestFile": "D:\\Vibe_coding\\deepseek-harness\\.dsh-migrate-smoke\\data\\migrations\\migrate-home-2026-11-23T05-35-45.986Z.json"
+migrated 2 entries to D:\Vibe_coding\deepseek-harness\.dsh-migrate-smoke\data\spaces\f2941124d41c0951c9413e7c1572d7f264517c3d063352496fa233efc09a86c0\dsh-home (manifest: D:\Vibe_coding\deepseek-harness\.dsh-migrate-smoke\data\migrations\migrate-home-2026-11-23T05-35-45.986Z.json)

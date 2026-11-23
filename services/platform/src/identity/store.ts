@@ -355,6 +355,16 @@ export class IdentityStore {
   }
 
   /**
+   * Find a user by internal DSH user id.
+   * @param id - internal user id from `dsh_users.id`.
+   * @returns the user row, or undefined when unknown.
+   */
+  findUserById(id: string): UserRow | undefined {
+    const row = this.database.prepare('SELECT * FROM dsh_users WHERE id = ?').get(id)
+    return row === undefined ? undefined : toUserRow(row)
+  }
+
+  /**
    * Insert one new user.
    * @param user - complete user row.
    */

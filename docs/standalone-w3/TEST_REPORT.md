@@ -22,7 +22,7 @@ pnpm exec vitest run --config services/platform/vitest.config.ts
 结果（2026-11-23）：
 
 - 类型检查：PASS（0 错误）。
-- 单元/组件：**13 files passed, 189 tests passed, 1 skipped**（skip = 真实 Docker 用例，需`DSH_PLATFORM_DOCKER_TEST=1` + `DSH_RUNTIME_IMAGE` + 可路由的 docker；环境限制见 OPEN_ISSUES）。
+- 单元/组件：**14 files passed, 199 tests passed, 1 skipped**（skip = 真实 Docker 用例，需`DSH_PLATFORM_DOCKER_TEST=1` + `DSH_RUNTIME_IMAGE` + 可路由的 docker；环境限制见 OPEN_ISSUES）。
 - 分模块（各自子代理实测，见各任务汇报）：
   - identity：3 files / 31 tests passed（AUTH-01..AUTH-23 可本地验证项）
   - runtime：5 files / 63 passed + 1 skipped（RUNT-01..RUNT-13 的注入/真实进程边界）
@@ -125,12 +125,53 @@ wsl -d Ubuntu --exec bash /mnt/d/Vibe_coding/deepseek-harness/deploy/scripts/ver
 
 限制：验证使用轻量 probe 镜像（只回答就绪探针）驱动真实 docker run argv；完整 DSH Runtime 镜像（`deploy/runtime/Dockerfile`）仍需在 Linux 构建机构建后复验（见 OPEN_ISSUES）。
 
+## 3.5 旧历史数据归属迁移（OPS-05，CLI 实测）
+
+命令（开发平台用 Mock 登录创建用户后，把独立旧 home 归属到该用户）：
+
+```bash
+node --import tsx/esm services/platform/src/main.ts admin migrate-home \
+  --from <legacy-dsh-home> --subject <w3-subject>            # 默认 dry-run，仅打印计划
+node --import tsx/esm services/platform/src/main.ts admin migrate-home \
+  --from <legacy-dsh-home> --subject <w3-subject> --confirm  # 执行复制并写 manifest
+```
+
+实测结果（证据 [evidence/migrate-home.log](evidence/migrate-home.log)）：
+
+| 步骤 | 结果 |
+|---|---|
+| 未登录用户/未知 subject | 退出码 2，`migration-user-unknown`，不复制任何数据（不会自动归给首位登录者） |
+| dry-run | 退出码 0，只输出目标 `$DSH_HOME` 与待复制条目，不创建目标目录 |
+| --confirm | 退出码 0，`sessions/`、`skills/` 复制进解析出的用户 space，写出 `migrations/migrate-home-*.json` manifest |
+| 单元测试 | 10 个用例覆盖 subject/user 解析、dry-run、冲突拒绝、overwrite、路径重叠/缺失、symlink 跳过、稳定错误码 |
+
+## 3.6 部署生命周期演练（OPS-04/06/07，真实 Docker + 真实脚本）
+
+命令（WSL 内执行，临时部署根与合成发布包，不触碰任何真实部署数据）：
+
+```bash
+wsl -d Ubuntu --exec bash /mnt/d/Vibe_coding/deepseek-harness/deploy/scripts/verify-deploy-lifecycle.sh
+```
+
+实测结果：`DEPLOY LIFECYCLE PASS: 9 assertions`，证据 [evidence/deploy-lifecycle.log](evidence/deploy-lifecycle.log)。
+
+| 覆盖 | 实测断言 |
+|---|---|
+| 启动与迁移 | 平台容器从镜像启动，启动时应用版本化迁移，`/health` 就绪 |
+| 备份（OPS-04） | `backup.sh` 停止平台、打包 management 与用户空间、写 MANIFEST，并恢复在线 |
+| 恢复（OPS-04） | 备份后创建的新会话在恢复后被撤销（401），备份内既有会话仍有效（200） |
+| 离线升级（OPS-06） | 生成带 SHA256SUMS 的发布包并删除本地镜像；`upgrade.sh` 从 tar `docker load` 导入 v2、启动成功，数据库与 alice 会话保持不变 |
+| 失败回滚（OPS-07） | 构造不含目标镜像的 v3 包使升级失败；`upgrade.sh` 自动调用 `rollback.sh` 恢复到上一版本 v2，健康检查通过、alice 会话与数据一致 |
+| 清理 | 演练容器、网络与临时部署根全部清理 |
+
+注：本演练使用平台镜像与合成运行时镜像验证升级/回滚机制；完整 Runtime 镜像构建后应重复同一流程（见 OPEN_ISSUES）。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
 |---|---|---|
 | 平台类型检查 | `pnpm exec tsc -p services/platform/tsconfig.json --noEmit` | PASS（0 错误） |
-| 平台测试 | `pnpm exec vitest run --config services/platform/vitest.config.ts` | PASS（13 files / 189 passed / 1 skipped） |
+| 平台测试 | `pnpm exec vitest run --config services/platform/vitest.config.ts` | PASS（14 files / 199 passed / 1 skipped） |
 | 平台 e2e | `pnpm run test:platform:e2e` | PASS（5 passed，真实双 Runtime） |
 | 平台 lint | `pnpm exec oxlint services/platform` | PASS |
 | 前端包测试 | `vitest run packages/client/ui-platform-identity/tests packages/client/ui-settings-general/tests packages/bundle/web-app/tests packages/host/authentication-gateway/tests` | 24/25 files，282 passed；1 个既有环境超时（web-app product-analytics 5s 超时，与本改动无关） |
@@ -141,6 +182,7 @@ wsl -d Ubuntu --exec bash /mnt/d/Vibe_coding/deepseek-harness/deploy/scripts/ver
 | 文档同步 | `pnpm run doc-sync` | 42/43 gates PASS；唯一失败为既有 Windows 环境限制：`scripts/project-doc-site.spec.ts` 创建符号链接 `EPERM`（与本改动无关） |
 | 平台容器镜像 | `docker build -f deploy/platform/Dockerfile -t dsh-platform:test .` 后 `docker run ... --check` | PASS（镜像构建成功；开发配置校验通过；生产缺配置时按预期列出缺项并非零退出） |
 | 容器隔离（真实 Docker） | `wsl -d Ubuntu --exec bash deploy/scripts/verify-container-isolation.sh` | **PASS：60 assertions**（证据 `evidence/container-isolation.log`） |
+| 部署生命周期（真实 Docker） | `wsl -d Ubuntu --exec bash deploy/scripts/verify-deploy-lifecycle.sh` | **PASS：9 assertions**（证据 `evidence/deploy-lifecycle.log`） |
 | 源码发布包 | `deploy/release/dsh-platform-source-2026.11.23-dev.tar.gz` | PASS（541,465 bytes，sha256 37f4da64…d44a3；173 条目，无 `.env`/数据库/凭据；含 `.env.example`） |
 | 仓库 lint | `pnpm run lint` | 失败项全部为**既有文件**（`skill-plaza`、`authentication-gateway` 测试、`workspace-controller`、`ui-skill-plaza` 测试），无新代码文件；`pnpm exec oxlint services/platform packages/client/ui-platform-identity` 0 问题 |
 
@@ -179,8 +221,11 @@ wsl -d Ubuntu --exec bash /mnt/d/Vibe_coding/deepseek-harness/deploy/scripts/ver
 | 13:08 | 浏览器验收（Playwright，原生 DSH + 平台身份插件） | PASS，截图见 `evidence/` |
 | 13:12 | 平台容器镜像构建 + `--check`（开发/生产） | PASS（生产 fail-closed 列出缺项） |
 | 13:13 | 源码发布包 + SHA256 | PASS（无 `.env`/凭据） |
-| 13:14 | 平台单测最终复跑 | 13 files / 189 passed / 1 skipped |
+| 13:14 | 平台单测复跑 | 13 files / 189 passed / 1 skipped |
+| 13:36 | 平台单测（含 migrate-home）复跑 | 14 files / 199 passed / 1 skipped |
+| 13:45 | 部署生命周期演练（备份/恢复/离线升级/失败回滚） | **PASS：9 assertions** |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
+| 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 
 ### 结论
 

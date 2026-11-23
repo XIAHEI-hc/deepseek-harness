@@ -37,7 +37,7 @@ pnpm run start:platform      # 或 bash deploy/scripts/run-dev.sh / pwsh -File d
 # 浏览器打开 http://127.0.0.1:8080，Mock 登录后进入原生 DSH
 ```
 
-本地流程：Mock 身份（仅开发）→ 建立 HttpOnly Session → Gateway 为该身份启动独立 DSH Runtime →代理原生 UI 与 WebSocket。A/B 双用户与隔离见 `services/platform/tests/e2e/`。
+本地流程：Mock 身份（仅开发）→ 建立 HttpOnly Session → Gateway 为该身份启动独立 DSH Runtime → 代理原生 UI 与 WebSocket。A/B 双用户与隔离见 `services/platform/tests/e2e/`。旧单用户历史用 `admin migrate-home`（默认 dry-run）显式归属到某个 W3 身份，不自动给首位登录者。
 
 ## 状态
 

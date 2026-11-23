@@ -4,6 +4,8 @@
  */
 
 export { createPlatformApp, type PlatformApp } from './app.ts'
+export { migrateHome, MigrationError, type MigrateHomeEntry, type MigrateHomeOptions, type MigrateHomeReport, type MigrationFailureCode } from './admin/migrate-home.ts'
+export { findPlatformUserById, findPlatformUserBySubject } from './identity/lookup.ts'
 export {
   createPlatformConfig,
   ensureGatewayKeyPair,
