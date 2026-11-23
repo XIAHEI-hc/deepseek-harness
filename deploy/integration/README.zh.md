@@ -75,7 +75,7 @@ DSH_INTEGRATION_JOB_IMAGE=dsh-integration-job:2026.11.24 \
 bash deploy/scripts/verify-integration-release.sh deploy/release/integration-2026.11.24 2026.11.24
 ```
 
-发布包包含镜像 tar、两份注册表样例、Job Dockerfile、默认关闭的 `fusion.env.example` 与校验和。它从不复制 `.env`、数据库、快照、工作区或用户数据。在目标机导入镜像，保持 `DSH_INTEGRATION_ENABLED=false`，只合并已审核配置，然后运行 `admin integration status`。
+发布包包含镜像 tar、两份注册表样例、Job Dockerfile、broker 源码、默认关闭的 `fusion.env.example` 与校验和。它从不复制 `.env`、数据库、快照、工作区或用户数据。在目标机导入镜像，保持 `DSH_INTEGRATION_ENABLED=false`，只合并已审核配置，然后运行 `admin integration status`。
 
 ## 受控出口（可选）
 

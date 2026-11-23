@@ -25,6 +25,10 @@ cp "$REPO_ROOT/deploy/integration/README.md" "$OUT/fusion-README.md"
 cp "$REPO_ROOT/deploy/integration/job/Dockerfile" "$OUT/job.Dockerfile"
 cp "$REPO_ROOT/deploy/integration/systems.http.example.json" "$OUT/systems.http.example.json"
 cp "$REPO_ROOT/deploy/integration/systems.mock.example.json" "$OUT/systems.mock.example.json"
+mkdir -p "$OUT/broker"
+cp "$REPO_ROOT/deploy/integration/broker/proxy.mjs" "$OUT/broker/proxy.mjs"
+cp "$REPO_ROOT/deploy/integration/broker/Dockerfile" "$OUT/broker/Dockerfile"
+cp "$REPO_ROOT/deploy/integration/broker/README.md" "$OUT/broker/README.md"
 
 cat > "$OUT/fusion.env.example" <<EOF
 # Fusion release $VERSION. Keep disabled until preflight passes on the target host.
@@ -47,9 +51,11 @@ Fusion release $VERSION
    DSH_INTEGRATION_ENABLED=false until \`admin integration status\` reports ready.
 4. Run: DSH_INTEGRATION_JOB_IMAGE=dsh-integration-job:$VERSION \\
      bash deploy/scripts/verify-integration-isolation.sh
+5. If controlled egress is used, build broker/Dockerfile and set
+   DSH_INTEGRATION_JOB_NETWORK/DSH_INTEGRATION_EGRESS_BROKER_URL as reviewed.
 EOF
 
-( cd "$OUT" && sha256sum dsh-integration-job-"$VERSION".tar fusion-README.md job.Dockerfile systems.http.example.json systems.mock.example.json fusion.env.example README.txt > SHA256SUMS-"$VERSION" )
+( cd "$OUT" && sha256sum dsh-integration-job-"$VERSION".tar fusion-README.md job.Dockerfile systems.http.example.json systems.mock.example.json broker/proxy.mjs broker/Dockerfile broker/README.md fusion.env.example README.txt > SHA256SUMS-"$VERSION" )
 
 echo "release bundle: $OUT"
 echo "verify: bash deploy/scripts/verify-integration-release.sh $OUT $VERSION"

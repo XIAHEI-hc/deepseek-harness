@@ -75,7 +75,7 @@ DSH_INTEGRATION_JOB_IMAGE=dsh-integration-job:2026.11.24 \
 bash deploy/scripts/verify-integration-release.sh deploy/release/integration-2026.11.24 2026.11.24
 ```
 
-The bundle contains the image tar, both registry examples, the job Dockerfile, a disabled-by-default `fusion.env.example`, and checksums. It never copies `.env`, databases, snapshots, workspaces, or user data. Import the image on the target host, keep `DSH_INTEGRATION_ENABLED=false`, merge only the reviewed settings, then run `admin integration status`.
+The bundle contains the image tar, both registry examples, the job Dockerfile, the broker source, a disabled-by-default `fusion.env.example`, and checksums. It never copies `.env`, databases, snapshots, workspaces, or user data. Import the image on the target host, keep `DSH_INTEGRATION_ENABLED=false`, merge only the reviewed settings, then run `admin integration status`.
 
 ## Controlled egress (optional)
 

@@ -15,9 +15,10 @@ echo "== verify checksums =="
 ( cd "$DIR" && sha256sum -c "SHA256SUMS-$VERSION" )
 
 echo "== verify required assets =="
-for file in "dsh-integration-job-$VERSION.tar" fusion.env.example systems.http.example.json systems.mock.example.json README.txt; do
+for file in "dsh-integration-job-$VERSION.tar" fusion.env.example systems.http.example.json systems.mock.example.json broker/proxy.mjs broker/Dockerfile README.txt; do
   [ -s "$DIR/$file" ] || { echo "missing or empty: $file" >&2; exit 1; }
 done
+node --check "$DIR/broker/proxy.mjs"
 
 echo "== verify disabled-by-default env =="
 grep -qx 'DSH_INTEGRATION_ENABLED=false' "$DIR/fusion.env.example" || {
