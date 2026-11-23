@@ -24,7 +24,7 @@
 
 | 文件 | 作用 |
 |---|---|
-| `runtime/platform-runtime.patch.yml` | 每用户 DSH Runtime overlay：禁用 `authentication-token`，插入 `authentication-gateway`（固定 subject/generation/公钥，env 表达式） |
+| `runtime/platform-runtime.patch.yml` | 每用户 DSH Runtime overlay：禁用 `authentication-token`，插入 `authentication-gateway`（固定 subject/generation/公钥，env 表达式）；并把 `session-query-sqlite` 配为每用户 `$DSH_HOME/state/session-query.sqlite`（shipped Web profile 默认关闭内容搜索） |
 | `runtime/Dockerfile` | 多阶段构建的 DSH Runtime 镜像（非 root UID，用户数据卷外置）；`runtime/entrypoint.sh` 以绝对路径解析 tsx loader 与 CLI（容器 cwd 是用户工作区，相对路径会解析失败） |
 | `tests/probe-runtime/` | 轻量 probe 镜像（只回答就绪探针），用于在真实 Docker 上验证 supervisor 的容器启动策略 |
 | `platform/Dockerfile` | 平台服务镜像（Node 24 type-stripping 直接运行 + docker CLI 供 Supervisor 使用） |

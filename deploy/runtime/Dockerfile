@@ -27,9 +27,9 @@ ENV NODE_ENV=development
 
 FROM node:24-bookworm-slim
 
-# 运行用户固定非 root；空间目录由 supervisor 以 1000:1000 挂载。
-RUN groupadd --gid 1000 dsh && useradd --uid 1000 --gid 1000 --create-home --home-dir /home/dsh dsh
-
+# The node image already ships uid/gid 1000 as the `node` user, which is the
+# non-root identity every user runtime runs as. Space directories are mounted
+# owned by 1000:1000; creating another user with that uid would collide.
 WORKDIR /app
 COPY --from=build /src /app
 COPY deploy/runtime/entrypoint.sh /app/entrypoint.sh

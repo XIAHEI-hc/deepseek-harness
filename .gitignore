@@ -58,6 +58,7 @@ native/system/test/bin/
 .dsh-container-test/
 .dsh-deploy-smoke/
 .dsh-migrate-smoke/
+.dsh-data-probe/
 deploy/.env
 deploy/release/
 services/platform/evidence/

@@ -14,7 +14,7 @@
  * @module @deepseek-ai/dsh-platform-services/tests/e2e/platform.e2e.spec
  */
 
-import { randomBytes } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { mkdtemp, rm, stat } from 'node:fs/promises'
 import { request as httpRequest } from 'node:http'
 import { tmpdir } from 'node:os'
@@ -177,6 +177,68 @@ async function openTunnelWhenReady(
     await new Promise<void>(resolve => { setTimeout(resolve, 500) })
   }
   return last
+}
+
+/**
+ * Call one Typert Remote endpoint through the gateway with a browser session.
+ * @param browser - authenticated browser.
+ * @param endpoint - endpoint name such as `session/list`.
+ * @param args - endpoint arguments.
+ * @returns the business result (`ok` true with `value`, or false with `error`).
+ */
+async function rpc(
+  origin: string,
+  browser: TestBrowser,
+  endpoint: string,
+  args: Record<string, unknown>,
+): Promise<{ ok: boolean; value?: unknown; error?: { code: string; message: string } }> {
+  const response = await browser.request(`${origin}/api/${endpoint}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId: randomUUID(),
+      method: endpoint,
+      payload: { args },
+    }),
+  })
+  if (response.status !== 200) throw new Error(`rpc ${endpoint} answered HTTP ${String(response.status)}`)
+  const envelope = JSON.parse(response.body) as { result: { ok: boolean; value?: unknown; error?: { code: string; message: string } } }
+  return envelope.result
+}
+
+/**
+ * Read the session ids from one `session/list` result.
+ * @param result - `session/list` business result.
+ * @returns the listed session ids.
+ */
+function sessionIds(result: { ok: boolean; value?: unknown }): string[] {
+  const value = result.value as { items?: { sessionId?: unknown }[] } | undefined
+  return (value?.items ?? []).map(item => (typeof item.sessionId === 'string' ? item.sessionId : '')).filter(id => id !== '')
+}
+
+/**
+ * Read one listed session row.
+ * @param result - `session/list` business result.
+ * @param sessionId - session to find.
+ * @returns the row, or undefined.
+ */
+function listedSession(result: { ok: boolean; value?: unknown }, sessionId: string): Record<string, unknown> | undefined {
+  const value = result.value as { items?: Record<string, unknown>[] } | undefined
+  return (value?.items ?? []).find(item => item.sessionId === sessionId)
+}
+
+/**
+ * Read one listed session's projected title.
+ * @param result - `session/list` business result.
+ * @param sessionId - session to find.
+ * @returns the title, or undefined while the projection has not landed.
+ */
+function listedTitle(result: { ok: boolean; value?: unknown }, sessionId: string): string | undefined {
+  const row = listedSession(result, sessionId)
+  const projections = row?.['projections'] as { values?: { title?: unknown } } | undefined
+  const title = projections?.values?.title
+  return typeof title === 'string' ? title : undefined
 }
 
 describe('DSH platform end to end', () => {
@@ -358,4 +420,91 @@ describe('DSH platform end to end', () => {
     const relogin = await login(fixture, reloginBrowser, 'c')
     expect(relogin.user.id).toBe(userC.id)
   }, 180_000)
+
+  it('isolates session lists, search, reads, and mutations between two identities', async () => {
+    const browserA = new TestBrowser(fixture.origin)
+    await login(fixture, browserA, 'a')
+    const browserB = fixture.browsers.b
+
+    const createA = await rpc(fixture.origin, browserA, 'session/create', { request: {} })
+    const createB = await rpc(fixture.origin, browserB, 'session/create', { request: {} })
+    expect(createA.ok).toBe(true)
+    expect(createB.ok).toBe(true)
+    const sessionA = (createA.value as { sessionId: string }).sessionId
+    const sessionB = (createB.value as { sessionId: string }).sessionId
+    expect(sessionA).not.toBe(sessionB)
+
+    const renameA = await rpc(fixture.origin, browserA, 'session/rename', { request: { sessionId: sessionA, title: 'alpha-private-history' } })
+    const renameB = await rpc(fixture.origin, browserB, 'session/rename', { request: { sessionId: sessionB, title: 'bravo-private-history' } })
+    expect(renameA.ok).toBe(true)
+    expect(renameB.ok).toBe(true)
+
+    const listA = await rpc(fixture.origin, browserA, 'session/list', { _request: {} })
+    const listB = await rpc(fixture.origin, browserB, 'session/list', { _request: {} })
+    expect(listA.ok).toBe(true)
+    expect(listB.ok).toBe(true)
+    const idsA = sessionIds(listA)
+    const idsB = sessionIds(listB)
+    expect(idsA).toContain(sessionA)
+    expect(idsA).not.toContain(sessionB)
+    expect(idsB).toContain(sessionB)
+    expect(idsB).not.toContain(sessionA)
+    await waitFor('A session title projects', async () => {
+      const current = await rpc(fixture.origin, browserA, 'session/list', { _request: {} })
+      return listedTitle(current, sessionA) === 'alpha-private-history'
+    })
+    await waitFor('B session title projects', async () => {
+      const current = await rpc(fixture.origin, browserB, 'session/list', { _request: {} })
+      return listedTitle(current, sessionB) === 'bravo-private-history'
+    })
+
+    // Full-text search runs against a per-user SQLite index under this identity's
+    // own DSH home. Blank sessions carry no message text, so this asserts the
+    // isolation property (no other identity's session is ever returned) rather
+    // than message-content ranking, which needs an agent run.
+    const searchA = await rpc(fixture.origin, browserA, 'session/search', { request: { query: 'private-history' } })
+    expect(searchA.ok).toBe(true)
+    const searchIds = (searchA.value as { items?: { sessionId?: unknown }[] }).items?.map(item => item.sessionId) ?? []
+    expect(searchIds).not.toContain(sessionB)
+    const searchB = await rpc(fixture.origin, browserB, 'session/search', { request: { query: 'private-history' } })
+    expect(searchB.ok).toBe(true)
+    const searchIdsB = (searchB.value as { items?: { sessionId?: unknown }[] }).items?.map(item => item.sessionId) ?? []
+    expect(searchIdsB).not.toContain(sessionA)
+
+    // IDOR: B's session id is not addressable from A's runtime for read or mutation.
+    const stateB = await rpc(fixture.origin, browserA, 'session/state', { request: { sessionId: sessionB } })
+    expect(stateB.ok).toBe(false)
+    expect(stateB.error?.code ?? '').toContain('not-found')
+    const pageB = await rpc(fixture.origin, browserA, 'session/page', { request: { address: { kind: 'session', sessionId: sessionB } } })
+    expect(pageB.ok).toBe(false)
+    expect(pageB.error?.code ?? '').toContain('not-found')
+    const renameForeign = await rpc(fixture.origin, browserA, 'session/rename', { request: { sessionId: sessionB, title: 'hijacked' } })
+    expect(renameForeign.ok).toBe(false)
+    const forkForeign = await rpc(fixture.origin, browserA, 'session/fork', { request: { sessionId: sessionB } })
+    expect(forkForeign.ok).toBe(false)
+    const cancelForeign = await rpc(fixture.origin, browserA, 'session/cancel', { request: { sessionId: sessionB } })
+    expect(cancelForeign.ok).toBe(false)
+
+    // B's session and title are unchanged by A's attempts.
+    const listBAfter = await rpc(fixture.origin, browserB, 'session/list', { _request: {} })
+    expect(listedTitle(listBAfter, sessionB)).toBe('bravo-private-history')
+    expect(sessionIds(listBAfter)).not.toContain(sessionA)
+
+    // Logging out and back in restores this identity's own history only.
+    const csrf = browserA.cookie('dsh_csrf') ?? ''
+    const logout = await browserA.request(`${fixture.origin}/auth/logout`, {
+      method: 'POST',
+      headers: { 'x-csrf-token': csrf },
+    })
+    expect(logout.status).toBe(200)
+    const returnBrowser = new TestBrowser(fixture.origin)
+    await login(fixture, returnBrowser, 'a')
+    const listReturned = await rpc(fixture.origin, returnBrowser, 'session/list', { _request: {} })
+    expect(sessionIds(listReturned)).toContain(sessionA)
+    await waitFor('restored session title', async () => {
+      const current = await rpc(fixture.origin, returnBrowser, 'session/list', { _request: {} })
+      return listedTitle(current, sessionA) === 'alpha-private-history'
+    })
+    expect(sessionIds(listReturned)).not.toContain(sessionB)
+  }, 240_000)
 })

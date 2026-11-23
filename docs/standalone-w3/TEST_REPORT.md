@@ -74,11 +74,11 @@ pnpm run test:platform:e2e
 
 ```
 Test Files  1 passed (1)
-Tests       6 passed (6)
-Duration    42.96s
-{"event":"runtime.ready","userRef":"61c2500ee063","generation":1}
-{"event":"runtime.ready","userRef":"2ae569b87890","generation":1}
-{"event":"runtime.ready","userRef":"1e291398dc7a","generation":1}
+Tests       7 passed (7)
+Duration    41.96s
+{"event":"runtime.ready","userRef":"b2aab0c5d81c","generation":1}
+{"event":"runtime.ready","userRef":"83aff97f1868","generation":1}
+{"event":"runtime.ready","userRef":"205d009969e5","generation":1}
 ```
 
 说明：两条 `runtime.ready` 事件来自两个不同用户的真实 DSH 进程；e2e 使用脚本化 W3 Provider（无真实租户凭据），因此 AUTH-24 仍为 BLOCKED。WebSocket 用例真实经过 Gateway → 用户 DSH Runtime 的 101 握手、伪造 Cookie 拒绝、跨站 Origin 拒绝、注销后 ≤1 个复验周期的隧道关闭。
@@ -184,6 +184,20 @@ node --import tsx/esm services/platform/src/main.ts admin session revoke-all --s
 | 未带 --confirm | `admin-confirm-required`，退出码 3，不改变任何状态 |
 | e2e 扩展 | 真实平台 + 3 个 Runtime：C 的 HTTP 立即 401、活动 WebSocket 在一个复验周期内关闭，B 不受影响（6/6 tests） |
 
+## 3.8 双身份 Session/搜索/IDOR/历史恢复隔离（DATA-01/02/03/13，e2e）
+
+在真实平台 + 两个真实 DSH Runtime 上，用原生 Typert Remote HTTP 端点验证（同一套客户端协议，不绕过 Gateway）：
+
+| 场景 | 实测结果 |
+|---|---|
+| 会话列表 | A/B 各自 `session/list` 只含本人 Session；对方 id 不出现 |
+| 内容搜索 | 每个身份在自己 `$DSH_HOME/state/session-query.sqlite` 索引上搜索，A 的搜索结果不含 B 的 Session（B 反之亦然）；空白 Session 无消息文本，内容排名未覆盖 |
+| 猜 B 的 Session ID 读取 | A 用 B 的 id 调 `session/state`、`session/page` → `session/not-found`，无数据泄露 |
+| 改 B 的 Session | A 对 B 的 `session/rename`、`session/fork`、`session/cancel` 全部失败；B 的列表与标题保持不变 |
+| 登出再登录 | A 登出后重新登录，`session/list` 仍包含本人 Session（标题保留）且不含 B 的任何 Session；同一身份复用同一 Runtime/DSH_HOME |
+
+生产 overlay 还显式把 `session-query-sqlite` 配为每个用户 `$DSH_HOME/state/` 下的独立索引（shipped Web profile 默认关闭搜索），保证搜索数据不跨身份。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -244,6 +258,7 @@ node --import tsx/esm services/platform/src/main.ts admin session revoke-all --s
 | 13:36 | 平台单测（含 migrate-home）复跑 | 14 files / 199 passed / 1 skipped |
 | 13:45 | 部署生命周期演练（备份/恢复/离线升级/失败回滚） | **PASS：9 assertions** |
 | 13:48 | e2e 扩展：管理员 disable/enable 触发 HTTP/WS 撤销 | PASS：6/6 tests，3 个真实 Runtime |
+| 14:28 | e2e 扩展：双身份 Session/搜索/IDOR/历史恢复隔离 | PASS：7/7 tests |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

@@ -26,3 +26,11 @@
         replayWindowSeconds: !!js Number(process.env.DSH_GATEWAY_REPLAY_WINDOW_SECONDS ?? '60')
         clockSkewSeconds: 30
         maxLifetimeSeconds: !!js Number(process.env.DSH_GATEWAY_MAX_LIFETIME_SECONDS ?? '300')
+
+# Per-user full-text Session search. The shipped web profile keeps content
+# search disabled; the platform enables one SQLite index under this user's own
+# DSH home, so a user's search results are built only from that user's Sessions.
+- id: session-query-sqlite
+  config:
+    path: !!js dshHomePath('state', 'session-query.sqlite')
+    openAt: first-search

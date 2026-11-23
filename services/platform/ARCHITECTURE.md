@@ -71,6 +71,9 @@ Runtime 只读取公钥文件。
 `space_key = HMAC-SHA256(realm, user_id)` 的不透明十六进制值，绝不使用显示名或客户端输入。
 真实容器策略由 `deploy/scripts/verify-container-isolation.sh` 在真实 Docker 上验证（60 断言）。
 
+运行时 overlay 同时把 `session-query-sqlite` 指向该用户 `$DSH_HOME/state/session-query.sqlite` 并在首次搜索时打开，
+因此每个身份的内容搜索只建立在自己的 Session 数据上（shipped Web profile 默认关闭内容搜索）。
+
 运行时环境变量（每用户唯一）：
 
 ```
