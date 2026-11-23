@@ -5,6 +5,15 @@
 
 export { createPlatformApp, type PlatformApp } from './app.ts'
 export { migrateHome, MigrationError, type MigrateHomeEntry, type MigrateHomeOptions, type MigrateHomeReport, type MigrationFailureCode } from './admin/migrate-home.ts'
+export {
+  disableUser,
+  enableUser,
+  revokeAllUserSessions,
+  UserAdminError,
+  type UserAdminFailureCode,
+  type UserAdminReport,
+  type UserAdminRequest,
+} from './admin/users.ts'
 export { findPlatformUserById, findPlatformUserBySubject } from './identity/lookup.ts'
 export {
   createPlatformConfig,

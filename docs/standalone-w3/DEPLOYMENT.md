@@ -111,8 +111,10 @@ bash deploy/scripts/rollback.sh <backup-label>
 | 健康检查 | `bash deploy/scripts/healthcheck.sh`；GET `/health` |
 | 平台日志 | `docker compose -f deploy/compose.yml logs -f platform`（不含 Cookie/token/密钥） |
 | 用户 Runtime 列表 | `docker ps --filter label=dsh.platform=1` |
-| 禁用用户 | 身份库 `dsh_users.status='disabled'` + `permission_version+1`（后续管理 CLI） |
-| 强制下线 | 撤销 `dsh_sessions` 该用户全部 Session；Gateway ≤20s 内断开现存 WebSocket |
+| 禁用用户 | `admin user disable --subject <w3-subject> --confirm`：拒绝后续认证并撤销全部活动 Session |
+| 恢复用户 | `admin user enable --subject <w3-subject> --confirm`：旧 Session 仍失效，需重新登录 |
+| 强制下线（不禁用账号） | `admin session revoke-all --subject <w3-subject> --confirm`：Gateway ≤20s 内断开现存 WebSocket |
+| 旧历史归属 | `admin migrate-home --from <legacy> --subject <subject> [--confirm]`（默认 dry-run） |
 | 清理空闲 Runtime | 自动：`DSH_RUNTIME_IDLE_SECONDS`（默认 1800s），仅在无 WebSocket/lease 时停止，数据保留 |
 
 ## 9. 本地开发与容器隔离验证（Windows/Linux）

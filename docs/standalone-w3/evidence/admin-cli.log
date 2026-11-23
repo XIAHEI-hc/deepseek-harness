@@ -1,0 +1,8 @@
+command: dsh-platform admin user disable|enable|session revoke-all --subject <w3-subject> --confirm
+
+before disable: /auth/me 200
+user disable: user disabled, permission version 2, 1 session revoked, exit 0
+after disable: /auth/me 401 (live session revoked)
+user enable: user active, permission version 3, exit 0
+after enable fresh login: /auth/me 200
+session revoke-all without --confirm: admin-confirm-required, exit 3

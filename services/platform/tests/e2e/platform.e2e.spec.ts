@@ -21,6 +21,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createPlatformApp, type PlatformApp } from '../../src/app.ts'
+import { disableUser, enableUser } from '../../src/admin/users.ts'
 import { computeSpaceKey, resolveRuntimeSpaceByKey } from '../../src/runtime/index.ts'
 import { FakeW3Provider, reservePort, TestBrowser, waitFor, w3PlatformConfig } from './support.ts'
 
@@ -137,6 +138,45 @@ async function openTunnel(
     request.on('error', reject)
     request.end()
   })
+}
+
+/**
+ * Wait until one upgraded socket closes.
+ * @param socket - upgraded transport, if the handshake produced one.
+ * @param timeoutMs - wait budget.
+ * @returns true when the socket closed within the budget.
+ */
+async function waitSocketClosed(socket: import('node:net').Socket | undefined, timeoutMs: number): Promise<boolean> {
+  if (socket === undefined) return true
+  return new Promise<boolean>((resolve) => {
+    const timer = setTimeout(() => { resolve(false) }, timeoutMs)
+    socket.once('close', () => { clearTimeout(timer); resolve(true) })
+    socket.once('error', () => { clearTimeout(timer); resolve(true) })
+  })
+}
+
+/**
+ * Open a tunnel, retrying while the freshly started runtime has not registered
+ * its stream route yet (the native host serves pages before that route exists).
+ * @param origin - platform origin.
+ * @param cookie - browser cookie header.
+ * @param timeoutMs - retry budget.
+ * @returns the admitted tunnel, or the last refusal.
+ */
+async function openTunnelWhenReady(
+  origin: string,
+  cookie: string | undefined,
+  timeoutMs = 30_000,
+): Promise<{ status: number; socket?: import('node:net').Socket }> {
+  const deadline = Date.now() + timeoutMs
+  let last: { status: number; socket?: import('node:net').Socket } = { status: 0 }
+  while (Date.now() < deadline) {
+    last = await openTunnel(origin, cookie)
+    if (last.status === 101) return last
+    last.socket?.destroy()
+    await new Promise<void>(resolve => { setTimeout(resolve, 500) })
+  }
+  return last
 }
 
 describe('DSH platform end to end', () => {
@@ -285,4 +325,37 @@ describe('DSH platform end to end', () => {
     expect(pageB.status).toBe(200)
     expect(pageB.body).toContain('__DSH_BOOT__')
   }, 120_000)
+
+  it('operator disable revokes a live session and its WebSocket without touching other users', async () => {
+    const browserC = new TestBrowser(fixture.origin)
+    const userC = (await login(fixture, browserC, 'c')).user
+    const pageC = await browserC.request(`${fixture.origin}/`)
+    expect(pageC.status).toBe(200)
+    expect(pageC.body).toContain('__DSH_BOOT__')
+    await waitFor('user C runtime READY', async () => (await runtimeStatus(fixture, browserC)).state === 'READY')
+
+    const tunnel = await openTunnelWhenReady(fixture.origin, browserC.cookieHeader())
+    expect(tunnel.status).toBe(101)
+
+    const disabled = await disableUser({ identity: fixture.app.config.identity, subject: userC.subject, confirm: true })
+    expect(disabled.status).toBe('disabled')
+    expect(disabled.sessionsRevoked).toBeGreaterThanOrEqual(1)
+
+    // The gateway re-checks every request and closes the live tunnel within one
+    // revalidation period; B's session is untouched.
+    await waitFor('disabled user C is refused', async () => {
+      return (await browserC.request(`${fixture.origin}/auth/me`)).status === 401
+    })
+    expect(await waitSocketClosed(tunnel.socket, 10_000)).toBe(true)
+    const stillB = await fixture.browsers.b.request(`${fixture.origin}/auth/me`)
+    expect(stillB.status).toBe(200)
+    expect(JSON.parse(stillB.body).user.id).toBe(userB.id)
+
+    // Re-enabling lets the user log in again, with a fresh identity session.
+    const enabled = await enableUser({ identity: fixture.app.config.identity, subject: userC.subject, confirm: true })
+    expect(enabled.status).toBe('active')
+    const reloginBrowser = new TestBrowser(fixture.origin)
+    const relogin = await login(fixture, reloginBrowser, 'c')
+    expect(relogin.user.id).toBe(userC.id)
+  }, 180_000)
 })

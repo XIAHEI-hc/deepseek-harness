@@ -13,7 +13,7 @@
 
 ## 2. 代码缺口（后续迭代，非阻塞当前验收）
 
-1. **管理控制台/CLI**：禁用用户、全设备注销、查看 Runtime 状态、强制重启目前通过身份库/注册表数据操作；`admin migrate-home` 已提供；仍需补禁用用户/全设备注销/状态查看等 `admin` 子命令与审计表（docs/05 的 `dsh_audit_events`）。
+1. **管理控制台/CLI**：已提供 `admin migrate-home`、`admin user disable|enable`、`admin session revoke-all`；仍需补查看 Runtime 状态/强制重启的 `admin` 子命令与审计表（docs/05 的 `dsh_audit_events`）。
 2. **登录限流/防爆破**：当前未实现 IP/账号级限流（开发包列为生产增强项）。
 3. **W3 单点退出 / PKCE**：依赖 W3 支持情况，未在真实环境验证。
 4. **Session 清理任务**：过期 Session/OAuth state 的定期清理未建 cron；表上有索引，可后续加定时清理。

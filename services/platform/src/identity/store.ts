@@ -486,6 +486,32 @@ export class IdentityStore {
     return Number(result.changes)
   }
 
+  /**
+   * Set one user's account status.
+   * @param id - internal user id.
+   * @param status - new `dsh_users.status` value.
+   * @param updatedAtIso - update timestamp.
+   */
+  setUserStatus(id: string, status: string, updatedAtIso: string): void {
+    this.database
+      .prepare('UPDATE dsh_users SET status = ?, updated_at = ? WHERE id = ?')
+      .run(status, updatedAtIso, id)
+  }
+
+  /**
+   * Increment one user's permission version so every existing session becomes stale.
+   * @param id - internal user id.
+   * @param updatedAtIso - update timestamp.
+   * @returns the new permission version.
+   */
+  bumpUserPermissionVersion(id: string, updatedAtIso: string): number {
+    this.database
+      .prepare('UPDATE dsh_users SET permission_version = permission_version + 1, updated_at = ? WHERE id = ?')
+      .run(updatedAtIso, id)
+    const row = this.findUserById(id)
+    return row === undefined ? 0 : row.permissionVersion
+  }
+
   /** Release the SQLite handle; later calls are no-ops. */
   close(): void {
     if (this.closed) return

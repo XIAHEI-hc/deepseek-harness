@@ -11,6 +11,7 @@
 
 import { createPlatformApp } from './app.ts'
 import { migrateHome, MigrationError } from './admin/migrate-home.ts'
+import { disableUser, enableUser, revokeAllUserSessions, UserAdminError, type UserAdminRequest } from './admin/users.ts'
 import { loadPlatformConfig, PlatformConfigError, type PlatformConfig } from './config.ts'
 
 /**
@@ -61,16 +62,67 @@ function runCheck(argv: readonly string[]): number {
  */
 function printAdminHelp(): number {
   process.stdout.write([
-    'usage: dsh-platform admin migrate-home --from <legacy-dsh-home> (--subject <w3-subject> | --user <user-id>) [--confirm] [--overwrite]',
+    'usage: dsh-platform admin <command> [options]',
     '',
-    '  --from <path>        legacy single-user DSH home to attribute (for example ~/.dsh)',
-    '  --subject <subject>  stable W3 subject of the owning platform user',
-    '  --user <id>          internal DSH user id of the owning user',
-    '  --confirm            perform the copy; without it the command only prints the plan',
-    '  --overwrite          replace destination entries that already exist',
+    '  migrate-home --from <legacy-dsh-home> (--subject <w3-subject> | --user <user-id>) [--confirm] [--overwrite]',
+    '      attribute a legacy single-user DSH home to one platform user (default dry run)',
+    '',
+    '  user disable (--subject <w3-subject> | --user <user-id>) --confirm',
+    '      disable an account: refuse later authentication and revoke every live session',
+    '  user enable (--subject <w3-subject> | --user <user-id>) --confirm',
+    '      re-enable a disabled account; existing sessions stay revoked',
+    '  session revoke-all (--subject <w3-subject> | --user <user-id>) --confirm',
+    '      revoke every live session without disabling the account',
     '',
   ].join('\n'))
   return 0
+}
+
+/**
+ * Build the selector/confirmation facts of one user admin command.
+ * @param argv - admin arguments including the subcommand.
+ * @returns the request fields for the admin module.
+ */
+function userAdminRequest(config: PlatformConfig, argv: readonly string[]): UserAdminRequest {
+  return {
+    identity: config.identity,
+    subject: flagValue(argv, '--subject'),
+    userId: flagValue(argv, '--user'),
+    confirm: argv.includes('--confirm'),
+  }
+}
+
+/**
+ * Run one user or session administrative command.
+ * @param argv - admin arguments including the subcommand.
+ * @param config - validated platform configuration.
+ * @returns the process exit code.
+ */
+async function runUserAdmin(argv: readonly string[], config: PlatformConfig): Promise<number> {
+  const command = argv[0]
+  const subcommand = argv[1]
+  try {
+    let report
+    if (command === 'user' && subcommand === 'disable') {
+      report = await disableUser(userAdminRequest(config, argv))
+    } else if (command === 'user' && subcommand === 'enable') {
+      report = await enableUser(userAdminRequest(config, argv))
+    } else if (command === 'session' && subcommand === 'revoke-all') {
+      report = await revokeAllUserSessions(userAdminRequest(config, argv))
+    } else {
+      process.stderr.write(`unknown admin command ${JSON.stringify([command, subcommand])}\n`)
+      return 2
+    }
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
+    process.stdout.write(`${command} ${subcommand ?? ''}: user ${report.user.id} is ${report.status}, permission version ${String(report.permissionVersion)}, ${String(report.sessionsRevoked)} session(s) revoked\n`)
+    return 0
+  } catch (error) {
+    if (error instanceof UserAdminError) {
+      process.stderr.write(`admin ${command} ${subcommand ?? ''}: ${error.code}: ${error.message}\n`)
+      return error.code === 'admin-confirm-required' ? 3 : 2
+    }
+    throw error
+  }
 }
 
 /**
@@ -81,6 +133,7 @@ function printAdminHelp(): number {
  */
 async function runAdmin(argv: readonly string[], config: PlatformConfig): Promise<number> {
   if (argv.length === 0 || argv[0] === '--help' || argv[0] === '-h') return printAdminHelp()
+  if (argv[0] === 'user' || argv[0] === 'session') return runUserAdmin(argv, config)
   if (argv[0] !== 'migrate-home') {
     process.stderr.write(`unknown admin command ${JSON.stringify(argv[0])}\n`)
     return 2

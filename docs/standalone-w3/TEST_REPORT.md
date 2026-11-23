@@ -22,7 +22,7 @@ pnpm exec vitest run --config services/platform/vitest.config.ts
 结果（2026-11-23）：
 
 - 类型检查：PASS（0 错误）。
-- 单元/组件：**14 files passed, 199 tests passed, 1 skipped**（skip = 真实 Docker 用例，需`DSH_PLATFORM_DOCKER_TEST=1` + `DSH_RUNTIME_IMAGE` + 可路由的 docker；环境限制见 OPEN_ISSUES）。
+- 单元/组件：**15 files passed, 204 tests passed, 1 skipped**（skip = 真实 Docker 用例，需`DSH_PLATFORM_DOCKER_TEST=1` + `DSH_RUNTIME_IMAGE` + 可路由的 docker；环境限制见 OPEN_ISSUES）。
 - 分模块（各自子代理实测，见各任务汇报）：
   - identity：3 files / 31 tests passed（AUTH-01..AUTH-23 可本地验证项）
   - runtime：5 files / 63 passed + 1 skipped（RUNT-01..RUNT-13 的注入/真实进程边界）
@@ -74,10 +74,11 @@ pnpm run test:platform:e2e
 
 ```
 Test Files  1 passed (1)
-Tests       5 passed (5)
-Duration    30.59s
-{"event":"runtime.ready","userRef":"c923d2acbca4","generation":1}
-{"event":"runtime.ready","userRef":"c2fbd5586731","generation":1}
+Tests       6 passed (6)
+Duration    42.96s
+{"event":"runtime.ready","userRef":"61c2500ee063","generation":1}
+{"event":"runtime.ready","userRef":"2ae569b87890","generation":1}
+{"event":"runtime.ready","userRef":"1e291398dc7a","generation":1}
 ```
 
 说明：两条 `runtime.ready` 事件来自两个不同用户的真实 DSH 进程；e2e 使用脚本化 W3 Provider（无真实租户凭据），因此 AUTH-24 仍为 BLOCKED。WebSocket 用例真实经过 Gateway → 用户 DSH Runtime 的 101 握手、伪造 Cookie 拒绝、跨站 Origin 拒绝、注销后 ≤1 个复验周期的隧道关闭。
@@ -166,12 +167,29 @@ wsl -d Ubuntu --exec bash /mnt/d/Vibe_coding/deepseek-harness/deploy/scripts/ver
 
 注：本演练使用平台镜像与合成运行时镜像验证升级/回滚机制；完整 Runtime 镜像构建后应重复同一流程（见 OPEN_ISSUES）。
 
+## 3.7 管理员用户/会话命令（CLI 实测）
+
+```bash
+node --import tsx/esm services/platform/src/main.ts admin user disable --subject <w3-subject> --confirm
+node --import tsx/esm services/platform/src/main.ts admin user enable  --subject <w3-subject> --confirm
+node --import tsx/esm services/platform/src/main.ts admin session revoke-all --subject <w3-subject> --confirm
+```
+
+实测（对运行中的平台执行，证据 [evidence/admin-cli.log](evidence/admin-cli.log)）：
+
+| 步骤 | 结果 |
+|---|---|
+| disable | 用户 status=disabled、permission_version+1、1 个 Session 被撤销；同一 Cookie 下一次 `/auth/me` 立即 401 |
+| enable | 用户恢复 active；旧 Session 仍失效；重新登录得到新 Session 且 `/auth/me` 200 |
+| 未带 --confirm | `admin-confirm-required`，退出码 3，不改变任何状态 |
+| e2e 扩展 | 真实平台 + 3 个 Runtime：C 的 HTTP 立即 401、活动 WebSocket 在一个复验周期内关闭，B 不受影响（6/6 tests） |
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
 |---|---|---|
 | 平台类型检查 | `pnpm exec tsc -p services/platform/tsconfig.json --noEmit` | PASS（0 错误） |
-| 平台测试 | `pnpm exec vitest run --config services/platform/vitest.config.ts` | PASS（14 files / 199 passed / 1 skipped） |
+| 平台测试 | `pnpm exec vitest run --config services/platform/vitest.config.ts` | PASS（15 files / 204 passed / 1 skipped） |
 | 平台 e2e | `pnpm run test:platform:e2e` | PASS（5 passed，真实双 Runtime） |
 | 平台 lint | `pnpm exec oxlint services/platform` | PASS |
 | 前端包测试 | `vitest run packages/client/ui-platform-identity/tests packages/client/ui-settings-general/tests packages/bundle/web-app/tests packages/host/authentication-gateway/tests` | 24/25 files，282 passed；1 个既有环境超时（web-app product-analytics 5s 超时，与本改动无关） |
@@ -224,6 +242,7 @@ wsl -d Ubuntu --exec bash /mnt/d/Vibe_coding/deepseek-harness/deploy/scripts/ver
 | 13:14 | 平台单测复跑 | 13 files / 189 passed / 1 skipped |
 | 13:36 | 平台单测（含 migrate-home）复跑 | 14 files / 199 passed / 1 skipped |
 | 13:45 | 部署生命周期演练（备份/恢复/离线升级/失败回滚） | **PASS：9 assertions** |
+| 13:48 | e2e 扩展：管理员 disable/enable 触发 HTTP/WS 撤销 | PASS：6/6 tests，3 个真实 Runtime |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

@@ -18,12 +18,15 @@ import { toPlatformUser } from './security.ts'
 import { IdentityStore } from './store.ts'
 
 /**
- * Open the identity database, run one lookup, and close it.
+ * Open the identity database, run one operation, and close it.
+ *
+ * Exposed for one-shot administrative commands that own a multi-statement change;
+ * the identity service itself keeps one long-lived handle.
  * @param config - identity configuration naming the data directory.
- * @param lookup - query to run against the open store.
- * @returns the lookup result.
+ * @param lookup - operation to run against the open store.
+ * @returns the operation result.
  */
-function withIdentityStore<T>(config: IdentityConfig, lookup: (store: IdentityStore) => T): T {
+export function withIdentityStore<T>(config: IdentityConfig, lookup: (store: IdentityStore) => T): T {
   const store = new IdentityStore(join(config.dataDir, 'identity.sqlite'), new Date().toISOString())
   try {
     return lookup(store)

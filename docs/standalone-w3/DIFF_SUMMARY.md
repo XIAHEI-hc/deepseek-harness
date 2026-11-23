@@ -14,6 +14,7 @@
 | `src/runtime/` | Runtime Manager（状态机、generation、幂等 ensure、对账、空闲回收、lease）+ Process/Container Supervisor 后端、空间目录与 HMAC space_key |
 | `src/gateway/` | 公网 Gateway：Session/CSRF、Ed25519 v2 断言签发、HTTP/SSE/WS 代理与头清洗、登录页/状态页/CSP、`/api/runtime/*` |
 | `src/admin/migrate-home.ts` | 一次性旧数据归属迁移：按 W3 subject/内部 user_id 解析所有者、默认 dry-run、冲突/路径/symlink 防护、写 manifest |
+| `src/admin/users.ts` | 管理员用户/会话命令：disable（拒绝认证+撤销会话）、enable、revoke-all，均要求显式 `--confirm` |
 | `src/identity/lookup.ts` | 管理命令用的只读身份查询（subject/user_id → PlatformUser） |
 | `src/app.ts`, `src/main.ts` | 组合根、进程入口（`--check` 校验模式、SIGINT/SIGTERM 关闭） |
 | `tests/` | 13 个 spec / 189 tests（身份、运行时、网关、配置）+ `tests/e2e/` 真实双用户端到端 + `tests/e2e/container-probe.ts` 真实容器隔离 probe（60 断言） |
