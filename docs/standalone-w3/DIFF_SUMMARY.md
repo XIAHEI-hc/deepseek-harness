@@ -45,6 +45,8 @@
 | `services/platform/src/identity/{store,migrations,http,ratelimit}.ts` | 身份库 migration v2 `dsh_audit_events`；登录/注销/限流/管理员操作审计；按客户端地址的登录滑动窗口限流（429 + Retry-After） |
 | `services/platform/src/admin/audit.ts`、`main.ts` | `admin audit list [--limit] [--offset]` 只读输出审计流 |
 | `services/platform/src/admin/runtime.ts`、`main.ts` | `admin runtime status (--user|--subject|--all)` 只读输出 Runtime 状态/generation/runtimeId/错误码 |
+| `services/platform/src/runtime/manager.ts`、`contracts.ts`、`admin/runtime.ts`、`main.ts` | `admin runtime restart (--user|--subject) --confirm`：容器后端下停止旧实例并启动新 generation，CLI 关闭后容器继续存活供长期平台 adopt |
+| `services/platform/src/runtime/support.ts` | 就绪轮询的 sleep 改为 referenced timer：短生命周期 CLI 在等待容器启动时不会因无事件句柄提前退出（`admin runtime restart` 依赖） |
 | `services/platform/src/admin/cleanup.ts`、`identity/store.ts`、`main.ts` | `admin session cleanup [--retention-days n] [--confirm]`：过期 Session/OAuth state 的 dry-run 计数、确认删除与审计 |
 | `deploy/scripts/install.sh` | 一键离线安装：SHA256 校验、双镜像导入、目录/网络/密钥/编排/环境文件、镜像内配置校验、compose 启动与 health 等待；production/local 两种 profile、幂等 |
 | `services/platform/src/runtime/space.ts`、`manager.ts` | 容器后端下平台 root 创建的用户空间顶层目录 chown 到运行时容器 uid（默认 1000），修复运行时非 root 无法写挂载目录的生产缺陷 |

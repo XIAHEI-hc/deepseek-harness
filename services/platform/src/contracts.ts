@@ -194,6 +194,13 @@ export interface RuntimeManager {
    */
   retry(userId: string): Promise<RuntimeEnsureResult>
   /**
+   * Stop the user's current runtime instance (if any) and start a fresh
+   * generation. Used by the operator restart command; a missing runtime is
+   * started like `ensure`.
+   * @param userId - stable internal user id resolved from an operator selector.
+   */
+  restart(userId: string): Promise<RuntimeEnsureResult>
+  /**
    * Read the user's current runtime status without starting anything.
    * @param userId - stable internal user id resolved from a validated session.
    */

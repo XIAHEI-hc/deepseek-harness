@@ -412,6 +412,28 @@ describe('runtime manager ensure', () => {
 })
 
 describe('runtime manager generation and failure', () => {
+  it('restarts a READY runtime as a new generation and stops the old instance', async () => {
+    const harness = await makeHarness()
+    const first = await harness.manager.ensure(USER_A)
+    expectReady(first, 1)
+    const firstRuntimeId = harness.backend.instances.keys().next().value
+    if (firstRuntimeId === undefined) throw new Error('expected a started runtime instance')
+
+    const restarted = await harness.manager.restart(USER_A)
+    expectReady(restarted, 2)
+    expect(harness.backend.stopCalls).toContain(firstRuntimeId)
+    expect(harness.backend.startCalls).toHaveLength(2)
+    const status = await harness.manager.status(USER_A)
+    expect(status).toMatchObject({ state: 'READY', generation: 2, retryable: false })
+  })
+
+  it('restarts a user without an allocated runtime by starting one', async () => {
+    const harness = await makeHarness()
+    const started = await harness.manager.restart(USER_B)
+    expectReady(started, 1)
+    expect(harness.backend.stopCalls).toHaveLength(0)
+  })
+
   it('reports a retryable FAILED result and does not restart on ensure', async () => {
     const harness = await makeHarness()
     harness.backend.startBehavior = 'fail'

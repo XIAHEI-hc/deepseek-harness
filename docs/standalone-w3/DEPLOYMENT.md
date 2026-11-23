@@ -130,6 +130,10 @@ bash deploy/scripts/rollback.sh <backup-label>
 | 恢复用户 | `admin user enable --subject <w3-subject> --confirm`：旧 Session 仍失效，需重新登录 |
 | 强制下线（不禁用账号） | `admin session revoke-all --subject <w3-subject> --confirm`：Gateway ≤20s 内断开现存 WebSocket |
 | 旧历史归属 | `admin migrate-home --from <legacy> --subject <subject> [--confirm]`（默认 dry-run） |
+| 查看审计流 | `admin audit list [--limit n] [--offset n]`：登录/注销/限流/管理员操作，JSON 输出 |
+| 到期数据清理 | `admin session cleanup [--retention-days 7] [--confirm]`：默认 dry-run，确认后删除过期 Session/OAuth state 并写审计；可由 cron 按天执行 |
+| Runtime 状态 | `admin runtime status (--user|--subject|--all)`：state/generation/runtimeId/错误码 |
+| 强制重启 Runtime | `admin runtime restart (--user|--subject) --confirm`：仅容器后端；停止旧实例并启动新 generation。容器化部署在 platform 容器内执行：`docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin runtime restart --user <id> --confirm` |
 | 清理空闲 Runtime | 自动：`DSH_RUNTIME_IDLE_SECONDS`（默认 1800s），仅在无 WebSocket/lease 时停止，数据保留 |
 
 ## 9. 本地开发与容器隔离验证（Windows/Linux）

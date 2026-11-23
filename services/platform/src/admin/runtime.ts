@@ -11,8 +11,10 @@
  */
 
 import { join } from 'node:path'
-import type { IdentityConfig, RuntimeConfig } from '../config.ts'
+import type { GatewayConfig, IdentityConfig, RuntimeConfig } from '../config.ts'
+import { ensureGatewayKeyPair } from '../config.ts'
 import { findPlatformUserById, findPlatformUserBySubject } from '../identity/lookup.ts'
+import { createRuntimeManager } from '../runtime/manager.ts'
 import { RuntimeRegistry, type RuntimeRecord } from '../runtime/registry.ts'
 
 /** One runtime-status request. */
@@ -108,5 +110,81 @@ export async function readRuntimeStatus(request: RuntimeStatusRequest): Promise<
     return records.filter(record => record.realm === request.realm).map(toStatusRow)
   } finally {
     registry.close()
+  }
+}
+
+/** One operator restart request. */
+export interface RuntimeRestartRequest {
+  /** Identity configuration of the deployment. */
+  readonly identity: IdentityConfig
+  /** Runtime configuration naming the backend and registry location. */
+  readonly runtime: RuntimeConfig
+  /** Gateway configuration supplying assertion facts and the public origin. */
+  readonly gateway: GatewayConfig
+  /** Platform data directory. */
+  readonly dataDir: string
+  /** Deployment realm. */
+  readonly realm: string
+  /** Internal user id selector; exclusive with `subject`. */
+  readonly userId?: string | undefined
+  /** Stable W3 subject selector; exclusive with `userId`. */
+  readonly subject?: string | undefined
+  /** Apply the restart; false reports the refusal. */
+  readonly confirm: boolean
+}
+
+/** Outcome of one operator restart. */
+export interface RuntimeRestartReport {
+  /** Restarted user id. */
+  readonly userId: string
+  /** Lifecycle state after the restart. */
+  readonly state: string
+  /** New allocation generation. */
+  readonly generation: number
+}
+
+/**
+ * Stop and start one user's container runtime from the operator CLI.
+ *
+ * The command composes a supervisor against the same registry and Docker
+ * backend; it refuses the process backend because closing that backend would
+ * also kill the freshly started runtime. Container runtimes stay running when
+ * the CLI supervisor closes, so the long-lived platform adopts the new
+ * generation on its next request.
+ * @param request - selector, confirmation, and configuration.
+ * @returns the restarted runtime's user id, state, and generation.
+ * @throws {Error} when confirmation is missing, the backend is not the container
+ * backend, or the selector is invalid.
+ */
+export async function restartRuntime(request: RuntimeRestartRequest): Promise<RuntimeRestartReport> {
+  if (!request.confirm) throw new Error('re-run with --confirm to restart the runtime')
+  if (request.runtime.kind !== 'container') {
+    throw new Error('admin runtime restart requires the container backend; use the user retry action for process runtimes')
+  }
+  const userId = selectedUserId({ ...request, all: false })
+  if (userId === undefined) throw new Error('a user selector is required')
+  const keys = ensureGatewayKeyPair(request.gateway)
+  const manager = await createRuntimeManager(
+    { ...request.runtime, dataDir: request.dataDir, realm: request.realm },
+    {
+      runtimeAuth: {
+        publicKeyFile: keys.publicKeyFile,
+        issuer: request.gateway.issuer,
+        audience: request.gateway.audience,
+        keyId: request.gateway.keyId,
+        replayWindowSeconds: request.gateway.replayWindowSeconds,
+        maxLifetimeSeconds: request.gateway.maxAssertionLifetimeSeconds,
+      },
+      publicOrigin: request.gateway.publicOrigin,
+      publicAuthority: request.runtime.publicAuthority,
+      dataDir: join(request.dataDir, 'runtime'),
+    },
+  )
+  try {
+    const result = await manager.restart(userId)
+    if (result.state !== 'READY') throw new Error(`runtime restart did not reach READY (${result.state}${result.errorCode === null ? '' : `, ${result.errorCode}`})`)
+    return { userId, state: result.state, generation: result.generation }
+  } finally {
+    await manager.close().catch(() => undefined)
   }
 }

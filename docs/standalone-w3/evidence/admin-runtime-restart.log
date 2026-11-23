@@ -1,0 +1,57 @@
+# 管理端强制重启 Runtime（容器后端，2026.11.23.4，WSL2 + Docker）
+
+\$ bash deploy/scripts/install.sh --version 2026.11.23.4 --profile local --port 18080
+Gateway 私钥已存在，保持不变
+已有 /srv/dsh/.env，保持不变
+== 校验平台配置 ==
+== 启动平台 ==
+ Container dsh-platform-platform-1 Running
+== 等待健康检查 ==
+平台已就绪：http://127.0.0.1:18080
+查看日志：docker compose -f /srv/dsh/compose-2026.11.23.4.yml logs -f platform
+
+\$ docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin runtime restart --user <id> --confirm
+runtime_before=READY
+  [
+    {
+      "userId": "d5b9dbd8-19e1-4a4a-a579-c9c4250e333d",
+      "state": "READY",
+      "desiredState": "RUNNING",
+      "generation": 7,
+      "runtimeId": "dsh-rt-960b706f3ff69463",
+      "imageDigest": "dsh-runtime:2026.11.23.4",
+      "lastErrorCode": null,
+      "lastActivityAt": 1795434897395,
+      "updatedAt": 1795434897468
+    }
+  ]
+userId=d5b9dbd8-19e1-4a4a-a579-c9c4250e333d
+--- containers before ---
+dsh-rt-960b706f3ff69463
+--- restart ---
+{"event":"runtime.adopted","userRef":"27db1086f8e1","generation":7}
+{"event":"runtime.ready","userRef":"27db1086f8e1","generation":8}
+  {
+    "userId": "d5b9dbd8-19e1-4a4a-a579-c9c4250e333d",
+    "state": "READY",
+    "generation": 8
+  }
+--- status after ---
+  [
+    {
+      "userId": "d5b9dbd8-19e1-4a4a-a579-c9c4250e333d",
+      "state": "READY",
+      "desiredState": "RUNNING",
+      "generation": 8,
+      "runtimeId": "dsh-rt-960b706f3ff69463",
+      "imageDigest": "dsh-runtime:2026.11.23.4",
+      "lastErrorCode": null,
+      "lastActivityAt": 1795434904260,
+      "updatedAt": 1795434904260
+    }
+  ]
+--- containers after ---
+dsh-rt-960b706f3ff69463
+native_after=200 boot=present
+ADMIN RUNTIME RESTART PASS
+/mnt/d/Vibe_coding/deepseek-harness/.dsh-admin-restart-check.sh: line 32: $'\r': command not found

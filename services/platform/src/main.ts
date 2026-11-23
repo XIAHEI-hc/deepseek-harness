@@ -13,7 +13,7 @@ import { createPlatformApp } from './app.ts'
 import { listAuditEvents } from './admin/audit.ts'
 import { runIdentityCleanup } from './admin/cleanup.ts'
 import { migrateHome, MigrationError } from './admin/migrate-home.ts'
-import { readRuntimeStatus } from './admin/runtime.ts'
+import { readRuntimeStatus, restartRuntime } from './admin/runtime.ts'
 import { disableUser, enableUser, revokeAllUserSessions, UserAdminError, type UserAdminRequest } from './admin/users.ts'
 import { loadPlatformConfig, PlatformConfigError, type PlatformConfig } from './config.ts'
 
@@ -82,6 +82,8 @@ function printAdminHelp(): number {
     '',
     '  runtime status (--user <user-id> | --subject <w3-subject> | --all)',
     '      print runtime state, generation, backend id, and last failure code',
+    '  runtime restart (--user <user-id> | --subject <w3-subject>) --confirm',
+    '      stop and start one container runtime (requires the container backend)',
     '',
     '  session cleanup [--retention-days <n>] [--confirm]',
     '      count (or with --confirm delete) expired sessions and login transactions',
@@ -204,26 +206,45 @@ async function runAdmin(argv: readonly string[], config: PlatformConfig): Promis
     return await runSessionCleanup(argv, config)
   }
   if (argv[0] === 'runtime') {
-    if (argv[1] !== 'status') {
-      process.stderr.write(`unknown admin command ${JSON.stringify(['runtime', argv[1]])}\n`)
-      return 2
+    if (argv[1] === 'status') {
+      try {
+        const rows = await readRuntimeStatus({
+          identity: config.identity,
+          runtime: config.runtime,
+          dataDir: config.dataDir,
+          realm: config.realm,
+          userId: flagValue(argv, '--user'),
+          subject: flagValue(argv, '--subject'),
+          all: argv.includes('--all'),
+        })
+        process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`)
+        return 0
+      } catch (error) {
+        process.stderr.write(`admin runtime status: ${error instanceof Error ? error.message : String(error)}\n`)
+        return 2
+      }
     }
-    try {
-      const rows = await readRuntimeStatus({
-        identity: config.identity,
-        runtime: config.runtime,
-        dataDir: config.dataDir,
-        realm: config.realm,
-        userId: flagValue(argv, '--user'),
-        subject: flagValue(argv, '--subject'),
-        all: argv.includes('--all'),
-      })
-      process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`)
-      return 0
-    } catch (error) {
-      process.stderr.write(`admin runtime status: ${error instanceof Error ? error.message : String(error)}\n`)
-      return 2
+    if (argv[1] === 'restart') {
+      try {
+        const report = await restartRuntime({
+          identity: config.identity,
+          runtime: config.runtime,
+          gateway: config.gateway,
+          dataDir: config.dataDir,
+          realm: config.realm,
+          userId: flagValue(argv, '--user'),
+          subject: flagValue(argv, '--subject'),
+          confirm: argv.includes('--confirm'),
+        })
+        process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
+        return 0
+      } catch (error) {
+        process.stderr.write(`admin runtime restart: ${error instanceof Error ? error.message : String(error)}\n`)
+        return 2
+      }
     }
+    process.stderr.write(`unknown admin command ${JSON.stringify(['runtime', argv[1]])}\n`)
+    return 2
   }
   if (argv[0] !== 'migrate-home') {
     process.stderr.write(`unknown admin command ${JSON.stringify(argv[0])}\n`)

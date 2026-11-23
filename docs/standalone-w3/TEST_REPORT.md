@@ -384,6 +384,20 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 - **安装演练发现并修复的生产缺陷**：平台容器以 root 创建用户空间目录时，运行时容器（uid 1000）无法写 `/data/tmp`（`EACCES`）。修复为：容器后端下，Supervisor 创建空间顶层目录后 chown 到 `DSH_RUNTIME_CONTAINER_UID`（默认 1000）；重新构建发布包后同一冒烟通过。单元测试 216 passed。
 - 幂等性：重复执行 install.sh 保留现有 `.env`/密钥/用户卷，仅补缺失项并以当前发布版本重建容器。
 
+## 3.22 管理端强制重启 Runtime（容器后端，实测）
+
+证据 [evidence/admin-runtime-restart.log](evidence/admin-runtime-restart.log)。
+
+- `admin runtime restart (--user|--subject) --confirm`：容器后端下停止当前实例并启动新 generation；process 后端明确拒绝（单元测试）。
+- 容器化部署在 platform 容器内执行（CLI 关闭后新容器继续运行，长期平台在下次请求 adopt 新 generation）：
+
+  ```bash
+  docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin runtime restart --user <id> --confirm
+  ```
+
+- 实测（2026.11.23.4 发布包）：restart 前 READY，执行后新 generation READY，容器名不变（确定性 space 命名）、imageDigest 更新为当前发布版本，原生 UI `__DSH_BOOT__` 仍可用。
+- 演练还发现并修复：就绪轮询的 `sleep` 使用 unref 计时器，短生命周期 CLI 会在等待容器启动时因无事件句柄提前退出；改为 referenced timer 后 restart 稳定完成。平台单测 **219 passed / 1 skipped**。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -469,6 +483,7 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 18:22 | 管理端 Runtime 状态只读查询 `admin runtime status` | PASS（证据 `evidence/admin-runtime.log`） |
 | 18:30 | 过期身份数据清理 `admin session cleanup`（dry-run + confirm + 审计） | PASS（证据 `evidence/admin-cleanup.log`） |
 | 18:48 | 一键离线安装 + 部署机真实容器 Runtime 冒烟（2026.11.23.2） | PASS（修复空间目录属主缺陷后，证据 `evidence/install-smoke.log`） |
+| 19:55 | 管理端强制重启 Runtime（2026.11.23.4，容器后端） | PASS（新 generation + 原生 UI，证据 `evidence/admin-runtime-restart.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

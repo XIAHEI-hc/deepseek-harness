@@ -300,6 +300,7 @@ export class FakeRuntimeManager implements RuntimeManager {
   readonly entries = new Map<string, FakeRuntimeEntry>()
   readonly ensureCalls: string[] = []
   readonly retryCalls: string[] = []
+  readonly restartCalls: string[] = []
   readonly touchCalls: string[] = []
   readonly statusCalls: string[] = []
   leaseCount = 0
@@ -348,6 +349,11 @@ export class FakeRuntimeManager implements RuntimeManager {
   async retry(userId: string): Promise<RuntimeEnsureResult> {
     this.retryCalls.push(userId)
     if (this.retryError !== undefined) throw this.retryError
+    return this.ensure(userId)
+  }
+
+  async restart(userId: string): Promise<RuntimeEnsureResult> {
+    this.restartCalls.push(userId)
     return this.ensure(userId)
   }
 

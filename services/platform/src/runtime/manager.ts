@@ -233,6 +233,42 @@ class PlatformRuntimeManager implements RuntimeManager {
   }
 
   /** @inheritDoc */
+  async restart(userId: string): Promise<RuntimeEnsureResult> {
+    this.assertOpen()
+    assertUserId(userId)
+    return await this.runSerialized(userId, async () => {
+      const nowMs = this.now()
+      const record = this.loadOrCreateRecord(userId, nowMs)
+      this.registry.touch(record.id, nowMs)
+      const space = this.resolveSpace(record)
+      if (record.runtimeId !== null) {
+        try {
+          await this.backend.stop(record.runtimeId)
+        } catch (error) {
+          const code = runtimeErrorCode(error)
+          const failed = this.registry.update(record.id, {
+            state: 'FAILED',
+            lastErrorCode: code,
+            updatedAt: this.now(),
+          })
+          this.logEvent('runtime.restart_stop_failed', userId, code, record.generation)
+          return this.failedResult(failed)
+        }
+        this.targets.delete(userId)
+        this.inspectedAt.delete(userId)
+      }
+      const stopped = this.registry.update(record.id, {
+        state: 'STOPPED',
+        desiredState: 'RUNNING',
+        runtimeId: null,
+        lastErrorCode: null,
+        updatedAt: this.now(),
+      })
+      return await this.startRuntime(stopped, space)
+    })
+  }
+
+  /** @inheritDoc */
   async status(userId: string): Promise<RuntimeStatusView> {
     this.assertOpen()
     assertUserId(userId)

@@ -114,13 +114,16 @@ export async function waitForSettlement(promise: Promise<unknown>, timeoutMs: nu
 }
 
 /**
- * Sleep for a duration without keeping the process alive.
+ * Sleep for a duration on a referenced timer.
+ *
+ * Readiness polling keeps the process alive: a short-lived operator command
+ * (for example `admin runtime restart`) waits inside this sleep while the
+ * container starts, and an unref'd timer would let Node exit mid-wait.
  * @param durationMs - duration to wait.
  */
 export function sleep(durationMs: number): Promise<void> {
   return new Promise<void>(resolveSleep => {
-    const timer = setTimeout(resolveSleep, durationMs)
-    timer.unref()
+    setTimeout(resolveSleep, durationMs)
   })
 }
 

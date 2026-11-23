@@ -12,7 +12,7 @@ import { createPlatformConfig, type PlatformConfig } from '../src/config.ts'
 import { createIdentityService, findPlatformUserBySubject } from '../src/identity/index.ts'
 import { computeSpaceKey } from '../src/runtime/space.ts'
 import { RuntimeRegistry } from '../src/runtime/registry.ts'
-import { readRuntimeStatus } from '../src/admin/runtime.ts'
+import { readRuntimeStatus, restartRuntime } from '../src/admin/runtime.ts'
 import type { IdentityService, PlatformUser } from '../src/contracts.ts'
 
 /** Temporary directories created by the suite. */
@@ -108,5 +108,18 @@ describe('admin runtime status', () => {
     await expect(readRuntimeStatus(base)).rejects.toThrow(/exactly one/)
     await expect(readRuntimeStatus({ ...base, userId: user.id, all: true })).rejects.toThrow(/exactly one/)
     await expect(readRuntimeStatus({ ...base, userId: 'missing-user' })).rejects.toThrow(/no platform user/)
+  })
+
+  it('refuses restart without confirmation and outside the container backend', async () => {
+    const base = {
+      identity: config.identity,
+      runtime: config.runtime,
+      gateway: config.gateway,
+      dataDir: config.dataDir,
+      realm: config.realm,
+      userId: user.id,
+    }
+    await expect(restartRuntime({ ...base, confirm: false })).rejects.toThrow(/--confirm/)
+    await expect(restartRuntime({ ...base, confirm: true })).rejects.toThrow(/container backend/)
   })
 })
