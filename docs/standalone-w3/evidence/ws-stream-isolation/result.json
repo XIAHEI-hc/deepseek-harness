@@ -1,11 +1,11 @@
 {
-  "sessionA": "session-935c3b7f-8383-49d2-9812-e1e41344767d",
-  "sessionB": "session-bfefeae1-3a05-4edd-8d73-641c3add73e7",
+  "sessionA": "session-6536b15f-1337-4384-8b25-8ba79d56a866",
+  "sessionB": "session-a3fb0b68-b792-4400-8dc9-468448bb6cdd",
   "titleA": "A 的实时 WebSocket 标题",
   "frames": 2,
   "cross": {
     "frames": [
-      "{\"type\":\"error\",\"streamId\":\"probe-stream\",\"error\":{\"code\":\"session/not-found\",\"message\":\"session \\\"session-935c3b7f-8383-49d2-9812-e1e41344767d\\\" not found\",\"details\":{\"sessionId\":\"session-935c3b7f-8383-49d2-9812-e1e41344767d\"}}}"
+      "{\"type\":\"error\",\"streamId\":\"probe-stream\",\"error\":{\"code\":\"session/not-found\",\"message\":\"session \\\"session-6536b15f-1337-4384-8b25-8ba79d56a866\\\" not found\",\"details\":{\"sessionId\":\"session-6536b15f-1337-4384-8b25-8ba79d56a866\"}}}"
     ],
     "closed": false
   }

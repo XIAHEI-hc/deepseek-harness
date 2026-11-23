@@ -473,6 +473,21 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 - 实测容器数 2（A 与 B 各一），不是每窗口一实例。
 - `docker restart dsh-platform-platform-1` 后：health 恢复、旧 Session Cookie 仍有效、Session 历史仍在、Runtime 重新 READY、左下角仍显示 `U User A W3 · uid-a`。
 
+## 3.31 最终 HEAD 回归探针（实测）
+
+证据 [evidence/final-probes.log](evidence/final-probes.log)。
+
+在最终提交上重跑 keyless 原生能力探针，确认审计/存储改动未回归既有隔离：
+
+| 探针 | 结果 |
+|---|---|
+| 并发 Agent 文件/Session 隔离 | **PASS：22 assertions** |
+| WebSocket 流隔离 + 注销实时撤销 | **PASS：10 assertions** |
+| 后台 Job 跨用户隔离 | **PASS：11 assertions** |
+| 原生 MCP stdio 工具往返 | **PASS：8 assertions** |
+| 浏览器自动化原生往返 | **PASS：8 assertions** |
+| 跨用户浏览器上下文隔离 | **PASS：13 assertions** |
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -566,6 +581,7 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 22:05 | Runtime 生命周期审计（start/ready/failed/stop） | PASS（证据 `evidence/runtime-audit.log`） |
 | 22:28 | 最终安装栈 W3 浏览器 A/B 左下角姓名 | PASS（Windows Chromium，User A/User B，证据 `evidence/browser-w3-installed.log` 与截图） |
 | 22:35 | 多窗口复用、共享历史、platform 重启恢复（W3 form token） | PASS（同身份同用户同 Runtime、重启后 Session/姓名/Runtime 仍有效，证据 `evidence/reuse-restart.log`） |
+| 22:45 | 最终 HEAD 回归探针（Agent/WS/Job/MCP/Browser） | PASS：22+10+11+8+8+13 assertions（证据 `evidence/final-probes.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 
