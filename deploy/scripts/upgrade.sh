@@ -31,6 +31,17 @@ echo "== 导入镜像 =="
 docker load -i "$RELEASE/dsh-runtime-$VERSION.tar"
 docker load -i "$RELEASE/dsh-platform-$VERSION.tar"
 
+# Fusion analysis runs in a separate image. An upgrade must not restart a
+# deployment that has fusion enabled while the pinned job image is absent.
+if [ -f "$ROOT/.env" ] && grep -Eq '^DSH_INTEGRATION_ENABLED=true([[:space:]]|$)' "$ROOT/.env"; then
+  JOB_IMAGE="$(grep -E '^DSH_INTEGRATION_JOB_IMAGE=' "$ROOT/.env" | tail -1 | cut -d= -f2-)"
+  [ -n "$JOB_IMAGE" ] || { echo "DSH_INTEGRATION_ENABLED=true but DSH_INTEGRATION_JOB_IMAGE is empty; import the fusion image first" >&2; exit 1; }
+  docker image inspect "$JOB_IMAGE" >/dev/null 2>&1 || {
+    echo "fusion job image $JOB_IMAGE is not loaded; import the offline fusion release before upgrading" >&2
+    exit 1
+  }
+fi
+
 echo "== 切换运行时镜像与平台镜像 =="
 export DSH_RUNTIME_IMAGE="dsh-runtime:$VERSION"
 export DSH_PLATFORM_VERSION="$VERSION"

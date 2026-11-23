@@ -47,7 +47,7 @@ The gate inspects the daemon-resolved container and fails if the root is writabl
 ## Backup, upgrade, and rollback
 
 - `backup.sh` archives `management/`, which contains the fusion metadata database, snapshots, and job records; keep the same backup schedule as the native platform.
-- Upgrade with the existing `upgrade.sh`. It preserves `.env`, keys, user spaces, and `management/integration`; update `DSH_INTEGRATION_JOB_IMAGE` only after the new analysis image is imported and pinned by digest.
+- Upgrade with the existing `upgrade.sh`. It preserves `.env`, keys, user spaces, and `management/integration`; if `DSH_INTEGRATION_ENABLED=true`, it refuses to start when the pinned job image is not already loaded. Update `DSH_INTEGRATION_JOB_IMAGE` only after the new analysis image is imported and pinned by digest.
 - To roll back, set `DSH_INTEGRATION_ENABLED=false`, restart, confirm that no analysis container remains, then restore the previous platform release. Fusion snapshots and job records are additive and remain readable.
 - Disabling fusion is the emergency stop: it removes every fusion route and cancels active job containers while keeping native users and data untouched.
 

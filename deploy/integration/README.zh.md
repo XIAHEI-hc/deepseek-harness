@@ -47,7 +47,7 @@ DSH_INTEGRATION_JOB_IMAGE=dsh-analysis@sha256:<digest> \
 ## 备份、升级与回滚
 
 - `backup.sh` 打包 `management/`，其中包含融合元数据库、快照与 Job 记录；沿用原生平台的同一备份计划。
-- 使用现有 `upgrade.sh` 升级。它保留 `.env`、密钥、用户空间与 `management/integration`；只有在新的分析镜像已导入并按 digest 固定后，才更新 `DSH_INTEGRATION_JOB_IMAGE`。
+- 使用现有 `upgrade.sh` 升级。它保留 `.env`、密钥、用户空间与 `management/integration`；当 `DSH_INTEGRATION_ENABLED=true` 时，若固定 Job 镜像尚未导入，升级会拒绝启动。只有在新的分析镜像已导入并按 digest 固定后，才更新 `DSH_INTEGRATION_JOB_IMAGE`。
 - 回滚时先设置 `DSH_INTEGRATION_ENABLED=false` 并重启，确认没有分析容器残留，再恢复上一平台版本。融合快照与 Job 记录是增量数据，仍可读取。
 - 停用融合就是紧急停止：移除所有融合路由并取消活动 Job 容器，同时不动原生用户与数据。
 
