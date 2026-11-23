@@ -20,7 +20,7 @@
 5. **gzip/压缩与 HTTP/2**：Gateway 透传原始流，未做压缩；由反代负责。
 6. **前端快照/浏览器冒烟**：平台身份插件的组件/apply 测试与 Playwright 真实浏览器验收（登录、姓名、退出、刷新、第二身份）已通过并留存 `docs/standalone-w3/evidence/` 截图；仓库自带 `test:web` 快照套件未运行（需要构建后的 Web host 与模型凭据）。
 7. **平台审计事件表**：`dsh_audit_events`（migration v2）已记录登录成功/拒绝/限流、注销、全设备注销与管理员 disable/enable/revoke-all，`admin audit list` 可读；仍可扩展 Runtime 状态迁移与连接归属事件。
-8. **容器化生产验证**：平台镜像与完整 DSH 运行时镜像都已成功构建；一键离线安装脚本在 WSL2 Ubuntu + 真实 Docker 上完成发布包导入、容器模式启动、Mock 登录、原生 UI 与用户 Runtime 容器冒烟（证据 `evidence/install-smoke.log`），并修复了平台容器 root 创建空间目录导致运行时无法写入的属主缺陷；随后完成备份一致性 + 真实发布包 v3→v4 离线升级演练（Session/标题保留、Runtime adopt + restart 到新镜像，证据 `evidence/backup-upgrade-rehearsal.log`）。真实 W3 登录、目标机 7 天运行与内网 Git 仍属 BLOCKED 外部队列。
+8. **容器化生产验证**：平台镜像与完整 DSH 运行时镜像都已成功构建；一键离线安装脚本在 WSL2 Ubuntu + 真实 Docker 上完成发布包导入、容器模式启动、Mock 登录、原生 UI 与用户 Runtime 容器冒烟（证据 `evidence/install-smoke.log`），并修复了平台容器 root 创建空间目录导致运行时无法写入的属主缺陷；随后完成备份一致性 + 真实发布包 v3→v4 离线升级演练（Session/标题保留、Runtime adopt + restart 到新镜像，证据 `evidence/backup-upgrade-rehearsal.log`），以及部署机安装栈 W3 双身份 A/B 隔离验证（两个真实 Runtime 容器、姓名/注销撤销，证据 `evidence/install-w3-ab.log`）。真实 W3 登录、目标机 7 天运行与内网 Git 仍属 BLOCKED 外部队列。
 9. **仓库级既有红**（与本次改动无关）：`verify-cordis-config`（`apps/cli/tests/profiles/acp/cordis.yml` 夹具）、`verify-client-domain-graph`（ui-workspace sibling import）、`pnpm run lint` 中 skill-plaza/authentication-gateway 测试/workspace-controller 的既有告警；新增代码定向 oxlint 为 0 问题。
 10. **真实环境回归**：浏览器自动化（Playwright MCP + 真实 Chromium）与 keyless Mock LLM 的 Agent/MCP/Job/WebSocket 路径均已实测；真实模型供应商聊天、真实 W3 登录与目标部署机演练仍属目标环境项（见 §1 BLOCKED 与 TEST_REPORT §5）。
 

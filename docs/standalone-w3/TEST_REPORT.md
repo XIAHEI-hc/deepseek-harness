@@ -409,6 +409,18 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 - Runtime 升级：platform 先 adopt 旧 `dsh-runtime:2026.11.23.3` 容器（READY generation 1）；执行 `admin runtime restart` 后新 generation READY 且 imageDigest 更新为 `dsh-runtime:2026.11.23.4`，Session 历史仍在。
 - 备份 MANIFEST 实测：`runtime_containers` 记录 2 个用户容器 id、`spaces=1`。
 
+## 3.24 部署机安装栈 W3 双身份 A/B 隔离（实测）
+
+证据 [evidence/install-w3-ab.log](evidence/install-w3-ab.log)。验证脚本：`deploy/scripts/verify-installed-stack-w3-ab.sh`（host 测试 W3 Provider + 发布包一键安装 + 两账号授权码登录 + 真实 Runtime 容器）。
+
+- 平台以 `AUTH_MODE=w3`、container 后端从 2026.11.23.4 发布包安装；两个不同 W3 账号分别完成授权码回调。
+- `/auth/me` 返回不同 userId 与真实姓名：`User A`、`User B`。
+- 两个账号各自启动独立的 `dsh-runtime:2026.11.23.4` 用户容器（不同 `dsh-rt-*` 名称），Runtime 均 READY。
+- Session 隔离：A 的 `session/list` 不含 B 的 Session，反之亦然；A 读取 B 的 Session 被拒绝（`crossStateOk=false`）。
+- 原生 UI：两个账号各自返回 `__DSH_BOOT__` 页面。
+- 注销与撤销：A 注销返回 200，随后 A `/auth/me=401`；B `/auth/me=200` 且原生 UI 仍可用（同一身份多窗口/其他用户不受影响）。
+- 真实 W3 租户（AUTH-24）仍 BLOCKED；本项使用仓库内 W3 测试 Provider 验证协议与部署拓扑，不冒称真实登录。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -496,6 +508,7 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 18:48 | 一键离线安装 + 部署机真实容器 Runtime 冒烟（2026.11.23.2） | PASS（修复空间目录属主缺陷后，证据 `evidence/install-smoke.log`） |
 | 19:55 | 管理端强制重启 Runtime（2026.11.23.4，容器后端） | PASS（新 generation + 原生 UI，证据 `evidence/admin-runtime-restart.log`） |
 | 20:12 | 部署机备份一致性 + 真实发布包离线升级 v3→v4 | PASS（Session/标题保留、Runtime adopt + 重启到新镜像，证据 `evidence/backup-upgrade-rehearsal.log`） |
+| 20:31 | 部署机安装栈 W3 双身份 A/B（测试 Provider + 2 个真实 Runtime 容器） | PASS（姓名/隔离/注销撤销，证据 `evidence/install-w3-ab.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 
