@@ -11,6 +11,8 @@ WORKDIR /app
 COPY --from=dockercli /usr/local/bin/docker /usr/local/bin/docker
 # 平台代码使用 Node 24 原生 TypeScript type stripping 直接运行，无需构建。
 COPY services/platform ./services/platform
+# PostgreSQL 身份库驱动（平台服务自己的 package.json，不属于 pnpm workspace）。
+RUN cd services/platform && npm ci --omit=dev --no-audit --no-fund
 COPY deploy/runtime/platform-runtime.patch.yml ./deploy/runtime/platform-runtime.patch.yml
 
 ENV NODE_ENV=production

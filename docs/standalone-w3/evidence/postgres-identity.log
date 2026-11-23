@@ -1,0 +1,40 @@
+# PostgreSQL 身份库后端实测（本地 PostgreSQL 16，WSL Docker）
+
+连接串（脱敏）：postgres://dsh:***@127.0.0.1:15432/dsh
+
+$ vitest identity.postgres.spec
+ RUN  v4.1.11 D:/Vibe_coding/deepseek-harness
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  21:06:07
+   Duration  2.47s (transform 187ms, setup 0ms, import 263ms, tests 1.92s, environment 0ms)
+
+
+$ PostgreSQL schema/data
+ version |        applied_at
+---------+--------------------------
+       1 | 2026-11-23T12:38:50.667Z
+       2 | 2026-11-23T12:38:50.667Z
+(2 rows)
+
+ users
+-------
+    42
+(1 row)
+
+ action | outcome | events
+--------+---------+--------
+ login  | success |     47
+ logout | success |     14
+(2 rows)
+
+
+$ identity service probe (login → /auth/me → authenticate → reopen)
+login 302
+me 200 {"user":{"id":"7c939921-2513-43f8-b125-75ed19cde02f","subject":"pg-user-001","uid":"pg-uid-001","displayName":"PG User","email":"pg@example.test"},"sessionExpiresAt":"2026-11-24T01:06:10.206Z"}
+session_cookie_present true
+authenticate true
+persisted_after_reopen true
+PG IDENTITY PROBE PASS

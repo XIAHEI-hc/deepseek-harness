@@ -8,7 +8,7 @@
  * @module @deepseek-ai/dsh-platform-services/identity/migrations
  */
 
-import type { DatabaseSync } from 'node:sqlite'
+import type { SyncDatabase } from '../storage/database.ts'
 
 /** One numbered identity schema migration. */
 export interface IdentityMigration {
@@ -88,12 +88,12 @@ export const IDENTITY_MIGRATIONS: readonly IdentityMigration[] = [
 
 /**
  * Apply every migration the database does not record yet.
- * @param database - open SQLite handle.
+ * @param database - open metadata database handle.
  * @param appliedAt - ISO timestamp recorded for migrations applied by this call.
  * @returns the migration versions this call applied.
  */
 export function migrateIdentityDatabase(
-  database: DatabaseSync,
+  database: SyncDatabase,
   appliedAt: string,
 ): readonly number[] {
   database.exec(

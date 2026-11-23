@@ -11,11 +11,11 @@
  * @module @deepseek-ai/dsh-platform-services/identity/lookup
  */
 
-import { join } from 'node:path'
 import type { IdentityConfig } from '../config.ts'
 import type { PlatformUser } from '../contracts.ts'
 import { toPlatformUser } from './security.ts'
 import { IdentityStore } from './store.ts'
+import { openIdentityDatabase } from '../storage/open.ts'
 
 /**
  * Open the identity database, run one operation, and close it.
@@ -27,7 +27,7 @@ import { IdentityStore } from './store.ts'
  * @returns the operation result.
  */
 export function withIdentityStore<T>(config: IdentityConfig, lookup: (store: IdentityStore) => T): T {
-  const store = new IdentityStore(join(config.dataDir, 'identity.sqlite'), new Date().toISOString())
+  const store = new IdentityStore(openIdentityDatabase(config), new Date().toISOString())
   try {
     return lookup(store)
   } finally {

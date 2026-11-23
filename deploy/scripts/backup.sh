@@ -51,6 +51,21 @@ echo "== 备份管理数据与密钥 =="
 tar -C "$ROOT" -czf "$DEST/management.tar.gz" management
 ( cd "$DEST" && sha256sum management.tar.gz > management.tar.gz.sha256 )
 
+# PostgreSQL 身份库不在 management/ 目录内，必须在同一维护窗口内单独导出。
+if [ -f "$ROOT/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091 -- deployment-owned environment file.
+  . "$ROOT/.env"
+  set +a
+fi
+if [ "${DSH_PLATFORM_STORAGE:-sqlite}" = "postgres" ]; then
+  command -v pg_dump >/dev/null || { echo "pg_dump 未安装：PostgreSQL 身份库备份需要 postgresql-client" >&2; exit 1; }
+  [ -n "${DSH_POSTGRES_URL:-}" ] || { echo "DSH_POSTGRES_URL 为空，无法备份 PostgreSQL 身份库" >&2; exit 1; }
+  echo "== 备份 PostgreSQL 身份库 =="
+  pg_dump --clean --if-exists --no-owner --no-privileges "$DSH_POSTGRES_URL" | gzip > "$DEST/postgres-identity.sql.gz"
+  ( cd "$DEST" && sha256sum postgres-identity.sql.gz > postgres-identity.sql.gz.sha256 )
+fi
+
 echo "== 备份用户空间 =="
 mkdir -p "$DEST/spaces"
 if [ -d "$ROOT/spaces" ]; then
@@ -74,8 +89,9 @@ echo "== 记录部署事实 =="
   echo "label=$LABEL"
   echo "created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "platform_image=$(docker compose -f "$COMPOSE" images -q platform 2>/dev/null || true)"
-  echo "runtime_image=$(grep -E '^DSH_RUNTIME_IMAGE=' "$ROOT/.env" 2>/dev/null || grep -E '^DSH_RUNTIME_IMAGE=' "$ROOT/current/deploy/.env" 2>/dev/null || true)"
+  echo "runtime_image=$( (grep -E '^DSH_RUNTIME_IMAGE=' "$ROOT/.env" 2>/dev/null || grep -E '^DSH_RUNTIME_IMAGE=' "$ROOT/current/deploy/.env" 2>/dev/null || true) | head -1 | cut -d= -f2-)"
   echo "runtime_containers=$(printf '%s' "$RUNTIME_IDS" | tr '\n' ' ')"
+  echo "storage=${DSH_PLATFORM_STORAGE:-sqlite}"
   echo "spaces=$(find "$ROOT/spaces" -mindepth 1 -maxdepth 1 -type d | wc -l)"
 } > "$DEST/MANIFEST.txt"
 

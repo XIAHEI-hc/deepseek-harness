@@ -17,4 +17,5 @@ apps/web/dist
 benchmarks/results
 .pnpm-store
 deploy/.env
+deploy/release
 docs/standalone-w3/evidence

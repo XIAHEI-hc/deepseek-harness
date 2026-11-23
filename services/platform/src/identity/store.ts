@@ -11,11 +11,8 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { mkdirSync } from 'node:fs'
-import { dirname } from 'node:path'
-import { DatabaseSync } from 'node:sqlite'
-import type { SQLOutputValue } from 'node:sqlite'
 import { migrateIdentityDatabase } from './migrations.ts'
+import type { SqlRow, SyncDatabase } from '../storage/database.ts'
 
 /** One audit event the identity surface appends. */
 export interface AuditEventInput {
@@ -58,7 +55,7 @@ export interface AuditRow {
  * @param row - raw `dsh_audit_events` row.
  * @returns the typed audit row.
  */
-function toAuditRow(row: Record<string, SQLOutputValue>): AuditRow {
+function toAuditRow(row: SqlRow): AuditRow {
   const detail = row['detail']
   return {
     id: textOf(row['id']),
@@ -77,7 +74,7 @@ function toAuditRow(row: Record<string, SQLOutputValue>): AuditRow {
  * @param value - raw cell.
  * @returns the string.
  */
-function textOf(value: SQLOutputValue | undefined): string {
+function textOf(value: unknown): string {
   if (typeof value === 'string') return value
   throw new Error('identity audit cell is not text')
 }
@@ -87,7 +84,7 @@ function textOf(value: SQLOutputValue | undefined): string {
  * @param value - raw cell.
  * @returns the integer count.
  */
-function integerOf(value: SQLOutputValue | undefined): number {
+function integerOf(value: unknown): number {
   if (typeof value === 'number') return value
   if (typeof value === 'bigint') return Number(value)
   throw new Error('identity count cell is not an integer')
@@ -98,7 +95,7 @@ function integerOf(value: SQLOutputValue | undefined): number {
  * @param value - raw cell.
  * @returns the string, or null.
  */
-function nullableTextOf(value: SQLOutputValue | undefined): string | null {
+function nullableTextOf(value: unknown): string | null {
   return typeof value === 'string' ? value : null
 }
 
@@ -175,8 +172,6 @@ export interface LoginStateRow {
   /** ISO-8601 consumption timestamp, or null while unused. */
   readonly consumedAt: string | null
 }
-
-type SqlRow = Record<string, SQLOutputValue>
 
 /**
  * Read one required text column.
@@ -324,20 +319,19 @@ function toSessionWithUser(row: SqlRow): SessionWithUser {
  * concurrent callers cannot observe a half-written login or session.
  */
 export class IdentityStore {
-  /** Open SQLite handle. */
-  private readonly database: DatabaseSync
+  /** Open metadata database handle. */
+  private readonly database: SyncDatabase
   /** Whether {@link close} already ran. */
   private closed = false
 
   /**
-   * Open the identity database, switch it to WAL, and apply pending migrations.
-   * @param databasePath - absolute path of the SQLite database file.
+   * Open the identity database and apply pending migrations.
+   * @param database - opened metadata database; SQLite uses WAL and PostgreSQL keeps its own isolation.
    * @param appliedAt - ISO timestamp recorded for migrations applied on this open.
-   * @throws when the database cannot be opened or a migration fails.
+   * @throws when a migration fails; the database is closed on failure.
    */
-  constructor(databasePath: string, appliedAt: string) {
-    mkdirSync(dirname(databasePath), { recursive: true })
-    this.database = new DatabaseSync(databasePath)
+  constructor(database: SyncDatabase, appliedAt: string) {
+    this.database = database
     try {
       this.database.exec('PRAGMA journal_mode = WAL')
       this.database.exec('PRAGMA foreign_keys = ON')
@@ -634,7 +628,7 @@ export class IdentityStore {
     const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 1000)
     const boundedOffset = Math.max(Math.trunc(offset), 0)
     return this.database
-      .prepare('SELECT * FROM dsh_audit_events ORDER BY at DESC, rowid DESC LIMIT ? OFFSET ?')
+      .prepare('SELECT * FROM dsh_audit_events ORDER BY at DESC, id DESC LIMIT ? OFFSET ?')
       .all(boundedLimit, boundedOffset)
       .map(row => toAuditRow(row))
   }

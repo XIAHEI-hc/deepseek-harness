@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | AUTH-24 | 真实 W3 A/B 账号端到端 | 无 W3 租户的 `W3_CLIENT_ID/SECRET/AUTHORIZE/TOKEN/USERINFO` 与回调白名单 | W3 契约测试、Mock 流程、模拟 W3 Provider 全链路 e2e 通过 | 在目标环境填 `.env` 的 W3_*，`bash deploy/scripts/run-dev.sh`（或生产 compose）后用两个真实账号走 `/login`，记录回调时间与姓名 |
 | OPS-10 | 内网 Git 提交 | 未提供内网 Git 地址、分支与凭据 | 平台代码、部署文件与文档已完成并在本地分支 `feat/standalone-w3-platform` 提交 | 目标环境确认后按内网流程推送并打版本标签 |
-| OPS-04 Postgres | 生产 PostgreSQL 迁移/备份 | 未提供目标 PostgreSQL 与连接信息；当前实现为 SQLite（WAL）+ 版本化迁移 | SQLite 版本化迁移、备份/恢复脚本 | 实现 Postgres 存储后端并补迁移/回滚验收后，方可移除本项 |
+| OPS-04 Postgres | 生产 PostgreSQL 迁移/备份 | 已实现可选 PostgreSQL 身份库后端（迁移、登录/Session/审计、重启后 Session 保持；本地 PostgreSQL 16 实测），目标环境托管 PG 仍待连接信息 | SQLite 版本化迁移、PostgreSQL 后端与集成测试、备份/恢复脚本 | 在目标环境配置 `DSH_PLATFORM_STORAGE=postgres` + `DSH_POSTGRES_URL` 完成一次真实连接与备份演练 |
 | OPS-08 | 运行 7 天后重启恢复 | 需要 7 天真实运行窗口 | 重启恢复设计 + 对账单测 | 目标环境长稳测试 |
 
 ## 2. 代码缺口（后续迭代，非阻塞当前验收）
@@ -29,5 +29,5 @@
 1. **身份服务为 TypeScript 重写**而非托管 Python sidecar：行为以开发包 Python 实现与原测试逐条对拍（见 `services/platform/tests/identity.*.spec.ts`），部署不依赖 Python。
 2. **断言 sub 使用内部 `user_id`** 而非 W3 subject；W3 subject 只用于身份库唯一映射。原因：Runtime 只接受一个固定 subject，使用内部不可变 id 避免 W3 subject 变更/复用带来的越权与迁移歧义。
 3. **开发包 bridge README 的断言 header 写法与仓库 verifier 冲突**：以 verifier 为准（线上两段格式），已用真实 Runtime 冒烟验证。
-4. **数据库**：当前 SQLite；PostgreSQL 为上述第 1 节 BLOCKED 项。
+4. **数据库**：身份库默认 SQLite，生产可选 PostgreSQL（已实现并本地实测）；运行时注册表为节点本地 SQLite。目标托管 PostgreSQL 只需在部署 `.env` 配置连接串并完成一次备份演练。
 5. **宿主环境**：本机 Windows + WSL2 Docker；容器后端代码与参数单测完成，真实容器 e2e 建议在 Linux 部署机执行。

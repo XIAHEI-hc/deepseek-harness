@@ -44,11 +44,21 @@ export interface MockIdentityConfig {
 }
 
 /** Identity service configuration. */
+export interface IdentityStorageConfig {
+  /** Metadata database backend. */
+  readonly kind: 'sqlite' | 'postgres'
+  /** PostgreSQL connection URL; empty for SQLite. */
+  readonly postgresUrl: string
+}
+
+/** Identity service configuration. */
 export interface IdentityConfig {
   readonly appEnv: AppEnv
   readonly mode: AuthMode
   /** Directory holding the SQLite identity database and its WAL side files. */
   readonly dataDir: string
+  /** Metadata database backend; PostgreSQL is the production choice. */
+  readonly storage: IdentityStorageConfig
   readonly sessionCookieName: string
   readonly csrfCookieName: string
   readonly loginNonceCookieName: string
@@ -412,6 +422,17 @@ export function loadPlatformConfig(env: NodeJS.ProcessEnv = process.env): Platfo
       problems.push('W3_TOKEN_REQUEST_FORMAT must be json or form')
     }
   }
+  const storageKindRaw = readEnv(env, 'DSH_PLATFORM_STORAGE', 'sqlite')
+  if (storageKindRaw !== 'sqlite' && storageKindRaw !== 'postgres') {
+    problems.push('DSH_PLATFORM_STORAGE must be sqlite or postgres')
+  }
+  const postgresUrl = readEnv(env, 'DSH_POSTGRES_URL', '')
+  if (storageKindRaw === 'postgres' && postgresUrl === '') {
+    problems.push('DSH_POSTGRES_URL is required when DSH_PLATFORM_STORAGE=postgres')
+  }
+  if (storageKindRaw === 'postgres' && !postgresUrl.startsWith('postgres://') && !postgresUrl.startsWith('postgresql://')) {
+    problems.push('DSH_POSTGRES_URL must be a postgres:// or postgresql:// URL')
+  }
   const internalApiKey = readEnv(env, 'DSH_INTERNAL_API_KEY', '')
   if (internalApiKey !== '' && internalApiKey.length < 32) {
     problems.push('DSH_INTERNAL_API_KEY must be at least 32 characters')
@@ -449,6 +470,7 @@ export function loadPlatformConfig(env: NodeJS.ProcessEnv = process.env): Platfo
       appEnv,
       mode,
       dataDir,
+      storage: { kind: storageKindRaw === 'postgres' ? 'postgres' : 'sqlite', postgresUrl },
       sessionCookieName: readEnv(env, 'AUTH_COOKIE_NAME', 'dsh_session'),
       csrfCookieName: readEnv(env, 'AUTH_CSRF_COOKIE_NAME', 'dsh_csrf'),
       loginNonceCookieName: readEnv(env, 'AUTH_LOGIN_NONCE_COOKIE_NAME', 'dsh_login_nonce'),

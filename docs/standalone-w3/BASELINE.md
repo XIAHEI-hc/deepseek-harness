@@ -53,7 +53,7 @@
 
 1. **路线 B：TypeScript 重写** `source/dsh_auth_core` 的身份核心，而不是长期托管 Python sidecar。原因：DSH 仓库测试/构建/部署均为 Node；Python 3.14 环境与生产镜像额外维护成本高；行为由原Python 测试逐条对拍（见 `services/platform/tests/identity.*.spec.ts`）。原 Python 源码保留在开发包内作为行为基准，不进入部署依赖。
 2. 平台服务位于 `services/platform/`（单包多模块），零第三方运行时依赖：`node:http`、`node:sqlite`、`node:crypto`、`node:child_process`。避免引入新 npm 依赖改变仓库供应链策略。
-3. 身份库 SQLite（`node:sqlite`）+ 版本化迁移表。**PostgreSQL 生产后端为已记录的缺口**（见`docs/standalone-w3/OPEN_ISSUES.md`），代码不会静默降级或假装支持。
+3. 身份库支持 SQLite（`node:sqlite`，默认开发/单机）与 PostgreSQL（`DSH_PLATFORM_STORAGE=postgres`，生产推荐）+ 版本化迁移表；运行时注册表为节点本地 SQLite。PostgreSQL 后端已本地实测（迁移、登录/Session/审计、重启保持），目标托管 PostgreSQL 连接信息属于部署时配置。
 4. 开发/测试默认 `DSH_RUNTIME_KIND=process`（开发包明确允许受限进程）；生产默认 `container`，由 Supervisor 管理容器与卷。
 5. 浏览器入口只有 Gateway；Runtime 端口不公开。默认同域：`/auth/*`、`/login`、`/api/runtime/*` 由平台处理，其余全部代理到当前用户的 Runtime（保留原生 DSH 全部路由语义）。
 6. Mock 仅 `APP_ENV != production` 且 `AUTH_MODE=mock`；真实 W3 需显式配置，生产缺配置启动失败。

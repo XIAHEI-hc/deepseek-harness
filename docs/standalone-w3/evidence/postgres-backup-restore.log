@@ -1,0 +1,63 @@
+== fresh install v5 with PostgreSQL identity backend ==
+== pre-backup login and runtime ==
+runtime_before=READY
+me_before=200
+== backup.sh pg-rehearsal ==
+== 停止 platform（短暂维护窗口）==
+ Container dsh-platform-platform-1 Stopping
+ Container dsh-platform-platform-1 Stopped
+== 备份管理数据与密钥 ==
+== 备份 PostgreSQL 身份库 ==
+== 备份用户空间 ==
+== 记录部署事实 ==
+备份完成：/srv/dsh/backups/pg-rehearsal
+deploy/scripts/backup.sh: line 100: $'\r': command not found
+spaces/SHA256SUMS 138 bytes
+spaces/a09fb84b1c797ccafbf01bfc23303e8603fe72dd5a24b1c36a8905f6e5e209e6.tar.gz 2444658 bytes
+postgres-identity.sql.gz.sha256 91 bytes
+MANIFEST.txt 228 bytes
+management.tar.gz.sha256 84 bytes
+management.tar.gz 1322 bytes
+postgres-identity.sql.gz 14762 bytes
+label=pg-rehearsal
+created_at=2026-11-23T13:38:36Z
+platform_image=fa909e7bb3a41a2455bbbbeba02d3af714a35d888f34e91bc59bd51b01fb3d57
+runtime_image=dsh-runtime:2026.11.23.5
+runtime_containers=f57d915bc248
+storage=postgres
+spaces=1
+== wait platform after backup ==
+post_backup_me=200
+== restore.sh pg-rehearsal (root, production operator) ==
+== 校验备份 ==
+management.tar.gz: OK
+a09fb84b1c797ccafbf01bfc23303e8603fe72dd5a24b1c36a8905f6e5e209e6.tar.gz: OK
+== 停止 platform 与用户 Runtime 容器 ==
+ Container dsh-platform-platform-1 Stopping
+ Container dsh-platform-platform-1 Stopped
+== 恢复管理数据与密钥 ==
+== 恢复用户空间 ==
+== 重置运行时注册表（恢复后重新分配 generation）==
+== 恢复 PostgreSQL 身份库 ==
+postgres-identity.sql.gz: OK
+== 启动 platform ==
+ Container dsh-platform-platform-1 Starting
+ Container dsh-platform-platform-1 Started
+恢复完成：pg-rehearsal
+restored_session=200
+post_backup_session=401
+native_after_restore=1
+runtime_after_restore=READY
+runtime_container: dsh-rt-a09fb84b1c797cca dsh-runtime:2026.11.23.5
+ users
+-------
+    43
+(1 row)
+
+ action | outcome | events
+--------+---------+--------
+ login  | success |     53
+ logout | success |     14
+(2 rows)
+
+PG BACKUP/RESTORE DRILL COMPLETE

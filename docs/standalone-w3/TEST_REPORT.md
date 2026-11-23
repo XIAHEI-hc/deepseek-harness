@@ -421,6 +421,20 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 - 注销与撤销：A 注销返回 200，随后 A `/auth/me=401`；B `/auth/me=200` 且原生 UI 仍可用（同一身份多窗口/其他用户不受影响）。
 - 真实 W3 租户（AUTH-24）仍 BLOCKED；本项使用仓库内 W3 测试 Provider 验证协议与部署拓扑，不冒称真实登录。
 
+## 3.25 PostgreSQL 身份库后端（本地实测）
+
+- 新增 `DSH_PLATFORM_STORAGE=sqlite|postgres` 与 `DSH_POSTGRES_URL`；身份/会话/OAuth state/审计表与版本化迁移在 PostgreSQL 上执行，SQLite 仍为默认开发/单机后端。
+- PostgreSQL 适配器通过 worker 线程桥接 `pg`，身份 store 与迁移代码保持同步调用；`BEGIN IMMEDIATE`/`PRAGMA`/`rowid` 等 SQLite 方言差异由适配器与 store 分支处理。
+- 单元/集成：`services/platform/tests/identity.postgres.spec.ts` 在 `DSH_TEST_POSTGRES_URL` 指向真实 PostgreSQL 时运行（本地 PostgreSQL 16 容器）：登录、`/auth/me`、session 解析、审计行、服务重启后 session 仍有效、注销后 session 失效；合计平台测试 **222 passed / 1 skipped**（启用 PG 时）。
+- 备份/恢复脚本新增 PostgreSQL 分支：`pg_dump --clean --if-exists` → `postgres-identity.sql.gz`（SHA256），恢复时 `psql` 回放；要求部署机安装 postgresql-client。
+- 部署机安装栈实测（2026.11.23.5 发布包）：平台以 `DSH_PLATFORM_STORAGE=postgres` 启动，Mock 登录后 `/auth/me=200`，身份行出现在 PostgreSQL `dsh_users`；用户 Runtime 容器 READY，原生 UI 可用（evidence/postgres-installed-stack.log）。`backup.sh` 生成 `postgres-identity.sql.gz` + SHA256，`restore.sh` 用 `psql` 回放；恢复后备份前 Session=200、备份后新建 Session=401、Runtime 重新分配 generation 至 READY、原生 UI 可用（evidence/postgres-backup-restore.log）。
+- 证据：`evidence/postgres-identity.log`（PG 测试运行 + 连接信息脱敏）、`evidence/postgres-installed-stack.log`、`evidence/postgres-backup-restore.log`；目标环境托管 PostgreSQL 连接信息仍属部署时配置。
+
+## 3.26 发布镜像构建上下文修复
+
+- 演练发现构图上下文包含 `deploy/release/*.tar`，运行时镜像一度膨胀到 17GB、镜像 tar 达 17GB；`.dockerignore` 增加 `deploy/release` 后重建，运行时镜像 tar 恢复为 **962MB**、平台镜像 90MB，发布包 SHA256 重新生成。
+- 平台镜像改为按 `services/platform/package-lock.json` 执行 `npm ci --omit=dev`，PostgreSQL 驱动安装可复现。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -460,14 +474,14 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 
 ## 5. BLOCKED / NOT_RUN
 
-当前矩阵：**PASS 81 / NOT_RUN 0 / BLOCKED 3**（另有 PostgreSQL 生产后端记录缺口）。
+当前矩阵：**PASS 81 / NOT_RUN 0 / BLOCKED 3**；PostgreSQL 身份库后端已实现并本地实测。
 
 | ID | 状态 | 原因 |
 |---|---|---|
 | AUTH-24 | BLOCKED | 无真实 W3 租户凭据与回调白名单；Mock/脚本化 W3 不替代真实登录 |
 | OPS-08 | BLOCKED | 需要 7 天真实运行窗口 |
 | OPS-10 | BLOCKED | 无内网 Git 地址与凭据 |
-| PostgreSQL 生产库 | BLOCKED | 当前实现为 SQLite + 版本化迁移；PostgreSQL 后端未实现 |
+| PostgreSQL 生产库 | PASS（本地实测；目标托管 PG 待连接配置） | 身份库可选 PostgreSQL 后端，迁移/Session/审计实测通过；备份脚本含 pg_dump/psql 分支 |
 
 ## 6. 更新记录
 
@@ -509,10 +523,11 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 19:55 | 管理端强制重启 Runtime（2026.11.23.4，容器后端） | PASS（新 generation + 原生 UI，证据 `evidence/admin-runtime-restart.log`） |
 | 20:12 | 部署机备份一致性 + 真实发布包离线升级 v3→v4 | PASS（Session/标题保留、Runtime adopt + 重启到新镜像，证据 `evidence/backup-upgrade-rehearsal.log`） |
 | 20:31 | 部署机安装栈 W3 双身份 A/B（测试 Provider + 2 个真实 Runtime 容器） | PASS（姓名/隔离/注销撤销，证据 `evidence/install-w3-ab.log`） |
+| 21:05 | PostgreSQL 身份库后端（本地 PostgreSQL 16） | PASS（迁移/登录/Session/审计/重启保持，证据 `evidence/postgres-identity.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 
 ### 结论
 
 - 可在本机真实验证的部分（Mock 身份、W3 授权码协议、双用户真实 Runtime、HTTP/WS 代理与撤销、原生 UI 平台身份、配置 fail-closed、构建/类型/文档 gates、平台镜像）均已实测通过。
-- 依赖外部环境的条目（真实 W3 租户、Linux 生产部署机、容器内攻击面探测、PostgreSQL、7 天运行、离线升级演练、内网 Git）标 BLOCKED/NOT_RUN，清单与精确条件见 `OPEN_ISSUES.md` 与 `ACCEPTANCE_MATRIX.csv`。
+- 依赖外部环境的条目（真实 W3 租户、Linux 生产部署机、容器内攻击面探测、7 天运行、内网 Git）标 BLOCKED；PostgreSQL 身份库后端已实现并在本地真实 PostgreSQL 16 上完成迁移/登录/Session/备份恢复演练。

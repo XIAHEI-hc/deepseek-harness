@@ -10,7 +10,6 @@
  * @module @deepseek-ai/dsh-platform-services/identity/http
  */
 
-import { join } from 'node:path'
 import type {
   IdentityFailureCode,
   IdentityService,
@@ -44,6 +43,7 @@ import {
   W3_DENIED_LOCATION,
 } from './security.ts'
 import { IdentityStore, type AuditEventInput } from './store.ts'
+import { openIdentityDatabase } from '../storage/open.ts'
 import { LoginRateLimiter } from './ratelimit.ts'
 import { authorizeUrl, exchangeW3Profile } from './w3.ts'
 
@@ -561,6 +561,6 @@ export async function createIdentityService(
 ): Promise<IdentityService> {
   assertUsableConfig(config)
   const clock = options.now ?? Date.now
-  const store = new IdentityStore(join(config.dataDir, 'identity.sqlite'), toIso(clock()))
+  const store = new IdentityStore(openIdentityDatabase(config), toIso(clock()))
   return new IdentityHttpService(config, store, clock, options.fetch)
 }

@@ -48,6 +48,9 @@
 | `services/platform/src/runtime/manager.ts`、`contracts.ts`、`admin/runtime.ts`、`main.ts` | `admin runtime restart (--user|--subject) --confirm`：容器后端下停止旧实例并启动新 generation，CLI 关闭后容器继续存活供长期平台 adopt |
 | `services/platform/src/runtime/support.ts` | 就绪轮询的 sleep 改为 referenced timer：短生命周期 CLI 在等待容器启动时不会因无事件句柄提前退出（`admin runtime restart` 依赖） |
 | `deploy/scripts/backup.sh` | 备份快照同时停止/重启用户 Runtime 容器（避免与运行中的 DSH 写入竞争），等待重启完成后再启动 platform 以便 adopt；MANIFEST 记录容器 id 与运行时镜像 |
+| `services/platform/src/storage/*`、`identity/{store,migrations,http,lookup}.ts`、`config.ts` | 可插拔身份库：SQLite 与 PostgreSQL（`DSH_PLATFORM_STORAGE`/`DSH_POSTGRES_URL`）共用同步存储门面与版本化迁移；PG 适配器通过 worker 线程桥接 `pg`，主流程保持同步调用 |
+| `deploy/platform/Dockerfile`、`services/platform/package.json` | 平台镜像安装 `pg` 驱动；身份库选择由部署环境决定 |
+| `.dockerignore` | 排除 `deploy/release`，避免离线发布 tar 被打包进运行时/平台镜像上下文（修复运行时镜像膨胀到 17GB 的问题，重建后回到约 962MB） |
 | `deploy/tests/w3-test-provider.mjs`、`deploy/tests/installed-stack-w3-ab.mjs`、`deploy/scripts/verify-installed-stack-w3-ab.sh` | 可复现的部署机 W3 双身份验证：host W3 测试 Provider、一键安装 W3 模式平台、两账号授权码登录、两个真实 Runtime 容器、Session 隔离与注销撤销 |
 | `services/platform/src/admin/cleanup.ts`、`identity/store.ts`、`main.ts` | `admin session cleanup [--retention-days n] [--confirm]`：过期 Session/OAuth state 的 dry-run 计数、确认删除与审计 |
 | `deploy/scripts/install.sh` | 一键离线安装：SHA256 校验、双镜像导入、目录/网络/密钥/编排/环境文件、镜像内配置校验、compose 启动与 health 等待；production/local 两种 profile、幂等 |
@@ -78,5 +81,5 @@
 1. 身份核心用 TypeScript 重写而非托管 Python sidecar；行为以开发包 Python 实现与原测试逐条对拍。
 2. 断言 `sub` 使用内部 `user_id`（Runtime Manager 设同一值），W3 subject 只用于身份库映射。
 3. 断言 wire 格式以仓库 verifier 为准（两段），开发包 bridge README 的前缀写法与实现冲突，以 verifier 为准并用真实 Runtime 验证。
-4. 当前生产同样使用 SQLite + 版本化迁移；PostgreSQL 后端是已记录的 BLOCKED 缺口。
+4. 身份库默认 SQLite + 版本化迁移；生产可选 PostgreSQL（`DSH_PLATFORM_STORAGE=postgres`），本地实测迁移/Session/审计与备份恢复；运行时注册表保持节点本地 SQLite。
 5. 开发/测试使用进程后端（开发包允许）；生产容器后端已实现并由单测覆盖参数与挂载，容器内真实探测需 Linux 部署机复验。

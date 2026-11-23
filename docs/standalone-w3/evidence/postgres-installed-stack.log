@@ -1,0 +1,23 @@
+login=302
+me=200
+{"user":{"id":"053fdc82-1877-4a25-b6f4-02c80c6412ee","subject":"dev-user-001","uid":"local-001","displayName":"本地开发用户","email":null},"sessionExpiresAt":"2026-11-24T01:33:52.216Z"}
+runtime=READY
+native_boot=present
+--- containers ---
+runtime_container: dsh-rt-a09fb84b1c797cca dsh-runtime:2026.11.23.5
+--- PostgreSQL identity rows ---
+ external_subject | display_name
+------------------+--------------
+ dev-user-001     | 本地开发用户
+(1 row)
+
+ sessions
+----------
+       49
+(1 row)
+
+ action | outcome | events
+--------+---------+--------
+ login  | success |     49
+ logout | success |     14
+(2 rows)

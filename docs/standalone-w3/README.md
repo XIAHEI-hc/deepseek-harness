@@ -41,4 +41,4 @@ pnpm run start:platform      # 或 bash deploy/scripts/run-dev.sh / pwsh -File d
 
 ## 状态
 
-实现与验证状态以 [TEST_REPORT.md](TEST_REPORT.md)、[OPEN_ISSUES.md](OPEN_ISSUES.md) 和[ACCEPTANCE_MATRIX.csv](ACCEPTANCE_MATRIX.csv) 为准。真实 W3 租户、生产部署机、PostgreSQL 与容器级攻击面复验等客观缺失项已逐条标 BLOCKED，未把 Mock 结果当作真实 W3 通过。
+实现与验证状态以 [TEST_REPORT.md](TEST_REPORT.md)、[OPEN_ISSUES.md](OPEN_ISSUES.md) 和[ACCEPTANCE_MATRIX.csv](ACCEPTANCE_MATRIX.csv) 为准。真实 W3 租户、生产部署机与容器级攻击面复验等客观缺失项已逐条标 BLOCKED，未把 Mock 结果当作真实 W3 通过。

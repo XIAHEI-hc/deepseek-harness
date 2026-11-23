@@ -19,7 +19,7 @@
 3. 私有网络 `dsh-private`（`init.sh` 创建）。
 4. DNS + HTTPS 反代指向 `platform` 的 8080 端口；W3 应用回调白名单登记`https://<dsh-domain>/auth/callback`。
 5. W3 租户信息：`W3_CLIENT_ID/W3_CLIENT_SECRET/W3_AUTHORIZE_URL/W3_TOKEN_URL/W3_USERINFO_URL`，确认 token 请求编码（JSON 或 form）与 userinfo 请求格式。
-6. 生产 `.env`（从 `deploy/.env.example` 复制）注入：`APP_ENV=production`、`AUTH_MODE=w3`、`AUTH_COOKIE_SECURE=true`、`DSH_GATEWAY_PUBLIC_URL=https://<dsh-domain>`、`DSH_INTERNAL_API_KEY`（≥32）、`DSH_PLATFORM_SPACE_KEY_SECRET`（≥32，轮换会改变 space_key）、`DSH_RUNTIME_KIND=container`、`DSH_RUNTIME_IMAGE=<registry>/dsh-runtime@sha256:<digest>`；可选 `AUTH_LOGIN_RATE_LIMIT_MAX`（默认 30，0 关闭）与 `AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS`（默认 60）。
+6. 生产 `.env`（从 `deploy/.env.example` 复制）注入：`APP_ENV=production`、`AUTH_MODE=w3`、`AUTH_COOKIE_SECURE=true`、`DSH_GATEWAY_PUBLIC_URL=https://<dsh-domain>`、`DSH_INTERNAL_API_KEY`（≥32）、`DSH_PLATFORM_SPACE_KEY_SECRET`（≥32，轮换会改变 space_key）、`DSH_RUNTIME_KIND=container`、`DSH_RUNTIME_IMAGE=<registry>/dsh-runtime@sha256:<digest>`；身份库后端用 `DSH_PLATFORM_STORAGE=postgres` + `DSH_POSTGRES_URL=postgres://…`（推荐生产）或默认 `sqlite`；可选 `AUTH_LOGIN_RATE_LIMIT_MAX`（默认 30，0 关闭）与 `AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS`（默认 60）。
 7. 构建可用的运行时镜像（见 §3）。生产镜像必须使用 digest，不用 `latest`。
 
 ## 3. 构建与发布（构建机）
@@ -76,13 +76,15 @@ curl -fsS http://127.0.0.1:8080/health
 
 ## 5. 数据与备份
 
-- 身份库：`/srv/dsh/management/identity.sqlite`（版本化迁移，启动时自动应用未执行迁移）。
+- 身份库：默认 `/srv/dsh/management/identity.sqlite`（版本化迁移，启动时自动应用未执行迁移）；`DSH_PLATFORM_STORAGE=postgres` 时身份/会话/审计表位于 `DSH_POSTGRES_URL` 指定的 PostgreSQL（同样走版本化迁移，`schema_migrations` 记录版本）。运行时注册表仍为 `/srv/dsh/management/runtime/runtime.sqlite`（节点本地状态，随备份 tar 一起保存）。
 - 运行时注册表：`/srv/dsh/management/runtime/runtime.sqlite`。
 - Gateway 密钥：`/srv/dsh/management/keys/gateway-ed25519-{private,public}.pem`（私钥仅平台进程可读）。
 - 用户空间：`/srv/dsh/spaces/<space_key>/...`，容器停止不删除。
-- 备份：`bash deploy/scripts/backup.sh <label>`（维护窗口内同时停止 platform 与该主机的用户 Runtime 容器，保证 SQLite 与空间目录一致；逐用户打包空间目录、记录 SHA256 与容器 id，完成后按原 id 重启 Runtime 再启动 platform 以 adopt）。恢复：`bash deploy/scripts/restore.sh <label>`。
+- 备份：`bash deploy/scripts/backup.sh <label>`（维护窗口内同时停止 platform 与该主机的用户 Runtime 容器，保证 SQLite 与空间目录一致；PostgreSQL 身份库在 `DSH_PLATFORM_STORAGE=postgres` 时用 `pg_dump` 导出 `postgres-identity.sql.gz`，要求部署机安装 postgresql-client；逐用户打包空间目录、记录 SHA256 与容器 id，完成后按原 id 重启 Runtime 再启动 platform 以 adopt）。恢复：`bash deploy/scripts/restore.sh <label>`（PostgreSQL 备份用 `psql` 回放）。
 
-> 生产 PostgreSQL 后端为已记录缺口（见 `docs/standalone-w3/OPEN_ISSUES.md`）：当前版本生产同样使用 SQLite（WAL），并保留版本化迁移表；切换到 PostgreSQL 必须提供等价迁移与验收证据后才可声明完成。
+> PostgreSQL 后端已实现并本地实测（迁移、登录/Session/审计、重启保持）；生产托管 PostgreSQL 的连接信息属于目标环境配置，不在仓库内保存。运行时注册表保持节点本地 SQLite，单平台实例部署下随备份恢复。
+
+> 生产 PostgreSQL 后端已实现：`DSH_PLATFORM_STORAGE=postgres` + `DSH_POSTGRES_URL`，迁移版本记录在 `schema_migrations`；备份/恢复要求在部署机安装 `postgresql-client`（`pg_dump`/`psql`）。单平台实例下运行时注册表保留节点本地 SQLite，随 `management` 备份一起恢复。
 
 ### 旧历史数据归属迁移（一次性，OPS-05）
 
