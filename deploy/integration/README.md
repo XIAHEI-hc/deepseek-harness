@@ -61,6 +61,12 @@ docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin int
 
 It prints `enabled`, `state`, issue codes, registered system count, and metadata counts (`workspaces`, `snapshots`, `jobs`, `artifacts`, `activeJobs`). It does not start a container or expose host paths.
 
+Recent job records with owner, workspace, status, inputs, and error code:
+
+```bash
+docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin integration jobs --limit 50
+```
+
 ## Offline fusion release
 
 ```bash

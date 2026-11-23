@@ -10,7 +10,7 @@
 import type { PlatformConfig } from '../config.ts'
 import { runPreflight, type PreflightOptions } from '../integration/preflight.ts'
 import { IntegrationStore } from '../integration/store.ts'
-import type { IntegrationIssue, IntegrationState } from '../integration/types.ts'
+import type { IntegrationIssue, IntegrationState, JobRecord } from '../integration/types.ts'
 
 /** One integration status report. */
 export interface IntegrationStatusReport {
@@ -66,5 +66,21 @@ export async function readIntegrationStatus(
     systems: preflight.registry?.systems.length ?? 0,
     issues: preflight.issues,
     counts,
+  }
+}
+
+/**
+ * List recent fusion jobs across users for local operational inspection.
+ * @param config - resolved platform configuration.
+ * @param limit - maximum rows.
+ * @returns jobs newest first, or an empty list when fusion is disabled.
+ */
+export function readIntegrationJobs(config: PlatformConfig, limit: number): readonly JobRecord[] {
+  if (!config.integration.enabled) return []
+  const store = IntegrationStore.open(config.integration.databaseFile)
+  try {
+    return store.listAllJobs(limit)
+  } finally {
+    store.close()
   }
 }

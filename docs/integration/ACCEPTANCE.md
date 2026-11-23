@@ -8,7 +8,7 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 
 | ID | Check | Status | Evidence |
 |---|---|---|---|
-| F0-01 | Existing W3 platform suite still passes | RUN_PASS | `pnpm run test:platform`: 278 passed, 4 skipped |
+| F0-01 | Existing W3 platform suite still passes | RUN_PASS | `pnpm run test:platform`: 279 passed, 4 skipped |
 | F0-02 | Real W3 tenant A/B login | BLOCKED | no W3 tenant credentials |
 | F1-01 | Disabled switch has no fusion side effect | RUN_PASS | `integration.config.spec.ts`, `integration.service.spec.ts` |
 | F1-02 | Enabled but incomplete preflight is blocked, native platform stays up | RUN_PASS | `integration.preflight.spec.ts`, blocked-route test |
@@ -43,6 +43,7 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 | F8-04 | Offline release bundle structure keeps fusion disabled by default | RUN_PASS | synthetic bundle passed `verify-integration-release.sh`; image build remains F8-01 |
 | F8-05 | Target-machine seven-day run | BLOCKED | no target machine window |
 | F8-06 | Read-only fusion admin status reports state and counts | RUN_PASS | `admin.integration.spec.ts` |
+| F8-07 | Read-only fusion admin job listing | RUN_PASS | `admin.integration.spec.ts` |
 
 ## Explicit non-claims
 

@@ -8,7 +8,7 @@
 
 | ID | 检查 | 状态 | 证据 |
 |---|---|---|---|
-| F0-01 | 现有 W3 平台套件仍通过 | RUN_PASS | `pnpm run test:platform`：278 通过、4 跳过 |
+| F0-01 | 现有 W3 平台套件仍通过 | RUN_PASS | `pnpm run test:platform`：279 通过、4 跳过 |
 | F0-02 | 真实 W3 租户 A/B 登录 | BLOCKED | 无 W3 租户凭据 |
 | F1-01 | 关闭开关无融合副作用 | RUN_PASS | `integration.config.spec.ts`、`integration.service.spec.ts` |
 | F1-02 | 开启但预检不完整时 blocked，原生平台继续运行 | RUN_PASS | `integration.preflight.spec.ts`、blocked 路由测试 |
@@ -43,6 +43,7 @@
 | F8-04 | 离线发布包结构保持融合默认关闭 | RUN_PASS | 合成发布包通过 `verify-integration-release.sh`；镜像构建仍见 F8-01 |
 | F8-05 | 目标机七天运行 | BLOCKED | 无目标机窗口 |
 | F8-06 | 只读融合管理状态报告状态与计数 | RUN_PASS | `admin.integration.spec.ts` |
+| F8-07 | 只读融合管理 Job 列表 | RUN_PASS | `admin.integration.spec.ts` |
 
 ## 明确不声明
 

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createPlatformConfig } from '../src/config.ts'
-import { readIntegrationStatus } from '../src/admin/integration.ts'
+import { readIntegrationJobs, readIntegrationStatus } from '../src/admin/integration.ts'
 import { mockSystemsDocument } from './integration.testkit.ts'
 
 const roots: string[] = []
@@ -42,5 +42,10 @@ describe('readIntegrationStatus', () => {
     expect(report.state).toBe('ready')
     expect(report.systems).toBe(1)
     expect(report.counts).toEqual({ workspaces: 0, snapshots: 0, jobs: 0, artifacts: 0, activeJobs: 0 })
+    expect(readIntegrationJobs(config, 100)).toEqual([])
+  })
+
+  it('returns no jobs when fusion is disabled', () => {
+    expect(readIntegrationJobs(createPlatformConfig(), 100)).toEqual([])
   })
 })

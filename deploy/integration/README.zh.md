@@ -61,6 +61,12 @@ docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin int
 
 输出 `enabled`、`state`、缺项代码、已登记系统数与元数据计数（`workspaces`、`snapshots`、`jobs`、`artifacts`、`activeJobs`）。命令不启动容器，也不暴露宿主路径。
 
+最近 Job 记录（含 owner、工作区、状态、输入与错误码）：
+
+```bash
+docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin integration jobs --limit 50
+```
+
 ## 离线融合发布
 
 ```bash

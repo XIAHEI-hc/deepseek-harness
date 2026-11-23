@@ -11,7 +11,7 @@
 
 import { createPlatformApp } from './app.ts'
 import { listAuditEvents } from './admin/audit.ts'
-import { readIntegrationStatus } from './admin/integration.ts'
+import { readIntegrationJobs, readIntegrationStatus } from './admin/integration.ts'
 import { runIdentityCleanup } from './admin/cleanup.ts'
 import { migrateHome, MigrationError } from './admin/migrate-home.ts'
 import { readRuntimeStatus, restartRuntime } from './admin/runtime.ts'
@@ -91,6 +91,8 @@ function printAdminHelp(): number {
     '',
     '  integration status',
     '      print fusion preflight state, issue codes, system count, and metadata counts',
+    '  integration jobs [--limit <n>]',
+    '      print recent fusion jobs across users (default limit 100)',
     '',
   ].join('\n'))
   return 0
@@ -210,15 +212,25 @@ async function runAdmin(argv: readonly string[], config: PlatformConfig): Promis
     return await runSessionCleanup(argv, config)
   }
   if (argv[0] === 'integration') {
-    if (argv[1] !== 'status') {
-      process.stderr.write(`unknown admin command ${JSON.stringify(['integration', argv[1]])}\n`)
-      return 2
+    if (argv[1] === 'status') {
+      const report = await readIntegrationStatus(config)
+      process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
+      process.stdout.write(`integration: ${report.state}${report.enabled ? '' : ' (disabled)'}`
+        + `${report.counts === null ? '' : `, ${String(report.counts.activeJobs)} active job(s), ${String(report.counts.snapshots)} snapshot(s)`}\n`)
+      return 0
     }
-    const report = await readIntegrationStatus(config)
-    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
-    process.stdout.write(`integration: ${report.state}${report.enabled ? '' : ' (disabled)'}`
-      + `${report.counts === null ? '' : `, ${String(report.counts.activeJobs)} active job(s), ${String(report.counts.snapshots)} snapshot(s)`}\n`)
-    return 0
+    if (argv[1] === 'jobs') {
+      const rawLimit = flagValue(argv, '--limit')
+      const limit = rawLimit === undefined ? 100 : Number(rawLimit)
+      if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+        process.stderr.write('admin integration jobs: --limit must be an integer between 1 and 1000\n')
+        return 2
+      }
+      process.stdout.write(`${JSON.stringify(readIntegrationJobs(config, limit), null, 2)}\n`)
+      return 0
+    }
+    process.stderr.write(`unknown admin command ${JSON.stringify(['integration', argv[1]])}\n`)
+    return 2
   }
   if (argv[0] === 'runtime') {
     if (argv[1] === 'status') {

@@ -540,6 +540,18 @@ export class IntegrationStore {
   }
 
   /**
+   * List recent jobs across users for administrative inspection.
+   * @param limit - maximum rows.
+   * @returns jobs newest first.
+   */
+  listAllJobs(limit: number): JobRecord[] {
+    return this.database
+      .prepare('SELECT * FROM dsh_integration_jobs ORDER BY created_at DESC, id DESC LIMIT ?')
+      .all(limit)
+      .map(row => toJob(row))
+  }
+
+  /**
    * List every queued or running job across users for session reconciliation.
    * @returns jobs that may still own a container.
    */
