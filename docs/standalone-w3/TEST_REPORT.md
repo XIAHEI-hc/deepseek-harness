@@ -197,6 +197,7 @@ node --import tsx/esm services/platform/src/main.ts admin session revoke-all --s
 | 构建产物 | `pnpm run build:artifacts` | PASS（8/8 gates，含 host/client compiler、client bundle、Web build） |
 | 构建校验 | `pnpm run build:check` | PASS（host + client aggregate check；修复前端测试类型后复跑通过） |
 | 文档 gates | `pnpm run test:docs` | PASS（21/21 gates：md wrap、md links、translation pairing、doc budgets、package README、repository references 等） |
+| Web 冒烟/快照（OPS-09） | `pnpm run test:web:built` | NOT_RUN：在本机运行 >30 分钟无输出后终止（浏览器/宿主 harness 环境限制）；改动包定向测试 282 passed，`build:artifacts` + `build:check` PASS |
 | 文档同步 | `pnpm run doc-sync` | 42/43 gates PASS；唯一失败为既有 Windows 环境限制：`scripts/project-doc-site.spec.ts` 创建符号链接 `EPERM`（与本改动无关） |
 | 平台容器镜像 | `docker build -f deploy/platform/Dockerfile -t dsh-platform:test .` 后 `docker run ... --check` | PASS（镜像构建成功；开发配置校验通过；生产缺配置时按预期列出缺项并非零退出） |
 | 容器隔离（真实 Docker） | `wsl -d Ubuntu --exec bash deploy/scripts/verify-container-isolation.sh` | **PASS：60 assertions**（证据 `evidence/container-isolation.log`） |
