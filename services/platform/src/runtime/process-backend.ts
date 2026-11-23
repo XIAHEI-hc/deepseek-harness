@@ -70,6 +70,13 @@ export interface ProcessBackendOptions {
   readonly sleep?: ((durationMs: number) => Promise<void>) | undefined
   /** Host environment the filtered runtime environment is copied from. */
   readonly env?: NodeJS.ProcessEnv | undefined
+  /**
+   * Explicit extra environment for every started runtime. The supervisor adds
+   * these after the filtered allowlist, so an embedded deployment can supply
+   * model-provider endpoints or test fixtures without inheriting the host
+   * environment. Never populated from host secrets implicitly.
+   */
+  readonly extraEnv?: Readonly<Record<string, string>> | undefined
   /** Process liveness check; tests inject the answer for adopted pids. */
   readonly isProcessAlive?: ((pid: number) => boolean) | undefined
   /** Interval between readiness probes, in milliseconds. */
@@ -138,7 +145,12 @@ function defaultIsProcessAlive(pid: number): boolean {
  * @param spec - per-user start facts.
  * @returns the child environment; forbidden host secrets are absent by construction.
  */
-function buildProcessEnvironment(base: NodeJS.ProcessEnv, config: RuntimeConfig, spec: RuntimeStartSpec): NodeJS.ProcessEnv {
+function buildProcessEnvironment(
+  base: NodeJS.ProcessEnv,
+  config: RuntimeConfig,
+  spec: RuntimeStartSpec,
+  extraEnv: Readonly<Record<string, string>> = {},
+): NodeJS.ProcessEnv {
   const environment: NodeJS.ProcessEnv = {}
   for (const name of INHERITED_ENVIRONMENT) {
     const value = base[name]
@@ -162,6 +174,7 @@ function buildProcessEnvironment(base: NodeJS.ProcessEnv, config: RuntimeConfig,
   environment.DSH_RUNTIME_SUBJECT = spec.userId
   environment.DSH_RUNTIME_GENERATION = String(spec.generation)
   environment.NO_COLOR = '1'
+  for (const [name, value] of Object.entries(extraEnv)) environment[name] = value
   return environment
 }
 
@@ -281,7 +294,7 @@ export function createProcessBackend(
         throw new RuntimeBackendError('RUNTIME_BACKEND_ERROR', 'no free loopback port could be allocated', error)
       }
       const { command, args } = buildProcessCommand(config, spec, port, bindHost)
-      const environment = buildProcessEnvironment(baseEnvironment, config, spec)
+      const environment = buildProcessEnvironment(baseEnvironment, config, spec, options.extraEnv)
       const tail = new BoundedTail()
       let child: SpawnedProcess
       try {

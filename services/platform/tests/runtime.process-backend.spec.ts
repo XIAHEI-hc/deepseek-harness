@@ -288,6 +288,22 @@ describe('process backend launch', () => {
     await backend.close()
   })
 
+  it('copies explicitly supplied runtime environment after the allowlist', async () => {
+    const root = await makeTemporaryDirectory()
+    const dataDir = await makeTemporaryDirectory()
+    const config = await makeRuntimeConfig(root, dataDir)
+    const space = await makeSpace(root)
+    const { backend, records } = makeBackend(config, {
+      env: { PATH: '/usr/bin:/bin' },
+      extraEnv: { DEEPSEEK_BASE_URL: 'http://127.0.0.1:8123/v1', DEEPSEEK_API_KEY: 'mock-key' },
+    })
+    await backend.start(makeStartSpec(space))
+    const environment = records[0]?.options.env ?? {}
+    expect(environment.DEEPSEEK_BASE_URL).toBe('http://127.0.0.1:8123/v1')
+    expect(environment.DEEPSEEK_API_KEY).toBe('mock-key')
+    await backend.close()
+  })
+
   it('copies DSH_CLIENT_VERSION only when the host defines it', async () => {
     const root = await makeTemporaryDirectory()
     const dataDir = await makeTemporaryDirectory()

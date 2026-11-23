@@ -87,7 +87,7 @@ DSH_GATEWAY_PUBLIC_KEY_FILE, DSH_GATEWAY_ISSUER, DSH_GATEWAY_AUDIENCE,
 DSH_GATEWAY_KEY_ID, DSH_RUNTIME_SUBJECT, DSH_RUNTIME_GENERATION
 ```
 
-不得把宿主 `DEEPSEEK_API_KEY`、W3 secret、平台内部密钥、数据库路径透传给用户 Runtime。
+不得把宿主 `DEEPSEEK_API_KEY`、W3 secret、平台内部密钥、数据库路径透传给用户 Runtime。内嵌部署或探针若需要为 Runtime 提供模型端点/测试凭据，必须在组合根显式传入 `PlatformAppOptions.runtimeEnv`（进程后端专用）；容器后端拒绝该注入，宿主环境仍不会被隐式继承。
 
 ## 5. HTTP/WS 网关行为
 

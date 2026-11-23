@@ -284,6 +284,28 @@ bash deploy/scripts/verify-ws-stream-isolation.sh          # Linux/WSL
 | B 用 A 的 sessionId 请求 `session/follow` → `session/not-found` 错误帧（`result.json`） | PASS |
 | A 注销后，其 WebSocket 在 Gateway 复验周期内被实时关闭 | PASS |
 
+## 3.15 后台 Job 跨用户隔离（DATA-08，11 断言 PASS）
+
+```bash
+pwsh -File deploy/scripts/verify-job-isolation.ps1   # Windows
+bash deploy/scripts/verify-job-isolation.sh          # Linux/WSL
+```
+
+实测结果：`JOB ISOLATION PASS: 11 assertions`，证据 [evidence/job-isolation/](evidence/job-isolation/)。
+
+做法：平台通过显式 `runtimeEnv` 把脚本化 LLM 注入进程 Runtime；A 选中模型后提交 prompt，脚本化模型调用 shell 工具的 `run_in_background`，在 A 的 Runtime 里注册真实后台 Job。两个身份随后通过 Gateway 的 `job/list` 流读取各自 Job 列表。
+
+| 断言 | 实测 |
+|---|---|
+| A 读取模型目录并选择模型 | PASS |
+| A 的 Agent 通过 shell 工具注册后台 Job（tool result 给出 Job id） | PASS |
+| A 的 `job/list` 流包含该 Job | PASS |
+| B 的 `job/list` 流不包含 A 的 Job | PASS |
+| B 用 A 的 Job id 调 `job/kill` 被拒绝 | PASS |
+| A 可以终止自己的 Job | PASS |
+
+Goal/Workflow 没有跨 Runtime 的寻址端点，其隔离边界与 Session 相同（A 无法寻址 B 的 Session，见 DATA-02/03/12）。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -308,6 +330,7 @@ bash deploy/scripts/verify-ws-stream-isolation.sh          # Linux/WSL
 | 并发 Agent 隔离 | `pwsh -File deploy/scripts/verify-agent-isolation.ps1` | **PASS：22 assertions**（证据 `evidence/agent-isolation.log`） |
 | 原生 GUI 回归 | `pnpm run test:gui` | 14108 passed / 4 Windows 环境失败（证据 `evidence/gui-regression.log`） |
 | Session WebSocket 隔离与撤销 | `pwsh -File deploy/scripts/verify-ws-stream-isolation.ps1` | **PASS：10 assertions**（证据 `evidence/ws-stream-isolation/`） |
+| 后台 Job 跨用户隔离 | `pwsh -File deploy/scripts/verify-job-isolation.ps1` | **PASS：11 assertions**（证据 `evidence/job-isolation/`） |
 | 源码发布包 | `deploy/release/dsh-platform-source-2026.11.23-dev.tar.gz` | PASS（541,465 bytes，sha256 37f4da64…d44a3；173 条目，无 `.env`/数据库/凭据；含 `.env.example`） |
 | 仓库 lint | `pnpm run lint` | 失败项全部为**既有文件**（`skill-plaza`、`authentication-gateway` 测试、`workspace-controller`、`ui-skill-plaza` 测试），无新代码文件；`pnpm exec oxlint services/platform packages/client/ui-platform-identity` 0 问题 |
 
@@ -359,6 +382,7 @@ bash deploy/scripts/verify-ws-stream-isolation.sh          # Linux/WSL
 | 15:35 | 并发 Agent 文件/会话隔离（Mock LLM） | **PASS：22 assertions** |
 | 15:48 | 浏览器验收“退出所有设备”确认流程 | **PASS**（截图 `evidence/sign-out-all/`，确认后旧 Cookie 401） |
 | 16:10 | 浏览器 WebSocket 流事件隔离与注销实时撤销 | **PASS：10 assertions**（证据 `evidence/ws-stream-isolation/`） |
+| 16:38 | 后台 Job 跨用户隔离（Mock LLM 驱动真实 Runtime） | **PASS：11 assertions**（证据 `evidence/job-isolation/`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

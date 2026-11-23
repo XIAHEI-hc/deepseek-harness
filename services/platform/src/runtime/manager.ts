@@ -70,6 +70,13 @@ export interface RuntimeManagerOptions {
   readonly portAllocator?: (() => Promise<number>) | undefined
   /** Spawn implementation passed to the process backend. */
   readonly spawn?: SpawnFunction | undefined
+  /**
+   * Explicit extra environment copied into every runtime of the process
+   * backend. Embedded deployments use it for model-provider endpoints or test
+   * fixtures; the container backend rejects it, because container environment
+   * is part of the backend's own start specification.
+   */
+  readonly runtimeEnv?: Readonly<Record<string, string>> | undefined
   /** Docker executor passed to the container backend. */
   readonly dockerExecutor?: DockerExecutor | undefined
   /** Readiness probe passed to both real backends. */
@@ -78,8 +85,7 @@ export interface RuntimeManagerOptions {
   readonly sleep?: ((durationMs: number) => Promise<void>) | undefined
   /** Timer abstraction for idle reclamation. */
   readonly timers?: RuntimeScheduler | undefined
-  /** Minimum interval between READY inspections triggered by `ensure`, in milliseconds. */
-  readonly inspectIntervalMs?: number | undefined
+  /** Minimum interval between READY inspections triggered by `ensure`, in milliseconds. */  readonly inspectIntervalMs?: number | undefined
   /** Structured log sink; defaults to one JSON line per event on stderr. */
   readonly log?: RuntimeLog | undefined
 }
@@ -847,6 +853,10 @@ export async function createRuntimeManager(
   options: RuntimeManagerOptions = {},
 ): Promise<RuntimeManager> {
   validateManagerConfig(config)
+  const runtimeEnv = options.runtimeEnv ?? {}
+  if (Object.keys(runtimeEnv).length > 0 && config.kind !== 'process') {
+    throw new RuntimeManagerError('RUNTIME_CONFIG_INVALID', 'runtime environment injection requires the process backend')
+  }
   const now = options.now ?? Date.now
   const registry = RuntimeRegistry.open(join(options.dataDir ?? config.dataDir, 'runtime.sqlite'), { now })
   const runtimeAuth = options.runtimeAuth ?? null
@@ -876,6 +886,7 @@ export async function createRuntimeManager(
             probe: options.probe,
             now,
             sleep: options.sleep,
+            extraEnv: runtimeEnv,
           })
   }
   const manager = new PlatformRuntimeManager({

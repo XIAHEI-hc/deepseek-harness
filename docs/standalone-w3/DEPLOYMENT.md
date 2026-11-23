@@ -131,6 +131,8 @@ wsl -d Ubuntu --exec bash deploy/scripts/verify-container-runtime.sh
 pwsh -File deploy/scripts/verify-agent-isolation.ps1
 # Session WebSocket 流事件隔离与注销实时撤销（真实浏览器）
 pwsh -File deploy/scripts/verify-ws-stream-isolation.ps1
+# 后台 Job 跨用户隔离（keyless Mock LLM 驱动真实 Runtime）
+pwsh -File deploy/scripts/verify-job-isolation.ps1
 ```
 
 开发模式：`AUTH_MODE=mock`、`DSH_RUNTIME_KIND=process`（受限进程，非生产安全边界），数据位于仓库根 `.dsh-platform/`。真实 A/B 双用户与隔离验收见`services/platform/tests/e2e/`，真实 W3 登录需要目标环境凭据。

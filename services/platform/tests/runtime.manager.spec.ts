@@ -776,6 +776,26 @@ describe('runtime manager with the real process backend', () => {
       createRuntimeManager(harness.config, { dataDir: join(harness.platformDataDir, 'runtime-unconfigured') }),
     ).rejects.toMatchObject({ code: 'RUNTIME_CONFIG_INVALID' })
   })
+
+  it('rejects runtime environment injection for the container backend', async () => {
+    const dataDir = await makeTemporaryDirectory()
+    const platform = createPlatformConfig({
+      dataDir,
+      realm: REALM,
+      runtime: {
+        kind: 'container',
+        root: join(dataDir, 'spaces'),
+        spaceKeySecret: SECRET,
+        idleSeconds: 60,
+        image: 'registry.example/dsh-runtime@sha256:deadbeef',
+        patchFile: join(dataDir, 'platform-runtime.patch.yml'),
+      },
+    })
+    const config = { ...platform.runtime, dataDir, realm: REALM }
+    await expect(
+      createRuntimeManager(config, { runtimeEnv: { DEEPSEEK_API_KEY: 'mock-key' } }),
+    ).rejects.toMatchObject({ code: 'RUNTIME_CONFIG_INVALID' })
+  })
 })
 
 describe('runtime manager space provisioning', () => {

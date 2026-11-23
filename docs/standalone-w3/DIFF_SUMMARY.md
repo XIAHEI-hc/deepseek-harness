@@ -38,6 +38,8 @@
 | `scripts/verify-release-upgrade.sh` | 用真实版本化发布包演练离线升级（SHA256 校验、双镜像导入、版本切换、既有会话/数据连续） |
 | `scripts/verify-agent-isolation.{sh,ps1}` | Keyless Mock LLM 并发 Agent 隔离验证（22 断言：产物、原生 Session 列表、IDOR） |
 | `scripts/verify-ws-stream-isolation.{sh,ps1}` | 浏览器内 Session WebSocket 流事件隔离与注销实时撤销（10 断言：只订阅本人、跨用户 not-found、注销关闭 WS） |
+| `scripts/verify-job-isolation.{sh,ps1}` | 后台 Job 跨用户隔离（11 断言：A 的 Job 只对 A 可见、B 的 kill 被拒） |
+| `services/platform/src/runtime/*`、`app.ts` | 显式 `runtimeEnv` 注入（进程后端）：内嵌部署/探针为 Runtime 提供模型端点或测试凭据；容器后端拒绝该注入，宿主敏感环境仍不会隐式继承 |
 
 ## 3. 新增：平台身份前端插件
 

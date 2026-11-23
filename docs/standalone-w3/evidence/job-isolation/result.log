@@ -1,0 +1,12 @@
+PASS 1: identity a is signed in and its runtime is READY
+PASS 2: identity b is signed in and its runtime is READY
+PASS 3: both identities create a native Session through the Gateway
+PASS 4: A reads the model catalog from its own runtime
+PASS 5: A selects a model for its Session
+PASS 6: A submits a prompt whose scripted model calls the background shell tool
+PASS 7: A's agent registered a background Job in A's runtime
+PASS 8: A's own job list contains its Job
+PASS 9: B's job list never contains A's Job
+PASS 10: B cannot kill A's Job by id
+PASS 11: A can kill its own Job
+JOB ISOLATION PASS: 11 assertions

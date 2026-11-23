@@ -31,12 +31,27 @@ export interface PlatformApp {
   close(): Promise<void>
 }
 
+/** Explicit composition overrides for embedded deployments and probes. */
+export interface PlatformAppOptions {
+  /**
+   * Extra environment copied into every runtime when the process backend runs.
+   * Used by embedded deployments to supply model-provider settings and by
+   * probes to point the runtime at a scripted provider; the container backend
+   * rejects it.
+   */
+  readonly runtimeEnv?: Readonly<Record<string, string>>
+}
+
 /**
  * Wire the identity, runtime, and gateway services from one configuration.
  * @param config - resolved platform configuration; defaults to the environment.
+ * @param options - explicit composition overrides for embedded deployments and probes.
  * @returns the composed application, not yet listening.
  */
-export async function createPlatformApp(config: PlatformConfig = loadPlatformConfig()): Promise<PlatformApp> {
+export async function createPlatformApp(
+  config: PlatformConfig = loadPlatformConfig(),
+  options: PlatformAppOptions = {},
+): Promise<PlatformApp> {
   const keys = ensureGatewayKeyPair(config.gateway)
   const identity = await createIdentityService(config.identity)
   const runtime = await createRuntimeManager(
@@ -54,6 +69,7 @@ export async function createPlatformApp(config: PlatformConfig = loadPlatformCon
       publicOrigin: config.gateway.publicOrigin,
       publicAuthority: config.runtime.publicAuthority,
       dataDir: join(config.dataDir, 'runtime'),
+      ...(options.runtimeEnv === undefined ? {} : { runtimeEnv: options.runtimeEnv }),
     },
   )
   const gateway = await createGateway(config, { identity, runtime })
