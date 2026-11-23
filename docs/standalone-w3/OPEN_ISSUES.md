@@ -13,13 +13,13 @@
 
 ## 2. 代码缺口（后续迭代，非阻塞当前验收）
 
-1. **管理控制台/CLI**：已提供 `admin migrate-home`、`admin user disable|enable`、`admin session revoke-all`；仍需补查看 Runtime 状态/强制重启的 `admin` 子命令与审计表（docs/05 的 `dsh_audit_events`）。
-2. **登录限流/防爆破**：当前未实现 IP/账号级限流（开发包列为生产增强项）。
+1. **管理控制台/CLI**：已提供 `admin migrate-home`、`admin user disable|enable`、`admin session revoke-all`、`admin audit list`；仍需补查看 Runtime 状态/强制重启的 `admin` 子命令。
+2. **登录限流/防爆破**：已实现按客户端地址的进程内滑动窗口（`AUTH_LOGIN_RATE_LIMIT_*`，429 + Retry-After + 审计）；多副本部署需在共享反代执行同等额度。
 3. **W3 单点退出 / PKCE**：依赖 W3 支持情况，未在真实环境验证。
 4. **Session 清理任务**：过期 Session/OAuth state 的定期清理未建 cron；表上有索引，可后续加定时清理。
 5. **gzip/压缩与 HTTP/2**：Gateway 透传原始流，未做压缩；由反代负责。
 6. **前端快照/浏览器冒烟**：平台身份插件的组件/apply 测试与 Playwright 真实浏览器验收（登录、姓名、退出、刷新、第二身份）已通过并留存 `docs/standalone-w3/evidence/` 截图；仓库自带 `test:web` 快照套件未运行（需要构建后的 Web host 与模型凭据）。
-7. **平台审计事件表**：认证失败/运行时状态/连接归属的审计落库未实现（日志已脱敏记录稳定 code）。
+7. **平台审计事件表**：`dsh_audit_events`（migration v2）已记录登录成功/拒绝/限流、注销、全设备注销与管理员 disable/enable/revoke-all，`admin audit list` 可读；仍可扩展 Runtime 状态迁移与连接归属事件。
 8. **容器化生产验证**：平台镜像与完整 DSH 运行时镜像都已成功构建；用真实运行时镜像跑通容器模式双用户 e2e（46 断言，见 TEST_REPORT §3.10），覆盖原生 UI、Session/Skills 隔离、文件/凭据/Docker socket/宿主根/Gateway 私钥不可见、供应商账户与平台身份分离、注销撤销。仍待目标环境完成的是：镜像推送/离线分发到部署机、compose 全栈部署、真实 W3 与内网 Git（见 §1 BLOCKED 项）。
 9. **仓库级既有红**（与本次改动无关）：`verify-cordis-config`（`apps/cli/tests/profiles/acp/cordis.yml` 夹具）、`verify-client-domain-graph`（ui-workspace sibling import）、`pnpm run lint` 中 skill-plaza/authentication-gateway 测试/workspace-controller 的既有告警；新增代码定向 oxlint 为 0 问题。
 10. **真实环境回归**：浏览器自动化（Playwright MCP + 真实 Chromium）与 keyless Mock LLM 的 Agent/MCP/Job/WebSocket 路径均已实测；真实模型供应商聊天、真实 W3 登录与目标部署机演练仍属目标环境项（见 §1 BLOCKED 与 TEST_REPORT §5）。

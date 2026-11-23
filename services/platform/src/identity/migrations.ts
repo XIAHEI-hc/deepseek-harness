@@ -67,6 +67,23 @@ export const IDENTITY_MIGRATIONS: readonly IdentityMigration[] = [
       CREATE INDEX idx_dsh_oauth_states_expires_at ON dsh_oauth_states(expires_at);
     `,
   },
+  {
+    version: 2,
+    statements: `
+      CREATE TABLE dsh_audit_events (
+        id TEXT PRIMARY KEY,
+        at TEXT NOT NULL,
+        action TEXT NOT NULL,
+        outcome TEXT NOT NULL,
+        user_id TEXT,
+        subject TEXT,
+        client_address TEXT,
+        detail TEXT
+      );
+      CREATE INDEX idx_dsh_audit_events_at ON dsh_audit_events(at);
+      CREATE INDEX idx_dsh_audit_events_user_id ON dsh_audit_events(user_id);
+    `,
+  },
 ]
 
 /**

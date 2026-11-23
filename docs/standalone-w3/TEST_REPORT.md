@@ -346,6 +346,16 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | B 首次访问 `probe-cookie-none`（A 的浏览器状态不会到达 B） | PASS |
 | 两个身份的原生页面均保持可用 | PASS（截图 `a-native-page.png`、`b-native-page.png`） |
 
+## 3.18 身份审计与登录限流（生产硬化，实测）
+
+证据 [evidence/admin-audit.log](evidence/admin-audit.log)。
+
+- 身份库 migration v2 新增 `dsh_audit_events`（action/outcome/user_id/subject/client_address/detail + 索引）；`schema_migrations` 实测为 `1,2`。
+- 登录失败限流：`AUTH_LOGIN_RATE_LIMIT_MAX=2` 时同一地址连续三次 `GET /auth/login` 得到 `302,302,429`，429 带 `Retry-After` 并写入一条 `login/rate-limited` 审计；换地址仍可登录。
+- 审计覆盖：登录成功（mode=detail）/拒绝/限流、注销、全设备注销、`admin.user.disable|enable`、`admin.session.revoke_all`；不含 Cookie/token/CSRF/W3 token。
+- `admin audit list --limit 10` 实测输出 JSON 行（含限流与登录记录）。
+- 单元测试：平台 **209 passed / 1 skipped**，新增审计与限流用例（身份 Mock、管理操作、迁移版本）。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -427,6 +437,7 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 16:38 | 后台 Job 跨用户隔离（Mock LLM 驱动真实 Runtime） | **PASS：11 assertions**（证据 `evidence/job-isolation/`） |
 | 16:58 | 原生 MCP stdio 工具往返（Mock LLM + 真实 Runtime） | **PASS：8 assertions**（证据 `evidence/mcp-native/`） |
 | 17:58 | 浏览器自动化原生往返 + 双用户上下文隔离（真实 Chromium） | **PASS：8 + 13 assertions**（证据 `evidence/browser-native/`、`browser-isolation/`） |
+| 18:15 | 身份审计表 + 登录限流 + `admin audit list` | PASS（429/Retry-After + 审计行，证据 `evidence/admin-audit.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

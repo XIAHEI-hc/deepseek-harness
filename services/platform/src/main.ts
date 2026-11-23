@@ -10,6 +10,7 @@
  */
 
 import { createPlatformApp } from './app.ts'
+import { listAuditEvents } from './admin/audit.ts'
 import { migrateHome, MigrationError } from './admin/migrate-home.ts'
 import { disableUser, enableUser, revokeAllUserSessions, UserAdminError, type UserAdminRequest } from './admin/users.ts'
 import { loadPlatformConfig, PlatformConfigError, type PlatformConfig } from './config.ts'
@@ -74,6 +75,9 @@ function printAdminHelp(): number {
     '  session revoke-all (--subject <w3-subject> | --user <user-id>) --confirm',
     '      revoke every live session without disabling the account',
     '',
+    '  audit list [--limit <n>] [--offset <n>]',
+    '      print the newest identity audit events as JSON (default limit 100)',
+    '',
   ].join('\n'))
   return 0
 }
@@ -126,6 +130,30 @@ async function runUserAdmin(argv: readonly string[], config: PlatformConfig): Pr
 }
 
 /**
+ * Run the read-only audit-list command.
+ * @param argv - admin arguments including the subcommand.
+ * @param config - validated platform configuration.
+ * @returns the process exit code.
+ */
+async function runAuditList(argv: readonly string[], config: PlatformConfig): Promise<number> {
+  const limit = flagValue(argv, '--limit')
+  const offset = flagValue(argv, '--offset')
+  const parsedLimit = limit === undefined ? 100 : Number(limit)
+  const parsedOffset = offset === undefined ? 0 : Number(offset)
+  if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 1000) {
+    process.stderr.write('admin audit list: --limit must be an integer between 1 and 1000\n')
+    return 2
+  }
+  if (!Number.isInteger(parsedOffset) || parsedOffset < 0) {
+    process.stderr.write('admin audit list: --offset must be a non-negative integer\n')
+    return 2
+  }
+  const rows = await listAuditEvents({ identity: config.identity, limit: parsedLimit, offset: parsedOffset })
+  process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`)
+  return 0
+}
+
+/**
  * Run one administrative command.
  * @param argv - admin arguments without the leading `admin` token.
  * @param config - validated platform configuration.
@@ -134,6 +162,13 @@ async function runUserAdmin(argv: readonly string[], config: PlatformConfig): Pr
 async function runAdmin(argv: readonly string[], config: PlatformConfig): Promise<number> {
   if (argv.length === 0 || argv[0] === '--help' || argv[0] === '-h') return printAdminHelp()
   if (argv[0] === 'user' || argv[0] === 'session') return runUserAdmin(argv, config)
+  if (argv[0] === 'audit') {
+    if (argv[1] !== 'list') {
+      process.stderr.write(`unknown admin command ${JSON.stringify(['audit', argv[1]])}\n`)
+      return 2
+    }
+    return runAuditList(argv, config)
+  }
   if (argv[0] !== 'migrate-home') {
     process.stderr.write(`unknown admin command ${JSON.stringify(argv[0])}\n`)
     return 2

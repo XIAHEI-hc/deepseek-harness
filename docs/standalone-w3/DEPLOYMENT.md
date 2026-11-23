@@ -19,7 +19,7 @@
 3. 私有网络 `dsh-private`（`init.sh` 创建）。
 4. DNS + HTTPS 反代指向 `platform` 的 8080 端口；W3 应用回调白名单登记`https://<dsh-domain>/auth/callback`。
 5. W3 租户信息：`W3_CLIENT_ID/W3_CLIENT_SECRET/W3_AUTHORIZE_URL/W3_TOKEN_URL/W3_USERINFO_URL`，确认 token 请求编码（JSON 或 form）与 userinfo 请求格式。
-6. 生产 `.env`（从 `deploy/.env.example` 复制）注入：`APP_ENV=production`、`AUTH_MODE=w3`、`AUTH_COOKIE_SECURE=true`、`DSH_GATEWAY_PUBLIC_URL=https://<dsh-domain>`、`DSH_INTERNAL_API_KEY`（≥32）、`DSH_PLATFORM_SPACE_KEY_SECRET`（≥32，轮换会改变 space_key）、`DSH_RUNTIME_KIND=container`、`DSH_RUNTIME_IMAGE=<registry>/dsh-runtime@sha256:<digest>`。
+6. 生产 `.env`（从 `deploy/.env.example` 复制）注入：`APP_ENV=production`、`AUTH_MODE=w3`、`AUTH_COOKIE_SECURE=true`、`DSH_GATEWAY_PUBLIC_URL=https://<dsh-domain>`、`DSH_INTERNAL_API_KEY`（≥32）、`DSH_PLATFORM_SPACE_KEY_SECRET`（≥32，轮换会改变 space_key）、`DSH_RUNTIME_KIND=container`、`DSH_RUNTIME_IMAGE=<registry>/dsh-runtime@sha256:<digest>`；可选 `AUTH_LOGIN_RATE_LIMIT_MAX`（默认 30，0 关闭）与 `AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS`（默认 60）。
 7. 构建可用的运行时镜像（见 §3）。生产镜像必须使用 digest，不用 `latest`。
 
 ## 3. 构建与发布（构建机）

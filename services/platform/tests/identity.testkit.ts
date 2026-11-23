@@ -173,7 +173,7 @@ export class TestBrowser {
   async request(
     method: string,
     path: string,
-    options: { headers?: Record<string, string>; body?: string } = {},
+    options: { headers?: Record<string, string>; body?: string; clientAddress?: string } = {},
   ): Promise<PlatformHttpResult | undefined> {
     const url = new URL(path, TEST_ORIGIN)
     const request: PlatformHttpRequest = {
@@ -182,6 +182,7 @@ export class TestBrowser {
       headers: options.headers ?? {},
       cookies: this.collectCookies(url.pathname),
       body: options.body,
+      clientAddress: options.clientAddress ?? '127.0.0.1',
     }
     const result = await this.service.handle(request)
     if (result !== undefined) this.storeCookies(result.cookies)
@@ -194,7 +195,7 @@ export class TestBrowser {
    * @param options - extra headers.
    * @returns the identity response, or undefined outside the identity surface.
    */
-  get(path: string, options: { headers?: Record<string, string> } = {}): Promise<PlatformHttpResult | undefined> {
+  get(path: string, options: { headers?: Record<string, string>; clientAddress?: string } = {}): Promise<PlatformHttpResult | undefined> {
     return this.request('GET', path, options)
   }
 
@@ -206,7 +207,7 @@ export class TestBrowser {
    */
   post(
     path: string,
-    options: { headers?: Record<string, string>; body?: string } = {},
+    options: { headers?: Record<string, string>; body?: string; clientAddress?: string } = {},
   ): Promise<PlatformHttpResult | undefined> {
     return this.request('POST', path, options)
   }
@@ -603,6 +604,7 @@ export type IdentityTable =
   | 'dsh_users'
   | 'dsh_sessions'
   | 'dsh_oauth_states'
+  | 'dsh_audit_events'
   | 'schema_migrations'
 
 /**

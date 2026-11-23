@@ -322,6 +322,7 @@ export async function createGateway(config: PlatformConfig, deps: GatewayDeps): 
       headers: request.headers,
       cookies,
       body,
+      clientAddress: request.socket.remoteAddress ?? undefined,
     }
     let result
     try {

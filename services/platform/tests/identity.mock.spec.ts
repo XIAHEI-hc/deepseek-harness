@@ -238,4 +238,49 @@ describe('mock identity surface', () => {
     expect(tokenHash).toMatch(/^[0-9a-f]{64}$/)
     expect(csrfHash).toMatch(/^[0-9a-f]{64}$/)
   })
+
+  it('records login and logout audit events with the client address', async () => {
+    const { fixture, browser } = await startMock()
+    requireResult(await browser.get('/auth/login'))
+    const csrf = browser.csrfToken() ?? ''
+    expect(requireResult(await browser.post('/auth/logout', { headers: { 'x-csrf-token': csrf } })).status).toBe(200)
+
+    const database = openIdentityDatabase(fixture.dataDir)
+    registerCleanup(() => {
+      database.close()
+    })
+    const rows = database
+      .prepare('SELECT action, outcome, user_id, client_address, detail FROM dsh_audit_events ORDER BY rowid')
+      .all()
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toMatchObject({ action: 'login', outcome: 'success', client_address: '127.0.0.1' })
+    expect(rows[1]).toMatchObject({ action: 'logout', outcome: 'success', client_address: '127.0.0.1' })
+    expect(typeof rows[0]?.['user_id']).toBe('string')
+    expect(rows[0]?.['detail']).not.toContain('csrf')
+  })
+
+  it('throttles login starts per client address and audits the refusal', async () => {
+    const { fixture, service, browser } = await startMock({
+      loginRateLimit: { windowMs: 60_000, maxAttemptsPerAddress: 2 },
+    })
+    expect(requireResult(await browser.get('/auth/login')).status).toBe(302)
+    expect(requireResult(await browser.get('/auth/login')).status).toBe(302)
+    const limited = requireResult(await browser.get('/auth/login'))
+    expect(limited.status).toBe(429)
+    expect(errorCodeOf(limited)).toBe('rate-limited')
+    expect(Number(limited.headers?.['retry-after'])).toBeGreaterThan(0)
+
+    const otherAddress = requireResult(await browser.get('/auth/login', { clientAddress: '10.0.0.8' }))
+    expect(otherAddress.status).toBe(302)
+    void service
+
+    const database = openIdentityDatabase(fixture.dataDir)
+    registerCleanup(() => {
+      database.close()
+    })
+    const throttled = database
+      .prepare("SELECT COUNT(*) AS total FROM dsh_audit_events WHERE action = 'login' AND outcome = 'rate-limited'")
+      .get()
+    expect(throttled?.['total']).toBe(1)
+  })
 })

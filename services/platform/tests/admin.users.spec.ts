@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createPlatformConfig, type PlatformConfig } from '../src/config.ts'
 import { createIdentityService, findPlatformUserBySubject } from '../src/identity/index.ts'
 import { disableUser, enableUser, revokeAllUserSessions, UserAdminError } from '../src/admin/users.ts'
+import { listAuditEvents } from '../src/admin/audit.ts'
 import type { IdentityService, PlatformHttpResult, PlatformUser } from '../src/contracts.ts'
 
 /** Temporary directories created by the suite. */
@@ -43,6 +44,7 @@ async function login(): Promise<{ result: PlatformHttpResult; token: string }> {
     url: new URL('http://platform.invalid/auth/login?return_to=%2F'),
     headers: {},
     cookies: {},
+    clientAddress: '127.0.0.1',
   })
   if (result === undefined) throw new Error('identity did not handle the login request')
   const cookie = result.cookies?.find(entry => entry.name === config.identity.sessionCookieName)
@@ -122,6 +124,23 @@ describe('administrative user controls', () => {
     expect((await identity.authenticate(second.token)).ok).toBe(false)
     const fresh = await login()
     expect((await identity.authenticate(fresh.token)).ok).toBe(true)
+  })
+
+  it('records every administrative change in the audit stream', async () => {
+    await disableUser({ identity: config.identity, subject: user.subject, confirm: true })
+    await enableUser({ identity: config.identity, subject: user.subject, confirm: true })
+    await revokeAllUserSessions({ identity: config.identity, userId: user.id, confirm: true })
+    const rows = await listAuditEvents({ identity: config.identity })
+    const actions = rows.map(row => row.action)
+    expect(actions).toEqual(expect.arrayContaining(['admin.user.disable', 'admin.user.enable', 'admin.session.revoke_all']))
+    for (const action of ['admin.user.disable', 'admin.user.enable', 'admin.session.revoke_all']) {
+      const row = rows.find(entry => entry.action === action)
+      expect(row?.userId).toBe(user.id)
+      expect(row?.subject).toBe(user.subject)
+      expect(row?.outcome).toBe('success')
+    }
+    const paged = await listAuditEvents({ identity: config.identity, limit: 1 })
+    expect(paged).toHaveLength(1)
   })
 
   it('reports a typed error with a stable code', async () => {

@@ -10,11 +10,86 @@
  * @module @deepseek-ai/dsh-platform-services/identity/store
  */
 
+import { randomUUID } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import type { SQLOutputValue } from 'node:sqlite'
 import { migrateIdentityDatabase } from './migrations.ts'
+
+/** One audit event the identity surface appends. */
+export interface AuditEventInput {
+  /** Stable action name such as `login` or `admin.user.disable`. */
+  readonly action: string
+  /** Stable outcome name such as `success`, `denied`, or `error`. */
+  readonly outcome: string
+  /** Affected platform user, when the event resolves one. */
+  readonly userId?: string | undefined
+  /** Affected W3 subject, when the event resolves one. */
+  readonly subject?: string | undefined
+  /** Transport-observed client address. */
+  readonly clientAddress?: string | undefined
+  /** Additional JSON-safe facts for operators. */
+  readonly detail?: Readonly<Record<string, unknown>> | undefined
+}
+
+/** One row of `dsh_audit_events`. */
+export interface AuditRow {
+  /** Audit row id. */
+  readonly id: string
+  /** ISO-8601 event timestamp. */
+  readonly at: string
+  /** Stable action name. */
+  readonly action: string
+  /** Stable outcome name. */
+  readonly outcome: string
+  /** Affected user id, or null. */
+  readonly userId: string | null
+  /** Affected W3 subject, or null. */
+  readonly subject: string | null
+  /** Client address, or null. */
+  readonly clientAddress: string | null
+  /** Additional facts, or null. */
+  readonly detail: Record<string, unknown> | null
+}
+
+/**
+ * Read one audit row from its SQLite representation.
+ * @param row - raw `dsh_audit_events` row.
+ * @returns the typed audit row.
+ */
+function toAuditRow(row: Record<string, SQLOutputValue>): AuditRow {
+  const detail = row['detail']
+  return {
+    id: textOf(row['id']),
+    at: textOf(row['at']),
+    action: textOf(row['action']),
+    outcome: textOf(row['outcome']),
+    userId: nullableTextOf(row['user_id']),
+    subject: nullableTextOf(row['subject']),
+    clientAddress: nullableTextOf(row['client_address']),
+    detail: detail === null ? null : JSON.parse(textOf(detail)) as Record<string, unknown>,
+  }
+}
+
+/**
+ * Require a text SQLite value.
+ * @param value - raw cell.
+ * @returns the string.
+ */
+function textOf(value: SQLOutputValue | undefined): string {
+  if (typeof value === 'string') return value
+  throw new Error('identity audit cell is not text')
+}
+
+/**
+ * Read a nullable text SQLite value.
+ * @param value - raw cell.
+ * @returns the string, or null.
+ */
+function nullableTextOf(value: SQLOutputValue | undefined): string | null {
+  return typeof value === 'string' ? value : null
+}
 
 /** One row of `dsh_users`. */
 export interface UserRow {
@@ -510,6 +585,47 @@ export class IdentityStore {
       .run(updatedAtIso, id)
     const row = this.findUserById(id)
     return row === undefined ? 0 : row.permissionVersion
+  }
+
+  /**
+   * Append one audit event.
+   * @param input - event facts.
+   * @param atIso - event ISO timestamp.
+   * @returns the generated audit row id.
+   */
+  appendAudit(input: AuditEventInput, atIso: string): string {
+    const id = randomUUID()
+    this.database
+      .prepare(
+        `INSERT INTO dsh_audit_events (id, at, action, outcome, user_id, subject, client_address, detail)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        id,
+        atIso,
+        input.action,
+        input.outcome,
+        input.userId ?? null,
+        input.subject ?? null,
+        input.clientAddress ?? null,
+        input.detail === undefined ? null : JSON.stringify(input.detail),
+      )
+    return id
+  }
+
+  /**
+   * Read the newest audit events.
+   * @param limit - maximum rows to return; clamped to 1..1000.
+   * @param offset - rows to skip.
+   * @returns audit rows newest first.
+   */
+  listAudit(limit = 100, offset = 0): AuditRow[] {
+    const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 1000)
+    const boundedOffset = Math.max(Math.trunc(offset), 0)
+    return this.database
+      .prepare('SELECT * FROM dsh_audit_events ORDER BY at DESC, rowid DESC LIMIT ? OFFSET ?')
+      .all(boundedLimit, boundedOffset)
+      .map(row => toAuditRow(row))
   }
 
   /** Release the SQLite handle; later calls are no-ops. */

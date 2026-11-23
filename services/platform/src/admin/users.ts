@@ -109,6 +109,13 @@ export async function disableUser(request: UserAdminRequest): Promise<UserAdminR
     const revoked = store.revokeUserSessions(user.id, now)
     store.setUserStatus(user.id, 'disabled', now)
     const permissionVersion = store.bumpUserPermissionVersion(user.id, now)
+    store.appendAudit({
+      action: 'admin.user.disable',
+      outcome: 'success',
+      userId: user.id,
+      subject: user.subject,
+      detail: { sessionsRevoked: revoked, permissionVersion },
+    }, now)
     return { user, status: 'disabled', permissionVersion, sessionsRevoked: revoked }
   })
 }
@@ -127,6 +134,13 @@ export async function enableUser(request: UserAdminRequest): Promise<UserAdminRe
     const now = new Date().toISOString()
     store.setUserStatus(user.id, 'active', now)
     const permissionVersion = store.bumpUserPermissionVersion(user.id, now)
+    store.appendAudit({
+      action: 'admin.user.enable',
+      outcome: 'success',
+      userId: user.id,
+      subject: user.subject,
+      detail: { permissionVersion },
+    }, now)
     return { user, status: 'active', permissionVersion, sessionsRevoked: 0 }
   })
 }
@@ -145,6 +159,13 @@ export async function revokeAllUserSessions(request: UserAdminRequest): Promise<
     const now = new Date().toISOString()
     const revoked = store.revokeUserSessions(user.id, now)
     const permissionVersion = store.bumpUserPermissionVersion(user.id, now)
+    store.appendAudit({
+      action: 'admin.session.revoke_all',
+      outcome: 'success',
+      userId: user.id,
+      subject: user.subject,
+      detail: { sessionsRevoked: revoked, permissionVersion },
+    }, now)
     return { user, status: 'active', permissionVersion, sessionsRevoked: revoked }
   })
 }

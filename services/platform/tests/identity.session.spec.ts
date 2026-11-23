@@ -314,7 +314,7 @@ describe('session lifecycle', () => {
     const migrations = database
       .prepare('SELECT version, applied_at FROM schema_migrations ORDER BY version')
       .all()
-    expect(migrations.map(row => row['version'])).toEqual([1])
+    expect(migrations.map(row => row['version'])).toEqual([1, 2])
     const appliedAt = String(migrations[0]?.['applied_at'])
     expect(appliedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
 
@@ -330,6 +330,8 @@ describe('session lifecycle', () => {
       'idx_dsh_sessions_expires_at',
       'idx_dsh_oauth_states_state_hash',
       'idx_dsh_oauth_states_expires_at',
+      'idx_dsh_audit_events_at',
+      'idx_dsh_audit_events_user_id',
     ]) {
       expect(indexNames).toContain(index)
     }
@@ -382,7 +384,7 @@ describe('session lifecycle', () => {
     const migrationsAfterRestart = database
       .prepare('SELECT version, applied_at FROM schema_migrations ORDER BY version')
       .all()
-    expect(migrationsAfterRestart).toHaveLength(1)
+    expect(migrationsAfterRestart).toHaveLength(2)
     expect(migrationsAfterRestart[0]?.['applied_at']).toBe(appliedAt)
     expect(countRows(database, 'dsh_users')).toBe(1)
   })

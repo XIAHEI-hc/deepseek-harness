@@ -43,7 +43,8 @@ import {
   toPlatformUser,
   W3_DENIED_LOCATION,
 } from './security.ts'
-import { IdentityStore } from './store.ts'
+import { IdentityStore, type AuditEventInput } from './store.ts'
+import { LoginRateLimiter } from './ratelimit.ts'
 import { authorizeUrl, exchangeW3Profile } from './w3.ts'
 
 /** Methods the identity surface accepts per path. */
@@ -188,6 +189,8 @@ class IdentityHttpService implements IdentityService {
   private readonly clock: () => number
   /** Fetch implementation used for W3 requests. */
   private readonly fetchImpl: typeof fetch | undefined
+  /** Per-address login-attempt limiter. */
+  private readonly loginLimiter: LoginRateLimiter
 
   /**
    * @param config - identity configuration.
@@ -206,6 +209,15 @@ class IdentityHttpService implements IdentityService {
     this.clock = clock
     this.fetchImpl = fetchImpl
     this.mode = config.mode
+    this.loginLimiter = new LoginRateLimiter(config.loginRateLimit, clock)
+  }
+
+  /**
+   * Append one audit event with the service clock.
+   * @param input - event facts without a timestamp.
+   */
+  private audit(input: AuditEventInput): void {
+    this.store.appendAudit(input, toIso(this.clock()))
   }
 
   /**
@@ -321,10 +333,27 @@ class IdentityHttpService implements IdentityService {
    */
   private async login(request: PlatformHttpRequest): Promise<PlatformHttpResult> {
     const returnTo = safeReturnTo(request.url.searchParams.get('return_to'))
+    const address = request.clientAddress ?? 'unknown'
+    if (!this.loginLimiter.allow(address)) {
+      this.audit({ action: 'login', outcome: 'rate-limited', clientAddress: address })
+      return {
+        status: 429,
+        headers: { ...JSON_HEADERS, 'retry-after': String(this.loginLimiter.retryAfterSeconds(address)) },
+        body: JSON.stringify({ error: { code: 'rate-limited' } }),
+      }
+    }
     if (this.config.mode === 'mock') {
       try {
         const user = syncMockUser(this.config, this.store, this.clock())
         const credentials = createSession(this.config, this.store, user, this.clock())
+        this.audit({
+          action: 'login',
+          outcome: 'success',
+          userId: user.id,
+          subject: user.subject,
+          clientAddress: address,
+          detail: { mode: 'mock' },
+        })
         return redirectResult(returnTo, sessionCookies(this.config, credentials))
       } catch (error) {
         if (error instanceof IdentityError) return errorResult(error.status, error.code)
@@ -332,6 +361,7 @@ class IdentityHttpService implements IdentityService {
       }
     }
     const loginState = createLoginState(this.config, this.store, returnTo, this.clock())
+    this.audit({ action: 'login.start', outcome: 'redirect', clientAddress: address, detail: { mode: 'w3' } })
     return redirectResult(authorizeUrl(this.config.w3, loginState.state), [
       loginNonceCookie(this.config, loginState.nonce),
     ])
@@ -348,8 +378,11 @@ class IdentityHttpService implements IdentityService {
     const state = request.url.searchParams.get('state')
     const providerError = request.url.searchParams.get('error')
     const nonce = request.cookies[this.config.loginNonceCookieName]
-    const denied = (): PlatformHttpResult =>
-      redirectResult(W3_DENIED_LOCATION, [clearedLoginNonceCookie(this.config)])
+    const address = request.clientAddress ?? 'unknown'
+    const denied = (): PlatformHttpResult => {
+      this.audit({ action: 'login', outcome: 'denied', clientAddress: address, detail: { mode: 'w3' } })
+      return redirectResult(W3_DENIED_LOCATION, [clearedLoginNonceCookie(this.config)])
+    }
     if ((providerError !== null && providerError !== '') || !isPresent(code) || !isPresent(state)) {
       if (isPresent(state) && nonce !== undefined && nonce !== '') {
         // Burn a transaction the provider denied or the request corrupted; an
@@ -359,17 +392,29 @@ class IdentityHttpService implements IdentityService {
       return denied()
     }
     const loginState = consumeLoginState(this.store, state, nonce, this.clock())
-    if (loginState === undefined) return errorResult(400, 'login-state-invalid')
+    if (loginState === undefined) {
+      this.audit({ action: 'login', outcome: 'invalid-state', clientAddress: address })
+      return errorResult(400, 'login-state-invalid')
+    }
     try {
       const profile = await exchangeW3Profile(this.config.w3, code, { fetch: this.fetchImpl })
       const user = syncUser(this.store, profile, this.clock())
       const credentials = createSession(this.config, this.store, user, this.clock())
+      this.audit({
+        action: 'login',
+        outcome: 'success',
+        userId: user.id,
+        subject: user.subject,
+        clientAddress: address,
+        detail: { mode: 'w3' },
+      })
       return redirectResult(loginState.returnTo, [
         ...sessionCookies(this.config, credentials),
         clearedLoginNonceCookie(this.config),
       ])
     } catch (error) {
       if (!(error instanceof IdentityError)) logStableFailure('identity-callback-failed')
+      this.audit({ action: 'login', outcome: 'error', clientAddress: address, detail: { mode: 'w3' } })
       // The transaction was consumed before the exchange, so it cannot be replayed.
       return denied()
     }
@@ -399,6 +444,13 @@ class IdentityHttpService implements IdentityService {
     if (!lookup.ok) return errorResult(401, lookup.code)
     if (!this.csrfMatches(lookup.session, request)) return errorResult(403, 'csrf-invalid')
     this.store.revokeSession(lookup.session.sessionId, toIso(this.clock()))
+    this.audit({
+      action: 'logout',
+      outcome: 'success',
+      userId: lookup.session.user.id,
+      subject: lookup.session.user.subject,
+      clientAddress: request.clientAddress,
+    })
     const logoutUrl = this.config.w3.logoutUrl === '' ? null : this.config.w3.logoutUrl
     return {
       status: 200,
@@ -420,7 +472,15 @@ class IdentityHttpService implements IdentityService {
     if (headerValue(request.headers, 'x-dsh-confirm') !== LOGOUT_ALL_CONFIRMATION) {
       return jsonResult(400, { error: { code: 'confirmation-required' } })
     }
-    this.store.revokeUserSessions(lookup.session.user.id, toIso(this.clock()))
+    const revoked = this.store.revokeUserSessions(lookup.session.user.id, toIso(this.clock()))
+    this.audit({
+      action: 'logout.all',
+      outcome: 'success',
+      userId: lookup.session.user.id,
+      subject: lookup.session.user.subject,
+      clientAddress: request.clientAddress,
+      detail: { sessionsRevoked: revoked },
+    })
     return jsonResult(200, { ok: true })
   }
 

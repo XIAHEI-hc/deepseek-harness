@@ -60,6 +60,17 @@ export interface IdentityConfig {
   readonly absoluteTimeoutMs: number
   /** OAuth login transaction lifetime in milliseconds. */
   readonly oauthStateTtlMs: number
+  /**
+   * Login-attempt rate limit applied per client address. `maxAttemptsPerAddress`
+   * of 0 disables limiting (development and tests); production keeps a finite
+   * budget so one address cannot enumerate login starts.
+   */
+  readonly loginRateLimit: {
+    /** Sliding window length in milliseconds. */
+    readonly windowMs: number
+    /** Login starts admitted per address inside one window; 0 disables. */
+    readonly maxAttemptsPerAddress: number
+  }
   /** Internal service key the gateway presents on `/internal/introspect`; at least 32 characters in production. */
   readonly internalApiKey: string
   readonly w3: W3Config
@@ -202,6 +213,10 @@ const DEFAULT_ABSOLUTE_TIMEOUT_MS = 12 * 60 * 60 * 1000
 const DEFAULT_IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000
 /** OAuth login transaction lifetime default: ten minutes. */
 const DEFAULT_OAUTH_STATE_TTL_MS = 10 * 60 * 1000
+/** Login attempt budget per address inside one window. */
+const DEFAULT_LOGIN_RATE_LIMIT_MAX = 30
+/** Login attempt rate-limit window default: one minute. */
+const DEFAULT_LOGIN_RATE_LIMIT_WINDOW_MS = 60 * 1000
 
 /**
  * Read one environment value.
@@ -441,6 +456,10 @@ export function loadPlatformConfig(env: NodeJS.ProcessEnv = process.env): Platfo
       idleTimeoutMs: parseInteger(readEnv(env, 'AUTH_IDLE_TIMEOUT_MINUTES', ''), 'AUTH_IDLE_TIMEOUT_MINUTES', DEFAULT_IDLE_TIMEOUT_MS / 60_000) * 60_000,
       absoluteTimeoutMs: parseInteger(readEnv(env, 'AUTH_ABSOLUTE_TIMEOUT_MINUTES', ''), 'AUTH_ABSOLUTE_TIMEOUT_MINUTES', DEFAULT_ABSOLUTE_TIMEOUT_MS / 60_000) * 60_000,
       oauthStateTtlMs: parseInteger(readEnv(env, 'AUTH_OAUTH_STATE_TTL_MINUTES', ''), 'AUTH_OAUTH_STATE_TTL_MINUTES', DEFAULT_OAUTH_STATE_TTL_MS / 60_000) * 60_000,
+      loginRateLimit: {
+        windowMs: parseInteger(readEnv(env, 'AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS', ''), 'AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS', DEFAULT_LOGIN_RATE_LIMIT_WINDOW_MS / 1000) * 1000,
+        maxAttemptsPerAddress: parseInteger(readEnv(env, 'AUTH_LOGIN_RATE_LIMIT_MAX', ''), 'AUTH_LOGIN_RATE_LIMIT_MAX', DEFAULT_LOGIN_RATE_LIMIT_MAX),
+      },
       internalApiKey,
       w3,
       mock: {

@@ -55,9 +55,12 @@
 - 不记录 Cookie、session token、CSRF、W3 access token、client_secret、断言原文、私钥。
 - 日志只记录稳定错误码、user_id 哈希/后四位、状态迁移、Runtime 状态。
 - `/api/runtime/*` 永不返回内部 host/port/路径/镜像 digest；错误码映射为稳定 code。
+- 身份审计表 `dsh_audit_events`（migration v2）记录登录成功/拒绝/限流、注销、全设备注销与管理员操作，字段只有 action/outcome/user_id/subject/客户端地址/JSON detail；`admin audit list` 只读输出。审计写入复用身份库事务，不含 Cookie、token、CSRF、W3 token 等敏感值。
+- 登录限流：按 transport 观测到的客户端地址做进程内滑动窗口（`AUTH_LOGIN_RATE_LIMIT_MAX`/`AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS`，0 关闭）；超出返回 429 + `Retry-After` 并写一条 `rate-limited` 审计。多副本部署需在共享反代执行同等额度（见已知限制）。
 
 ## 7. 已知限制
 
 - 生产 PostgreSQL 后端、真实 W3 租户验证、容器级攻击面实测需要目标环境（见 OPEN_ISSUES.md）。
 - 进程后端（开发）不构成安全沙箱：同宿主用户可访问彼此目录，仅用于开发/测试。
-- 管理后台/禁用用户/全设备注销的管理 CLI 尚未提供图形界面（API 与数据操作已具备）。
+- 登录限流是单进程内存窗口；多副本部署必须在共享反代/网关层执行同样或更严格的额度，否则每个副本各自计数。
+- 管理后台/禁用用户/全设备注销的管理 CLI 尚未提供图形界面（API 与数据操作已具备，审计可通过 `admin audit list` 读取）。

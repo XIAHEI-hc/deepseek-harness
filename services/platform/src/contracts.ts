@@ -97,6 +97,8 @@ export interface PlatformHttpRequest {
   readonly cookies: Readonly<Record<string, string>>
   /** Buffered request body text for the small JSON platform endpoints; absent when empty. */
   readonly body?: string | undefined
+  /** Transport-observed client address; used by login rate limiting and audit rows. */
+  readonly clientAddress?: string | undefined
 }
 
 /** One HTTP response the identity service produced. */
