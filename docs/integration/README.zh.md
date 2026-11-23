@@ -71,6 +71,8 @@ GET  /api/integration/audit?jobId=...
 
 跨用户读取返回 404，不区分“不存在”和“无权”。`GET /api/integration/audit` 返回 Job、输入快照与产物元数据，用于追溯来源。
 
+每用户 Runtime 的模型工具以 `Authorization: Bearer <capability>` 调用 `/api/integration/runtime/` 下的相同路径。Gateway 将短生命周期 HMAC token 解析为 Session 形状的主体；不使用浏览器 Cookie 或 CSRF，且该路由不会落入原生 Runtime 代理。
+
 ## 6. 配置
 
 见 `deploy/.env.example` 的"系统融合分析"段与 `deploy/integration/README.md`。关键约束：
@@ -86,14 +88,15 @@ GET  /api/integration/audit?jobId=...
 实际命令与结果见 [TEST_REPORT.zh.md](TEST_REPORT.zh.md)，逐项状态见 [ACCEPTANCE.zh.md](ACCEPTANCE.zh.md)。已在本机执行：
 
 - `pnpm run typecheck:platform`：通过。
-- `pnpm run test:platform`：24 个文件通过、1 个跳过；263 个用例通过、4 个跳过（含 6 个融合 spec）。
+- `pnpm run test:platform`：24 个文件通过、1 个跳过；271 个用例通过、4 个跳过（含 6 个融合 spec）。
 - 真实 Docker 负向验证：`deploy/scripts/verify-integration-isolation.sh` 在 WSL2 Ubuntu + Docker Engine 29.7.2 上通过，验证只读根、只读 `/inputs`、`/work`/`/scratch` 可写、uid 1000、`--network none`、无 Docker socket、无宿主 `/srv/dsh`。
 - W3 基线回归：本轮 `pnpm run test:platform` 覆盖原 220 个基线用例，全部通过；真实 W3 租户仍为外部 `BLOCKED`。
 - 原生可选 UI：`packages/client/ui-integration-workbench` 注册一个 `shell.overlay` 启动器，只读取一次状态，融合不存在时不渲染任何内容；其 API 与组件测试通过。
+- 模型工具：`packages/integration/tool-integration` 提供发现、快照、隔离 Job、状态与产物工具；平台向每用户 Runtime 注入短生命周期 HMAC 能力，Gateway 无需浏览器 Session 即可解析。
 
 尚未完成、不得声称生产可用：
 
-- 融合 Session 的模型侧受限工具装配（`readResource` / `createSnapshot` / `runAnalysisJob` / `readJobArtifact`）尚未接入 DSH Agent；当前 API、执行层与原生工作台已就绪，工具装配仍在后续阶段。
+- 模型融合工具是增量能力；平台尚未在融合 Session 中禁用 Shell、MCP、PTY、SSH、子 Agent、Schedule 或浏览器工具。
 - 受控 egress broker 未实现；分析容器只能 `--network none`。
 - 真实 W3 租户 A/B、目标机 7 天运行、内网 Git 属外部 `BLOCKED`。
 - 生产部署、升级、备份与回滚仅复用现有脚本，尚未在目标机完成融合专用演练。

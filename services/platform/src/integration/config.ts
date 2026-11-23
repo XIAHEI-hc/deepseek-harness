@@ -37,6 +37,8 @@ export interface IntegrationConfig {
   readonly jobImage: string
   /** Docker CLI used by the container runner. */
   readonly dockerCommand: string
+  /** Gateway URL a runtime tool calls; empty lets the composition root choose. */
+  readonly runtimeApiUrl: string
   /** Network mode or network name for an analysis container. */
   readonly jobNetwork: string
   /** Numeric UID/GID the analysis container runs as. */
@@ -164,6 +166,7 @@ export function loadIntegrationConfig(
       runnerKind: production ? 'container' : 'process',
       jobImage: '',
       dockerCommand: defaults.runtimeDockerCommand,
+      runtimeApiUrl: '',
       jobNetwork: 'none',
       jobUid: 1000,
       jobCpuLimit: '1',
@@ -201,6 +204,7 @@ export function loadIntegrationConfig(
     runnerKind: runnerRaw,
     jobImage,
     dockerCommand: read(env, 'DSH_INTEGRATION_DOCKER_COMMAND', defaults.runtimeDockerCommand),
+    runtimeApiUrl: read(env, 'DSH_INTEGRATION_RUNTIME_API_URL', ''),
     jobNetwork,
     jobUid: parsePositiveInteger(read(env, 'DSH_INTEGRATION_JOB_UID', ''), 'DSH_INTEGRATION_JOB_UID', 1000),
     jobCpuLimit: read(env, 'DSH_INTEGRATION_JOB_CPU_LIMIT', '1'),

@@ -48,6 +48,28 @@ export function findPlatformUserBySubject(config: IdentityConfig, subject: strin
   })
 }
 
+/** One active platform user plus the permission version a runtime token must bind. */
+export interface PlatformUserState {
+  /** The platform user. */
+  readonly user: PlatformUser
+  /** Current permission version. */
+  readonly permissionVersion: number
+}
+
+/**
+ * Resolve an active platform user and its permission version by internal id.
+ * @param config - identity configuration.
+ * @param userId - internal user id.
+ * @returns the user state, or undefined when absent or disabled.
+ */
+export function findPlatformUserStateById(config: IdentityConfig, userId: string): PlatformUserState | undefined {
+  return withIdentityStore(config, (store) => {
+    const row = store.findUserById(userId)
+    if (row === undefined || row.status !== 'active') return undefined
+    return { user: toPlatformUser(row), permissionVersion: row.permissionVersion }
+  })
+}
+
 /**
  * Resolve the platform user by its internal DSH user id.
  * @param config - identity configuration.

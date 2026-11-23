@@ -22,6 +22,7 @@ DSH_INTEGRATION_DATA_DIR=/srv/dsh/management/integration
 DSH_INTEGRATION_JOB_RUNNER_KIND=container
 DSH_INTEGRATION_JOB_IMAGE=dsh-analysis@sha256:<digest>
 DSH_INTEGRATION_JOB_NETWORK=none
+DSH_INTEGRATION_RUNTIME_API_URL=http://platform:8080
 ```
 
 Restart the platform and read `GET /api/integration/status` as a signed-in user. `ready` means preflight passed. `blocked` lists stable issue codes; the detail needed to repair the deployment stays in the operator's configuration, not in the browser.

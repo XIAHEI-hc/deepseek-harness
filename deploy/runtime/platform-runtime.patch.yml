@@ -27,6 +27,15 @@
         clockSkewSeconds: 30
         maxLifetimeSeconds: !!js Number(process.env.DSH_GATEWAY_MAX_LIFETIME_SECONDS ?? '300')
 
+# Optional fusion tools. The base bundle keeps this row disabled; the platform
+# enables it only when the supervisor injected both values. The capability is a
+# short-lived HMAC token scoped to this runtime's user, not a platform secret.
+- id: tool-integration
+  disabled: false
+  config:
+    apiUrl: !!js process.env.DSH_INTEGRATION_API_URL
+    capability: !!js process.env.DSH_INTEGRATION_CAPABILITY_TOKEN
+
 # Per-user full-text Session search. The shipped web profile keeps content
 # search disabled; the platform enables one SQLite index under this user's own
 # DSH home, so a user's search results are built only from that user's Sessions.

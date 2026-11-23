@@ -342,13 +342,9 @@ async function readJson(response: Response): Promise<unknown> {
  * @returns the API error.
  */
 async function readError(response: Response): Promise<FusionApiError> {
-  try {
-    const body: unknown = await response.json()
-    if (isRecord(body) && isRecord(body['error']) && typeof body['error']['code'] === 'string') {
-      return new FusionApiError(body['error']['code'], response.status)
-    }
-  } catch {
-    // A non-JSON body is classified by status only.
+  const body: unknown = await response.json().catch(() => undefined)
+  if (isRecord(body) && isRecord(body['error']) && typeof body['error']['code'] === 'string') {
+    return new FusionApiError(body['error']['code'], response.status)
   }
   return new FusionApiError(`http-${String(response.status)}`, response.status)
 }

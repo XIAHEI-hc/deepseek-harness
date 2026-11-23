@@ -14,8 +14,15 @@ import type {
   PlatformAuditEvent,
   PlatformHttpRequest,
   PlatformHttpResult,
+  PlatformUser,
   ValidatedSession,
 } from '../contracts.ts'
+import {
+  RUNTIME_CAPABILITY_TTL_MS,
+  mintRuntimeCapability,
+  sessionFromCapability,
+  verifyRuntimeCapability,
+} from './capability.ts'
 import type { IntegrationConfig } from './config.ts'
 import type { PreflightResult } from './preflight.ts'
 import type {
@@ -52,6 +59,10 @@ export interface IntegrationServiceOptions {
   readonly audit?: IntegrationAuditSink | undefined
   readonly fetchImplementation?: ((input: string, init: RequestInit) => Promise<Response>) | undefined
   readonly dockerExecutor?: import('../runtime/backend.ts').DockerExecutor | undefined
+  /** HMAC secret for runtime capability tokens; required when fusion is enabled. */
+  readonly capabilitySecret?: string | undefined
+  /** Runtime capability lifetime; defaults to fifteen minutes. */
+  readonly capabilityTtlMs?: number | undefined
 }
 
 /**
@@ -195,6 +206,9 @@ class PlatformIntegrationService implements IntegrationService {
   private readonly workspaces: WorkspaceService
   private readonly jobs: JobService
   private readonly audit: IntegrationAuditSink | undefined
+  private readonly capabilitySecret: string
+  private readonly capabilityTtlMs: number
+  private readonly now: () => number
   private closed = false
 
   /**
@@ -210,6 +224,9 @@ class PlatformIntegrationService implements IntegrationService {
     readonly workspaces: WorkspaceService
     readonly jobs: JobService
     readonly audit?: IntegrationAuditSink | undefined
+    readonly capabilitySecret: string
+    readonly capabilityTtlMs: number
+    readonly now: () => number
   }) {
     this.config = parts.config
     this.preflight = parts.preflight
@@ -220,6 +237,9 @@ class PlatformIntegrationService implements IntegrationService {
     this.workspaces = parts.workspaces
     this.jobs = parts.jobs
     this.audit = parts.audit
+    this.capabilitySecret = parts.capabilitySecret
+    this.capabilityTtlMs = parts.capabilityTtlMs
+    this.now = parts.now
   }
 
   /** @inheritDoc */
@@ -229,6 +249,22 @@ class PlatformIntegrationService implements IntegrationService {
       enabled: this.config.enabled,
       issues: this.preflight.issues,
     }
+  }
+
+  /** @inheritDoc */
+  mintRuntimeToken(user: PlatformUser, permissionVersion: number): string {
+    if (this.closed) throw new IntegrationError('integration-blocked', 'integration service is closed', 503)
+    if (this.capabilitySecret.length < 32) {
+      throw new IntegrationError('integration-blocked', 'runtime capability secret is not configured', 503)
+    }
+    return mintRuntimeCapability(this.capabilitySecret, user, permissionVersion, this.now(), this.capabilityTtlMs)
+  }
+
+  /** @inheritDoc */
+  authenticateRuntimeToken(token: string | undefined): ValidatedSession | undefined {
+    if (token === undefined || token === '' || this.capabilitySecret.length < 32) return undefined
+    const claims = verifyRuntimeCapability(this.capabilitySecret, token, this.now())
+    return claims === undefined ? undefined : sessionFromCapability(claims)
   }
 
   /** @inheritDoc */
@@ -328,6 +364,17 @@ class PlatformIntegrationService implements IntegrationService {
       })
       return json(201, { snapshot: captured.record })
     }
+    if (first === 'snapshots' && segments.length === 2 && second !== undefined) {
+      if (method !== 'GET') return errorJson(405, 'method-not-allowed')
+      const snapshot = this.store.findSnapshot(second, actor.userId)
+      if (snapshot === undefined) return errorJson(404, 'resource-not-found')
+      const bytes = this.snapshots.read(snapshot)
+      return json(200, {
+        snapshot,
+        encoding: 'utf-8',
+        content: new TextDecoder().decode(bytes),
+      })
+    }
     if (first === 'workspaces' && segments.length === 1) {
       if (method === 'GET') return json(200, { workspaces: this.workspaces.list(actor) })
       if (method !== 'POST') return errorJson(405, 'method-not-allowed')
@@ -426,7 +473,8 @@ class PlatformIntegrationService implements IntegrationService {
     if (this.audit === undefined) return
     try {
       this.audit(event)
-    } catch {
+    } catch (error) {
+      void error
       // Audit delivery is best effort and must not change request outcomes.
     }
   }
@@ -452,6 +500,16 @@ class StaticIntegrationService implements IntegrationService {
   /** @inheritDoc */
   status(): IntegrationStatus {
     return { state: this.state, enabled: this.config.enabled, issues: this.issues }
+  }
+
+  /** @inheritDoc */
+  mintRuntimeToken(): string {
+    throw new IntegrationError('integration-disabled', 'fusion is not enabled', 503)
+  }
+
+  /** @inheritDoc */
+  authenticateRuntimeToken(): ValidatedSession | undefined {
+    return undefined
   }
 
   /** @inheritDoc */
@@ -541,6 +599,9 @@ export function createIntegrationService(
     snapshots,
     workspaces,
     jobs,
+    capabilitySecret: options.capabilitySecret ?? '',
+    capabilityTtlMs: options.capabilityTtlMs ?? RUNTIME_CAPABILITY_TTL_MS,
+    now,
     ...(options.audit === undefined ? {} : { audit: options.audit }),
   })
 }

@@ -234,6 +234,26 @@ describe('process backend launch', () => {
     await backend.close()
   })
 
+  it('injects per-start fusion capability variables after the filtered environment', async () => {
+    const root = await makeTemporaryDirectory()
+    const dataDir = await makeTemporaryDirectory()
+    const config = await makeRuntimeConfig(root, dataDir)
+    const space = await makeSpace(root)
+    const spec: RuntimeStartSpec = {
+      ...makeStartSpec(space),
+      extraEnv: {
+        DSH_INTEGRATION_API_URL: 'http://platform:8080',
+        DSH_INTEGRATION_CAPABILITY_TOKEN: 'cap-token',
+      },
+    }
+    const { backend, records } = makeBackend(config)
+    await backend.start(spec)
+    const environment = records[0]?.options.env ?? {}
+    expect(environment.DSH_INTEGRATION_API_URL).toBe('http://platform:8080')
+    expect(environment.DSH_INTEGRATION_CAPABILITY_TOKEN).toBe('cap-token')
+    await backend.close()
+  })
+
   it('injects the per-user environment and never the host credentials', async () => {
     const root = await makeTemporaryDirectory()
     const dataDir = await makeTemporaryDirectory()

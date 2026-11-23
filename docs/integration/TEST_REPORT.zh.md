@@ -9,10 +9,11 @@
 | 命令 | 结果 | 说明 |
 |---|---|---|
 | `pnpm run typecheck:platform` | PASS | `tsc -p services/platform/tsconfig.json --noEmit` |
-| `pnpm run test:platform` | PASS | 24 个测试文件通过、1 个跳过；263 个用例通过、4 个跳过 |
+| `pnpm run test:platform` | PASS | 24 个测试文件通过、1 个跳过；271 个用例通过、4 个跳过 |
 | `DSH_INTEGRATION_JOB_IMAGE=dsh-runtime:2026.11.23.7 bash deploy/scripts/verify-integration-isolation.sh`（WSL2 Ubuntu） | PASS | 真实 Docker 29.7.2；只读根、只读输入、工作区/scratch 可写、uid 1000、`network none`、无 Docker socket、无宿主部署根 |
 | `pnpm exec vitest run packages/client/ui-integration-workbench/tests` | PASS | 2 个文件、9 个用例：状态/概览/CSRF 解析、不可用/就绪/阻止面板状态 |
 | `pnpm exec vitest run packages/client/ui-theme/tests` | PASS | 24 个文件、183 个用例：新样式表满足圆角、发丝边框、阴影、焦点环、圆角形状与滚动条门禁 |
+| `pnpm exec vitest run packages/integration/tool-integration/tests` | PASS | 1 个文件、5 个用例：运行时能力头、发现、有界读取、Job 启动/状态与稳定 API 错误 |
 | `pnpm run test:gui`（完整套件） | RUN_FAIL（环境） | 14127 个用例中 9 个失败：6 个是新样式表规则违规（已修复，`ui-theme` 复跑通过），3 个与本改动无关的宿主条件（符号链接 EPERM、secret-mask 超时、pnpm pack 超时） |
 
 ## 2. 融合单元/合同覆盖
@@ -27,6 +28,7 @@
 - 服务：只有被授权资源可发现；越权快照 403；哈希与来源版本；工作区切换后同一快照可读但输出分开；Job 成功/失败；跨用户 Job/产物 404；权限 epoch 变化拒绝。
 - 网关：未登录 401、CSRF 缺失 403、跨源 403、已登录转发、关闭时 404 且不落原生代理。
 - workbench：无 API 时隐藏、启动器/面板渲染、授权资源列表、快照选择、阻止缺项代码、变更请求 CSRF。
+- 运行时能力：签发/校验/过期/篡改、无浏览器 Session 的 Gateway bearer 路由、Runtime 环境注入与模型工具传输。
 
 ## 3. 真实容器负向证据
 

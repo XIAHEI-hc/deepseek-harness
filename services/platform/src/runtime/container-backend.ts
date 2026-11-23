@@ -285,6 +285,7 @@ function buildRunArguments(
   args.push('-v', `${spec.runtimeAuth.publicKeyFile}:${config.containerPublicKeyPath}:ro`)
   args.push('-v', `${spec.patchFile}:${config.containerPatchPath}:ro`)
   for (const entry of buildContainerEnvironment(config, spec)) args.push('-e', entry)
+  for (const [name, value] of Object.entries(spec.extraEnv ?? {})) args.push('-e', `${name}=${value}`)
   args.push(
     config.image,
     'web',

@@ -202,6 +202,26 @@ afterEach(async () => {
 })
 
 describe('container backend launch', () => {
+  it('passes per-start fusion capability variables as container environment', async () => {
+    const root = await makeTemporaryDirectory()
+    const dataDir = await makeTemporaryDirectory()
+    const config = await makeRuntimeConfig(root, dataDir)
+    const space = await makeSpace(root)
+    const docker = new FakeDocker()
+    const backend = makeBackend(config, docker)
+    await backend.start({
+      ...makeStartSpec(space),
+      extraEnv: {
+        DSH_INTEGRATION_API_URL: 'http://platform:8080',
+        DSH_INTEGRATION_CAPABILITY_TOKEN: 'cap-token',
+      },
+    })
+    const args = docker.runArguments()
+    if (args === undefined) throw new Error('expected a docker run call')
+    expect(args).toContain('DSH_INTEGRATION_API_URL=http://platform:8080')
+    expect(args).toContain('DSH_INTEGRATION_CAPABILITY_TOKEN=cap-token')
+  })
+
   it('runs one labeled, limited, private container with the documented mounts and arguments', async () => {
     const root = await makeTemporaryDirectory()
     const dataDir = await makeTemporaryDirectory()

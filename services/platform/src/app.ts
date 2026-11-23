@@ -13,6 +13,7 @@ import { join } from 'node:path'
 import { createPlatformConfig, ensureGatewayKeyPair, loadPlatformConfig, type PlatformConfig } from './config.ts'
 import { createGateway, type GatewayHandle } from './gateway/index.ts'
 import { createIdentityService } from './identity/index.ts'
+import { findPlatformUserStateById } from './identity/lookup.ts'
 import { createIntegrationService, runPreflight } from './integration/index.ts'
 import { createRuntimeManager } from './runtime/index.ts'
 import type { IdentityService, IntegrationService, RuntimeManager } from './contracts.ts'
@@ -57,6 +58,31 @@ export async function createPlatformApp(
 ): Promise<PlatformApp> {
   const keys = ensureGatewayKeyPair(config.gateway)
   const identity = await createIdentityService(config.identity)
+  let integration: IntegrationService | undefined
+  if (config.integration.enabled) {
+    const preflight = await runPreflight(config.integration)
+    integration = createIntegrationService(config.integration, preflight, {
+      capabilitySecret: config.runtime.spaceKeySecret,
+      audit: (event) => {
+        identity.recordAudit(event)
+      },
+    })
+  }
+  const runtimeApiUrl = config.integration.runtimeApiUrl !== ''
+    ? config.integration.runtimeApiUrl
+    : config.runtime.kind === 'container'
+      ? 'http://platform:8080'
+      : `http://127.0.0.1:${String(config.gateway.listenPort)}`
+  const envForUser = integration === undefined || integration.status().state !== 'ready'
+    ? undefined
+    : (userId: string): Readonly<Record<string, string>> => {
+        const state = findPlatformUserStateById(config.identity, userId)
+        if (state === undefined) return {}
+        return {
+          DSH_INTEGRATION_API_URL: runtimeApiUrl,
+          DSH_INTEGRATION_CAPABILITY_TOKEN: integration.mintRuntimeToken(state.user, state.permissionVersion),
+        }
+      }
   const runtime = await createRuntimeManager(
     { ...config.runtime, dataDir: config.dataDir, realm: config.realm },
     {
@@ -85,17 +111,9 @@ export async function createPlatformApp(
         })
       },
       ...(options.runtimeEnv === undefined ? {} : { runtimeEnv: options.runtimeEnv }),
+      ...(envForUser === undefined ? {} : { envForUser }),
     },
   )
-  let integration: IntegrationService | undefined
-  if (config.integration.enabled) {
-    const preflight = await runPreflight(config.integration)
-    integration = createIntegrationService(config.integration, preflight, {
-      audit: (event) => {
-        identity.recordAudit(event)
-      },
-    })
-  }
   const gateway = await createGateway(config, {
     identity,
     runtime,

@@ -67,6 +67,8 @@ const RUNTIME_RETRY_PATH = '/api/runtime/retry'
 const INTERNAL_PREFIX = '/internal'
 /** Identity surface handled by the identity service. */
 const AUTH_PREFIX = '/auth'
+/** Runtime-capability fusion surface; bearer token instead of a browser session. */
+const INTEGRATION_RUNTIME_PREFIX = `${INTEGRATION_API_PREFIX}/runtime`
 
 /** Dependencies composed into the gateway. */
 export interface GatewayDeps {
@@ -425,6 +427,68 @@ export async function createGateway(config: PlatformConfig, deps: GatewayDeps): 
   }
 
   /**
+   * Answer one runtime-capability fusion request.
+   *
+   * The per-user DSH runtime presents a short-lived bearer token minted by the
+   * platform; no browser session or CSRF token is involved. The route rewrites
+   * the runtime prefix to the normal fusion path and still never enters the
+   * native runtime proxy.
+   * @param request - incoming request.
+   * @param response - browser response.
+   * @param url - parsed request URL.
+   */
+  const handleIntegrationRuntime = async (request: IncomingMessage, response: ServerResponse, url: URL): Promise<void> => {
+    if (deps.integration === undefined) {
+      sendApiError(response, 404, 'not-found')
+      return
+    }
+    const authorization = headerValue(request.headers, 'authorization')
+    const token = authorization !== undefined && authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : ''
+    const session = deps.integration.authenticateRuntimeToken(token === '' ? undefined : token)
+    if (session === undefined) {
+      sendApiError(response, 401, 'session-invalid')
+      return
+    }
+    const method = (request.method ?? 'GET').toUpperCase()
+    let body: string | undefined
+    if (!isReadMethod(method)) {
+      try {
+        body = await readRequestBody(request, facts.maxBodyBytes)
+      } catch (error) {
+        if (error instanceof BodyTooLargeError) {
+          sendApiError(response, 413, 'body-too-large')
+          return
+        }
+        throw error
+      }
+    }
+    const relative = url.pathname.slice(INTEGRATION_RUNTIME_PREFIX.length)
+    const innerUrl = new URL(`${INTEGRATION_API_PREFIX}${relative === '' ? '' : relative}${url.search}`, url.origin)
+    const integrationRequest: PlatformHttpRequest = {
+      method,
+      url: innerUrl,
+      headers: request.headers,
+      cookies: {},
+      ...(body === undefined ? {} : { body }),
+      ...(request.socket.remoteAddress === undefined ? {} : { clientAddress: request.socket.remoteAddress }),
+    }
+    let result
+    try {
+      result = await deps.integration.handle(integrationRequest, session)
+    } catch (error) {
+      void error
+      log({ code: 'integration-runtime-unavailable', userIdHash: hashUserId(session.user.id) })
+      sendApiError(response, 502, 'integration-unavailable')
+      return
+    }
+    if (result === undefined) {
+      sendApiError(response, 404, 'not-found')
+      return
+    }
+    sendIdentityResult(response, result)
+  }
+
+  /**
    * Route one unauthenticated or authenticated non-platform request.
    * @param request - incoming request.
    * @param response - browser response.
@@ -545,6 +609,10 @@ export async function createGateway(config: PlatformConfig, deps: GatewayDeps): 
     }
     if (pathname.startsWith(RUNTIME_API_PREFIX)) {
       sendApiError(response, 404, 'not-found')
+      return
+    }
+    if (pathname === INTEGRATION_RUNTIME_PREFIX || pathname.startsWith(`${INTEGRATION_RUNTIME_PREFIX}/`)) {
+      await handleIntegrationRuntime(request, response, url)
       return
     }
     if (pathname === INTEGRATION_API_PREFIX || pathname.startsWith(`${INTEGRATION_API_PREFIX}/`)) {

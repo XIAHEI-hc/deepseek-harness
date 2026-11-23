@@ -135,7 +135,8 @@ pnpm exec tsc -p services/platform/tsconfig.json --noEmit
 4. 每次资源发现、快照、Job、下载都按 `ValidatedSession.user.id` 做 owner 查询；ACL 键可以是内部 user id、W3 subject 或 W3 uid，动作只有 `list/read/export`。
 5. 快照写入后不可变并带 SHA-256/来源/授权 epoch；Job 启动前重新授权并校验 epoch。
 6. 分析 Job 由 `AnalysisJobRunner` 启动短生命周期容器：只读根、只读输入、工作区输出、Job scratch、`--network none`、drop capabilities、no-new-privileges、非 root uid。容器镜像 entrypoint 被清空。
-7. 关闭顺序为 Gateway → integration → runtime → identity；融合关闭会移除活动 Job 的容器并保留快照/元数据。
+7. 每用户 Runtime 启动时注入 `DSH_INTEGRATION_API_URL` 与短期 HMAC 能力 token；`/api/integration/runtime/*` 由 Gateway 解析 bearer token，仍走融合服务的 owner/ACL/epoch 校验，浏览器 Cookie 不参与。`@deepseek-ai/dsh-tool-integration` 只使用该能力，不接触平台密钥。
+8. 关闭顺序为 Gateway → integration → runtime → identity；融合关闭会移除活动 Job 的容器并保留快照/元数据。
 
 融合的 HTTP 契约、配置与验收状态见 [docs/integration/README.md](../../docs/integration/README.md)。
 

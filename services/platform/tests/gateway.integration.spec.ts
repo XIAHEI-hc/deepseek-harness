@@ -24,6 +24,22 @@ class StubIntegrationService implements IntegrationService {
     return { state: 'ready', enabled: true, issues: [] }
   }
 
+  mintRuntimeToken(): string {
+    return 'runtime-token'
+  }
+
+  authenticateRuntimeToken(token: string | undefined): ValidatedSession | undefined {
+    return token === 'runtime-token'
+      ? {
+          user: { id: 'user-a', subject: 'w3-user-a', uid: 'uid-a', displayName: 'User A', email: null },
+          sessionId: 'runtime:user-a',
+          permissionVersion: 1,
+          expiresAt: Date.now() + 60_000,
+          absoluteExpiresAt: Date.now() + 60_000,
+        }
+      : undefined
+  }
+
   async handle(request: PlatformHttpRequest, session: ValidatedSession): Promise<PlatformHttpResult | undefined> {
     if (!request.url.pathname.startsWith('/api/integration')) return undefined
     this.calls.push({ path: request.url.pathname, method: request.method, body: request.body, userId: session.user.id })
@@ -123,6 +139,23 @@ describe('integration gateway route', () => {
       },
     }, session)
     expect(response.status).toBe(403)
+    expect(integration.calls).toHaveLength(0)
+  })
+
+  it('admits a runtime bearer token without a browser session', async () => {
+    const response = await call('/api/integration/runtime/systems', {
+      headers: { authorization: 'Bearer runtime-token' },
+    })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ path: '/api/integration/systems', method: 'GET', userId: 'user-a' })
+    expect(runtime.ensureCalls).toHaveLength(0)
+  })
+
+  it('refuses an invalid runtime bearer token', async () => {
+    const response = await call('/api/integration/runtime/systems', {
+      headers: { authorization: 'Bearer wrong' },
+    })
+    expect(response.status).toBe(401)
     expect(integration.calls).toHaveLength(0)
   })
 

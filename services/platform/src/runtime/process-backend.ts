@@ -175,6 +175,7 @@ function buildProcessEnvironment(
   environment.DSH_RUNTIME_GENERATION = String(spec.generation)
   environment.NO_COLOR = '1'
   for (const [name, value] of Object.entries(extraEnv)) environment[name] = value
+  for (const [name, value] of Object.entries(spec.extraEnv ?? {})) environment[name] = value
   return environment
 }
 

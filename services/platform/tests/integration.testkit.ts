@@ -197,6 +197,7 @@ export async function createIntegrationTestEnvironment(options: {
   const service = createIntegrationService(config, preflight, {
     audit: event => audit.push(event),
     dockerExecutor: executor.execute.bind(executor) as DockerExecutor,
+    capabilitySecret: 'test-runtime-capability-secret-0123456789abcdef',
   })
   return {
     root,

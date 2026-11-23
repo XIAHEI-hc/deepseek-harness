@@ -171,11 +171,8 @@ export class AnalysisJobRunner {
    * @param name - container name.
    */
   private async removeContainer(name: string): Promise<void> {
-    try {
-      await this.executor(['rm', '-f', name])
-    } catch {
-      // Removal is best effort; the container keeps its original launch flags.
-    }
+    // Removal is best effort; the container keeps its original launch flags.
+    await this.executor(['rm', '-f', name]).catch((error: unknown) => { void error })
   }
 
   /**
@@ -186,13 +183,11 @@ export class AnalysisJobRunner {
   async cancel(jobId: string): Promise<boolean> {
     const name = this.active.get(jobId) ?? analysisContainerName(jobId)
     this.active.delete(jobId)
-    try {
-      await this.executor(['rm', '-f', name])
-      return true
-    } catch {
-      // Removing an already absent container is not a cancellation failure.
-      return false
-    }
+    // Removing an already absent container is not a cancellation failure.
+    return await this.executor(['rm', '-f', name]).then(
+      () => true,
+      (error: unknown) => { void error; return false },
+    )
   }
 
   /** Force-remove every container this runner started. */
@@ -200,12 +195,9 @@ export class AnalysisJobRunner {
     const names = [...this.active.values()]
     this.active.clear()
     for (const name of names) {
-      try {
-        await this.executor(['rm', '-f', name])
-      } catch {
-        // Shutdown best effort: a surviving container is still bound by its
-        // launch flags and the next preflight reports the daemon state.
-      }
+      // Shutdown best effort: a surviving container is still bound by its
+      // launch flags and the next preflight reports the daemon state.
+      await this.executor(['rm', '-f', name]).catch((error: unknown) => { void error })
     }
   }
 }

@@ -48,6 +48,8 @@ export interface RuntimeStartSpec {
   readonly publicOrigin: string
   /** Public host authority the runtime's browser-trust fence accepts. */
   readonly publicAuthority: string
+  /** Per-start environment entries the platform supplies (for example a runtime capability). */
+  readonly extraEnv?: Readonly<Record<string, string>> | undefined
   /** Longest accepted cold start in milliseconds. */
   readonly startTimeoutMs: number
   /**

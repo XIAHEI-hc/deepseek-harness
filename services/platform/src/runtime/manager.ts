@@ -97,6 +97,12 @@ export interface RuntimeManagerOptions {
    * is part of the backend's own start specification.
    */
   readonly runtimeEnv?: Readonly<Record<string, string>> | undefined
+  /**
+   * Per-user environment entries resolved at each start, for both backends.
+   * The platform supplies the runtime fusion capability here; it must never be
+   * a host secret inherited implicitly.
+   */
+  readonly envForUser?: ((userId: string) => Readonly<Record<string, string>>) | undefined
   /** Docker executor passed to the container backend. */
   readonly dockerExecutor?: DockerExecutor | undefined
   /** Readiness probe passed to both real backends. */
@@ -205,6 +211,7 @@ class PlatformRuntimeManager implements RuntimeManager {
   private readonly inspectIntervalMs: number
   private readonly timers: RuntimeScheduler
   private readonly audit: RuntimeAuditSink | undefined
+  private readonly envForUser: ((userId: string) => Readonly<Record<string, string>>) | undefined
   private readonly startGate: StartGate
   private readonly locks = new Map<string, Promise<void>>()
   private readonly targets = new Map<string, RuntimeTarget>()
@@ -226,6 +233,7 @@ class PlatformRuntimeManager implements RuntimeManager {
     readonly timers: RuntimeScheduler
     readonly log: RuntimeLog
     readonly audit: RuntimeAuditSink | undefined
+    readonly envForUser: ((userId: string) => Readonly<Record<string, string>>) | undefined
     readonly now: () => number
   }) {
     this.config = parts.config
@@ -238,6 +246,7 @@ class PlatformRuntimeManager implements RuntimeManager {
     this.timers = parts.timers
     this.log = parts.log
     this.audit = parts.audit
+    this.envForUser = parts.envForUser
     this.now = parts.now
     this.startGate = new StartGate(parts.config.maxConcurrentStarts)
   }
@@ -737,6 +746,7 @@ class PlatformRuntimeManager implements RuntimeManager {
       runtimeAuth: this.runtimeAuth,
       publicOrigin: this.publicOrigin,
       publicAuthority: this.publicAuthority,
+      ...(this.envForUser === undefined ? {} : { extraEnv: this.envForUser(record.userId) }),
       startTimeoutMs: this.config.startTimeoutMs,
       onExit: runtimeId => {
         this.handleBackendExit(runtimeId)
@@ -1011,6 +1021,7 @@ export async function createRuntimeManager(
     timers: options.timers ?? createDefaultScheduler(),
     log: options.log ?? stderrRuntimeLog,
     audit: options.audit,
+    envForUser: options.envForUser,
     now,
   })
   try {

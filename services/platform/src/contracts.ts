@@ -256,6 +256,19 @@ export interface IntegrationService {
   /** Anonymous service state for the status endpoint. */
   status(): IntegrationStatus
   /**
+   * Mint one short-lived runtime bearer token for the fusion tool surface.
+   * @param user - platform user the runtime belongs to.
+   * @param permissionVersion - current user permission version.
+   * @returns the wire token.
+   */
+  mintRuntimeToken(user: PlatformUser, permissionVersion: number): string
+  /**
+   * Resolve one runtime bearer token to the session-shaped actor.
+   * @param token - wire token from an `Authorization: Bearer` header.
+   * @returns the validated session, or undefined for a missing or invalid token.
+   */
+  authenticateRuntimeToken(token: string | undefined): ValidatedSession | undefined
+  /**
    * Handle one `/api/integration/*` request.
    * @param request - method, URL, headers, cookies, and buffered body.
    * @param session - already validated browser session.

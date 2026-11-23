@@ -351,7 +351,8 @@ export class JobService {
     if (this.audit === undefined) return
     try {
       this.audit({ action, outcome, userId, jobId, errorCode })
-    } catch {
+    } catch (error) {
+      void error
       // Audit delivery is best effort and must never change job lifecycle.
     }
   }

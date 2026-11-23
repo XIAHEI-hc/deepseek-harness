@@ -111,6 +111,17 @@ describe('fusion discovery and authorization', () => {
     expect(environment.audit.some(event => event.outcome === 'failure')).toBe(true)
   })
 
+  it('mints a runtime token that resolves to the same owner and reads resources', async () => {
+    environment = await createIntegrationTestEnvironment()
+    const session = sessionFor(USER_A)
+    const token = environment.service.mintRuntimeToken(session.user, session.permissionVersion)
+    const runtimeSession = environment.service.authenticateRuntimeToken(token)
+    expect(runtimeSession?.user.id).toBe(USER_A)
+    expect(environment.service.authenticateRuntimeToken(`${token}x`)).toBeUndefined()
+    const response = await callFusion(environment.service, runtimeSession!, 'GET', '/api/integration/resources?systemId=mock-erp')
+    expect(response.status).toBe(200)
+  })
+
   it('records a stable hash and source version on each snapshot', async () => {
     environment = await createIntegrationTestEnvironment()
     const response = await callFusion(environment.service, sessionFor(USER_A), 'POST', '/api/integration/snapshots', {
@@ -123,6 +134,10 @@ describe('fusion discovery and authorization', () => {
     expect(requireString(snapshot, 'sha256')).toMatch(/^[0-9a-f]{64}$/u)
     expect(snapshot['sourceVersion']).toBe('3')
     expect(environment.audit.some(event => event.action === 'SNAPSHOT_CREATE' && event.outcome === 'success')).toBe(true)
+    const content = await callFusion(environment.service, sessionFor(USER_A), 'GET', `/api/integration/snapshots/${requireString(snapshot, 'id')}`)
+    expect(content.status).toBe(200)
+    expect(String(content.body?.['content'])).toContain('rows')
+    expect((await callFusion(environment.service, sessionFor(USER_B), 'GET', `/api/integration/snapshots/${requireString(snapshot, 'id')}`)).status).toBe(404)
   })
 })
 
