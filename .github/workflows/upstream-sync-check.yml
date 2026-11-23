@@ -1,0 +1,52 @@
+# Reports how far this fork trails deepseek-ai/deepseek-harness, which upstream commits are
+# new, and where a trial merge would conflict. The report is the run summary and a downloaded
+# artifact; a red run means new upstream commits await a sync. Scheduled workflows run from the
+# default branch, so this file has no effect until it lands there.
+# Rules: scripts/upstream-sync-report.mjs.
+name: Upstream sync check
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-sync-check
+  cancel-in-progress: false
+
+jobs:
+  report:
+    name: Report upstream drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          # The merge base needs the fork's full history, not a shallow tip.
+          fetch-depth: 0
+
+      - name: Add the official upstream
+        run: git remote add upstream https://github.com/deepseek-ai/deepseek-harness.git
+
+      - name: Detect new commits and trial-merge conflicts
+        # Exit code 10/11 means drift was found; the report still lands on disk.
+        continue-on-error: true
+        run: node scripts/upstream-sync-report.mjs --json > upstream-sync.json
+
+      - name: Publish the report
+        run: |
+          node -e "const r = require('./upstream-sync.json'); console.log(`behind=${r.behind} conflicts=${r.conflicts.length} overlapping=${r.overlapping.length}`)"
+          cat .artifacts/upstream-sync/latest.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: upstream-sync-report
+          path: |
+            .artifacts/upstream-sync/latest.md
+            upstream-sync.json
+
+      - name: Flag pending upstream commits
+        run: |
+          node -e "const r = require('./upstream-sync.json'); if (r.behind > 0) { console.log(`::warning::${r.behind} upstream commit(s) await a sync, ${r.conflicts.length} conflict(s)`); process.exit(1) }"
