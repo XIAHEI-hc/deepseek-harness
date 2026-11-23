@@ -1,0 +1,20 @@
+# 最终发布包 2026.11.23.7（含 Runtime 生命周期审计）
+commit=74874c12b4dd2f6897897481730aeed3b7dfbc5b
+built_at=2026-11-23T22:20Z
+
+--- SHA256SUMS ---
+02a36530316f3cc8703b07ca62acc2410b071a271bd16730d986e299bd23bcf9  dsh-runtime-2026.11.23.7.tar
+323082132645f5065560a609c42471825e05be37755a399d7816f5bd1acb3c25  dsh-platform-2026.11.23.7.tar
+
+--- files ---
+-rwxrwxrwx 1 dev dev        191 Nov 23 22:20 deploy/release/SHA256SUMS-2026.11.23.7
+-rwxrwxrwx 1 dev dev       2141 Nov 23 22:20 deploy/release/compose-2026.11.23.7.yml
+-rwxrwxrwx 1 dev dev   93329408 Nov 23 22:20 deploy/release/dsh-platform-2026.11.23.7.tar
+-rwxrwxrwx 1 dev dev 1008221696 Nov 23 22:20 deploy/release/dsh-runtime-2026.11.23.7.tar
+-rwxrwxrwx 1 dev dev       5418 Nov 23 22:20 deploy/release/env.example-2026.11.23.7
+-rwxrwxrwx 1 dev dev       1654 Nov 23 22:20 deploy/release/platform-runtime-2026.11.23.7.patch.yml
+
+--- platform image ---
+[dsh-platform:2026.11.23.7] size=93309029
+--- runtime image ---
+[dsh-runtime:2026.11.23.7] size=1008202697
