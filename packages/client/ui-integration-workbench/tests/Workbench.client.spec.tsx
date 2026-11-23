@@ -69,6 +69,27 @@ describe('Workbench', () => {
     expect(await screen.findByText(en['snapshot.selected'].replace('{count}', '1'))).toBeDefined()
   })
 
+  it('polls a queued job until it settles', async () => {
+    const props = propsFor({ status: 'available', service: { state: 'ready', enabled: true, issues: [] } })
+    const queued = {
+      id: 'job-1', workspaceId: 'w1', status: 'queued' as const, inputSnapshotIds: ['s1'],
+      language: 'shell' as const, createdAt: '2026-01-01T00:00:00.000Z', startedAt: null, finishedAt: null, errorCode: null,
+    }
+    props.loadOverview = async () => ({
+      status: { state: 'ready', enabled: true, issues: [] },
+      systems: [{ id: 'mock-erp', name: 'Mock ERP', health: 'ready' }],
+      workspaces: [{ id: 'w1', name: 'Main', createdAt: '2026-01-01T00:00:00.000Z' }],
+      jobs: [queued],
+    })
+    const loadJob = vi.fn(async () => ({ job: { ...queued, status: 'succeeded' as const }, artifacts: [] }))
+    props.loadJob = loadJob
+    render(<Workbench {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: en['workbench.open'] }))
+    await screen.findByRole('dialog', { name: en['workbench.title'] })
+    await new Promise(resolve => setTimeout(resolve, 2_100))
+    expect(loadJob).toHaveBeenCalledWith('job-1')
+  })
+
   it('shows missing-prerequisite codes when blocked', async () => {
     const props = propsFor({
       status: 'available',

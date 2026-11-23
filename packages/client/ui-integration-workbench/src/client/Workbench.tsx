@@ -7,7 +7,7 @@
  * fusion API. The panel never receives a host path and never runs shell in the
  * user's chat runtime.
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   FusionJob,
@@ -58,6 +58,20 @@ export function Workbench({
   const [jobs, setJobs] = useState<readonly JobRow[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const refreshJobRef = useRef<(jobId: string) => void>(() => undefined)
+
+  // Poll only while a job is queued or running; the interval disappears as soon
+  // as every row settles. The ref keeps the effect independent of render order.
+  useEffect(() => {
+    const active = jobs
+      .filter(row => row.job.status === 'queued' || row.job.status === 'running')
+      .map(row => row.job.id)
+    if (active.length === 0) return
+    const timer = setInterval(() => {
+      for (const jobId of active) refreshJobRef.current(jobId)
+    }, 2_000)
+    return () => { clearInterval(timer) }
+  }, [jobs])
 
   if (availability.status !== 'available') return null
   const service = availability.service
@@ -145,6 +159,7 @@ export function Workbench({
 
   const refreshJob = async (jobId: string): Promise<void> => {
     setBusy(true)
+
     setError(null)
     try {
       const view = await loadJob(jobId)
@@ -155,6 +170,8 @@ export function Workbench({
       setBusy(false)
     }
   }
+
+  refreshJobRef.current = (jobId: string): void => { void refreshJob(jobId) }
 
   const cancel = async (jobId: string): Promise<void> => {
     setBusy(true)

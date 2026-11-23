@@ -32,7 +32,7 @@
 | F5-05 | 显式取消不会被容器退出覆盖 | RUN_PASS | `integration.service.spec.ts` 取消竞态用例 |
 | F6-01 | 无融合 API 时工作台隐藏 | RUN_PASS | `Workbench.client.spec.tsx` |
 | F6-02 | ready 与 blocked 面板显示授权资源与缺项代码 | RUN_PASS | `Workbench.client.spec.tsx` |
-| F6-03 | 服务端作业流式推送 | NOT_RUN | 面板只在用户操作时刷新 |
+| F6-03 | 排队/运行中的 Job 状态更新 | RUN_PASS | `Workbench.client.spec.tsx` 的 2 秒面板轮询 |
 | F6-04 | 模型工具通过运行时能力读取资源并运行 Job | RUN_PASS | `integration.capability.spec.ts`、`gateway.integration.spec.ts`、`tool-integration` 客户端测试 |
 | F7-01 | 真实 W3 双用户融合隔离 | BLOCKED | 无真实租户或宿主系统 |
 | F7-02 | 注销/撤销时中止旧 Job 容器 | RUN_PASS | 身份 `isSessionActive` 测试与 `integration.service.spec.ts` reaper 用例 |

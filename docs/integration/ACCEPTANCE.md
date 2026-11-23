@@ -32,7 +32,7 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 | F5-05 | Explicit cancellation is not overwritten by the container exit | RUN_PASS | `integration.service.spec.ts` cancellation race case |
 | F6-01 | Workbench hidden without the fusion API | RUN_PASS | `Workbench.client.spec.tsx` |
 | F6-02 | Ready and blocked panels render authorized resources and issue codes | RUN_PASS | `Workbench.client.spec.tsx` |
-| F6-03 | Server-sent job streaming | NOT_RUN | panel refreshes on user action |
+| F6-03 | Job status updates while queued or running | RUN_PASS | 2-second panel polling in `Workbench.client.spec.tsx` |
 | F6-04 | Model tools read resources and run jobs through a runtime capability | RUN_PASS | `integration.capability.spec.ts`, `gateway.integration.spec.ts`, `tool-integration` client tests |
 | F7-01 | Real W3 dual-user fusion isolation | BLOCKED | no real tenant or host system |
 | F7-02 | Revocation/logout mid-job stops the old container | RUN_PASS | identity `isSessionActive` test and reaper case in `integration.service.spec.ts` |
