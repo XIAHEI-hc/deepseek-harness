@@ -488,6 +488,16 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 浏览器自动化原生往返 | **PASS：8 assertions** |
 | 跨用户浏览器上下文隔离 | **PASS：13 assertions** |
 
+## 3.32 最终发布包安全/隔离/空闲回收演练（实测）
+
+证据 [evidence/final-security-drill.log](evidence/final-security-drill.log)。
+
+- 旧启动入口：未认证 `/?token=legacy` 返回 302 到登录；`Authorization: Bearer` 访问 `/api/runtime/me` 返回 401；直接访问用户 Runtime 的 `?token=legacy` 与无断言请求均为 401（runtime overlay 已禁用 authentication-token）。
+- 用户容器：`User=1000:1000`，CPU 1 core、内存 2GB、pids 512，仅加入 `dsh-private`，无发布端口。
+- 挂载仅 8 项：6 个用户空间目录（可写）+ Gateway 公钥（只读）+ runtime overlay（只读）；无 Docker socket、无宿主根目录、无 Gateway 私钥。
+- 容器环境只含公钥路径与断言事实（issuer/audience/kid/时间窗），无平台数据库/会话/私钥变量。
+- 空闲回收：`DSH_RUNTIME_IDLE_SECONDS=8` 后 Runtime 自动 STOPPED、容器停止；用户空间目录全部保留；下一次请求从持久化空间重新启动并 READY。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -582,6 +592,7 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 22:28 | 最终安装栈 W3 浏览器 A/B 左下角姓名 | PASS（Windows Chromium，User A/User B，证据 `evidence/browser-w3-installed.log` 与截图） |
 | 22:35 | 多窗口复用、共享历史、platform 重启恢复（W3 form token） | PASS（同身份同用户同 Runtime、重启后 Session/姓名/Runtime 仍有效，证据 `evidence/reuse-restart.log`） |
 | 22:45 | 最终 HEAD 回归探针（Agent/WS/Job/MCP/Browser） | PASS：22+10+11+8+8+13 assertions（证据 `evidence/final-probes.log`） |
+| 22:52 | 最终发布包安全/挂载/空闲回收演练 | PASS（旧 token 401、8 挂载无 socket、uid1000、空闲停止后空间保留并可重启，证据 `evidence/final-security-drill.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 
