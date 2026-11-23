@@ -48,7 +48,7 @@ ACL 以内部 user id、W3 subject 或 W3 uid 为键，值只能是 `list`、`re
 
 工作区是平台生成的逻辑 id，物理路径由服务端拼装。读取权限与工作区写入权限正交：用户可以在工作区 A 读取资源 S，切换到 B 后仍可读取同一 S，但新 Job 只写 B；已启动 Job 的输出目录不会因切换而改变。
 
-Job 记录 `owner_user_id`、`session_id`、`workspace_id`、输入快照 id、语言、脚本哈希、状态与时间。输出只从当前工作区的 `<workspace>/jobs/<jobId>` 收集，符号链接、非普通文件和超限文件被拒绝。产物记录 `sha256`、MIME、大小和 `downloadScope: owner`；下载前重新校验归属与哈希。
+Job 记录 `owner_user_id`、`session_id`、`workspace_id`、输入快照 id、语言、脚本哈希、状态与时间。输出只从当前工作区的 `<workspace>/jobs/<jobId>` 收集，符号链接、非普通文件和超限文件被拒绝。产物记录 `sha256`、MIME、大小和 `downloadScope: owner`；下载前重新校验归属与哈希，并返回 `x-artifact-sha256` 与 `x-artifact-job-id`。
 
 ## 5. HTTP 路由
 

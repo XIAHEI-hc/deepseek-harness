@@ -48,7 +48,7 @@ A snapshot is immutable after write and records `system_id`, `resource_id`, `sou
 
 A workspace is a platform-generated logical id; the physical path is assembled by the service. Read permission and workspace write permission are orthogonal: a user may read resource S in workspace A and still read the same S after switching to B, but a new Job writes only to B; an already-started Job's output directory never moves because of a switch.
 
-A Job records `owner_user_id`, `session_id`, `workspace_id`, input snapshot ids, language, script hash, status, and timestamps. Outputs are collected only from the current workspace's `<workspace>/jobs/<jobId>`; symlinks, non-regular files, and oversized files are refused. An artifact records `sha256`, MIME, size, and `downloadScope: owner`; download re-checks ownership and hash.
+A Job records `owner_user_id`, `session_id`, `workspace_id`, input snapshot ids, language, script hash, status, and timestamps. Outputs are collected only from the current workspace's `<workspace>/jobs/<jobId>`; symlinks, non-regular files, and oversized files are refused. An artifact records `sha256`, MIME, size, and `downloadScope: owner`; download re-checks ownership and hash and returns `x-artifact-sha256` plus `x-artifact-job-id`.
 
 ## 5. HTTP routes
 

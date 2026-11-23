@@ -448,6 +448,8 @@ class PlatformIntegrationService implements IntegrationService {
           'content-length': String(bytes.byteLength),
           'content-disposition': `attachment; filename="${filename.replaceAll(/[^A-Za-z0-9._-]/gu, '_')}"`,
           'x-content-type-options': 'nosniff',
+          'x-artifact-sha256': artifact.sha256,
+          'x-artifact-job-id': artifact.jobId,
           'cache-control': 'no-store',
         },
         bodyBytes: bytes,

@@ -27,7 +27,7 @@ This table records what this branch actually exercised. `RUN_PASS` means the nam
 | F4-02 | HTTP adapter refuses redirects, metadata hosts, and oversized bodies | RUN_PASS | `integration.http-adapter.spec.ts` |
 | F5-01 | Snapshot hash, source version, grant record, and epoch are stored | RUN_PASS | `integration.service.spec.ts` |
 | F5-02 | Workspace switch reads the same snapshot and writes only the selected workspace | RUN_PASS | `integration.service.spec.ts` |
-| F5-03 | Artifact download re-checks owner and hash | RUN_PASS | `integration.service.spec.ts` |
+| F5-03 | Artifact download re-checks owner and hash, and returns hash and job-id headers | RUN_PASS | `integration.service.spec.ts` asserts owner scope and `x-artifact-sha256`/`x-artifact-job-id` |
 | F5-04 | Permission epoch change refuses an old snapshot | RUN_PASS | `integration.service.spec.ts` |
 | F5-05 | Explicit cancellation is not overwritten by the container exit | RUN_PASS | `integration.service.spec.ts` cancellation race case |
 | F5-06 | Platform-wide active-job limit returns 429 | RUN_PASS | `integration.service.spec.ts` global limit case |

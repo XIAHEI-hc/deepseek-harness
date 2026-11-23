@@ -166,6 +166,8 @@ describe('analysis jobs', () => {
     const artifactId = requireString(artifacts[0] ?? {}, 'id')
     const download = await callFusion(environment.service, sessionFor(USER_A), 'GET', `/api/integration/artifacts/${artifactId}/download`)
     expect(download.status).toBe(200)
+    expect(download.headers['x-artifact-sha256']).toMatch(/^[0-9a-f]{64}$/u)
+    expect(download.headers['x-artifact-job-id']).toBe(jobId)
     expect(new TextDecoder().decode(download.bytes)).toContain('dsh-analysis-')
     const audit = await callFusion(environment.service, sessionFor(USER_A), 'GET', `/api/integration/audit?jobId=${jobId}`)
     expect(audit.status).toBe(200)

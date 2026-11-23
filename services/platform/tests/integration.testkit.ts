@@ -226,6 +226,7 @@ export interface TestResponse {
   readonly status: number
   readonly body: Record<string, unknown> | undefined
   readonly bytes: Uint8Array | undefined
+  readonly headers: Readonly<Record<string, string>>
 }
 
 /**
@@ -252,13 +253,14 @@ export async function callFusion(
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   }
   const result: PlatformHttpResult | undefined = await service.handle(request, session)
-  if (result === undefined) return { status: 0, body: undefined, bytes: undefined }
+  if (result === undefined) return { status: 0, body: undefined, bytes: undefined, headers: {} }
   const bodyValue: unknown = result.body === undefined ? undefined : JSON.parse(result.body)
   if (bodyValue !== undefined && (typeof bodyValue !== 'object' || bodyValue === null || Array.isArray(bodyValue))) {
     throw new Error('fusion test response body is not an object')
   }
   return {
     status: result.status,
+    headers: result.headers ?? {},
     body: bodyValue === undefined ? undefined : bodyValue as Record<string, unknown>,
     bytes: result.bodyBytes,
   }

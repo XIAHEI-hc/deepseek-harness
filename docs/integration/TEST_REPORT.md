@@ -30,7 +30,7 @@ Records commands and results actually executed; unexecuted items are explicitly 
 - registry: duplicate system id, path traversal, credentials in baseUrl, write actions.
 - preflight: missing systems file, overlapping roots, process runner, missing image, production Mock system.
 - adapters: per-user ACL isolation, cross-connector refusal, redirect refusal, response size cap, metadata host refusal, ETag as source version.
-- service: only authorized resources are discoverable; unauthorized snapshot 403; hash and source version; the same snapshot is readable after a workspace switch while outputs stay separate; Job success/failure; cross-user Job/artifact 404; changed permission epoch refused.
+- service: only authorized resources are discoverable; unauthorized snapshot 403; hash and source version; the same snapshot is readable after a workspace switch while outputs stay separate; Job success/failure; cross-user Job/artifact 404; download hash/job-id headers; changed permission epoch refused.
 - gateway: unauthenticated 401, missing CSRF 403, cross-origin 403, authenticated forwarding, disabled 404 without falling into the native proxy.
 - workbench: hidden without the API, launcher/panel rendering, authorized resource listing, snapshot selection, blocked issue codes, CSRF on mutations.
 - runtime capability: mint/verify/expiry/tamper, gateway bearer route without a browser session, runtime environment injection, and model tool transport.
