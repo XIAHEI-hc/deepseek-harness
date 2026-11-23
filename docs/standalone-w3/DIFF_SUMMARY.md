@@ -44,6 +44,7 @@
 | `services/platform/src/runtime/*`、`app.ts` | 显式 `runtimeEnv` 注入（进程后端）：内嵌部署/探针为 Runtime 提供模型端点或测试凭据；容器后端拒绝该注入，宿主敏感环境仍不会隐式继承 |
 | `services/platform/src/identity/{store,migrations,http,ratelimit}.ts` | 身份库 migration v2 `dsh_audit_events`；登录/注销/限流/管理员操作审计；按客户端地址的登录滑动窗口限流（429 + Retry-After） |
 | `services/platform/src/admin/audit.ts`、`main.ts` | `admin audit list [--limit] [--offset]` 只读输出审计流 |
+| `services/platform/src/admin/runtime.ts`、`main.ts` | `admin runtime status (--user|--subject|--all)` 只读输出 Runtime 状态/generation/runtimeId/错误码 |
 
 ## 3. 新增：平台身份前端插件
 

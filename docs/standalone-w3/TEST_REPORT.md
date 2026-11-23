@@ -356,6 +356,15 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 - `admin audit list --limit 10` 实测输出 JSON 行（含限流与登录记录）。
 - 单元测试：平台 **209 passed / 1 skipped**，新增审计与限流用例（身份 Mock、管理操作、迁移版本）。
 
+## 3.19 管理端 Runtime 状态只读查询（实测）
+
+证据 [evidence/admin-runtime.log](evidence/admin-runtime.log)。
+
+- `admin runtime status --all` 读取 Supervisor 的 `runtime.sqlite`，输出 userId/state/desiredState/generation/runtimeId/imageDigest/lastErrorCode/lastActivityAt/updatedAt。
+- 实测打开一个用户 Runtime 后输出 `state=READY, generation=1, runtimeId=proc-…`。
+- 选择器支持 `--user`、`--subject`、`--all`；缺省/歧义/未知选择器返回 2 与明确错误；单元测试覆盖四种情况。
+- 强制重启子命令仍待补（OPEN_ISSUES）。
+
 ## 4. 仓库级检查
 
 | 检查 | 命令 | 结果 |
@@ -438,6 +447,7 @@ pwsh -File deploy/scripts/verify-browser-isolation.ps1   # 双用户上下文隔
 | 16:58 | 原生 MCP stdio 工具往返（Mock LLM + 真实 Runtime） | **PASS：8 assertions**（证据 `evidence/mcp-native/`） |
 | 17:58 | 浏览器自动化原生往返 + 双用户上下文隔离（真实 Chromium） | **PASS：8 + 13 assertions**（证据 `evidence/browser-native/`、`browser-isolation/`） |
 | 18:15 | 身份审计表 + 登录限流 + `admin audit list` | PASS（429/Retry-After + 审计行，证据 `evidence/admin-audit.log`） |
+| 18:22 | 管理端 Runtime 状态只读查询 `admin runtime status` | PASS（证据 `evidence/admin-runtime.log`） |
 | 13:26 | 真实容器隔离 probe（WSL Docker） | **PASS：60 assertions**（容器/挂载/限额/空闲回收/adopt/数据保留） |
 | 13:35 | 旧历史数据归属迁移（admin migrate-home） | PASS：dry-run/confirm/manifest/未知用户拒绝，单测 10 例 |
 

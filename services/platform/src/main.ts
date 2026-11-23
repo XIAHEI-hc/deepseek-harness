@@ -12,6 +12,7 @@
 import { createPlatformApp } from './app.ts'
 import { listAuditEvents } from './admin/audit.ts'
 import { migrateHome, MigrationError } from './admin/migrate-home.ts'
+import { readRuntimeStatus } from './admin/runtime.ts'
 import { disableUser, enableUser, revokeAllUserSessions, UserAdminError, type UserAdminRequest } from './admin/users.ts'
 import { loadPlatformConfig, PlatformConfigError, type PlatformConfig } from './config.ts'
 
@@ -77,6 +78,9 @@ function printAdminHelp(): number {
     '',
     '  audit list [--limit <n>] [--offset <n>]',
     '      print the newest identity audit events as JSON (default limit 100)',
+    '',
+    '  runtime status (--user <user-id> | --subject <w3-subject> | --all)',
+    '      print runtime state, generation, backend id, and last failure code',
     '',
   ].join('\n'))
   return 0
@@ -168,6 +172,28 @@ async function runAdmin(argv: readonly string[], config: PlatformConfig): Promis
       return 2
     }
     return runAuditList(argv, config)
+  }
+  if (argv[0] === 'runtime') {
+    if (argv[1] !== 'status') {
+      process.stderr.write(`unknown admin command ${JSON.stringify(['runtime', argv[1]])}\n`)
+      return 2
+    }
+    try {
+      const rows = await readRuntimeStatus({
+        identity: config.identity,
+        runtime: config.runtime,
+        dataDir: config.dataDir,
+        realm: config.realm,
+        userId: flagValue(argv, '--user'),
+        subject: flagValue(argv, '--subject'),
+        all: argv.includes('--all'),
+      })
+      process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`)
+      return 0
+    } catch (error) {
+      process.stderr.write(`admin runtime status: ${error instanceof Error ? error.message : String(error)}\n`)
+      return 2
+    }
   }
   if (argv[0] !== 'migrate-home') {
     process.stderr.write(`unknown admin command ${JSON.stringify(argv[0])}\n`)

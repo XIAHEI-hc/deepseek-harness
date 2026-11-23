@@ -13,7 +13,7 @@
 
 ## 2. 代码缺口（后续迭代，非阻塞当前验收）
 
-1. **管理控制台/CLI**：已提供 `admin migrate-home`、`admin user disable|enable`、`admin session revoke-all`、`admin audit list`；仍需补查看 Runtime 状态/强制重启的 `admin` 子命令。
+1. **管理控制台/CLI**：已提供 `admin migrate-home`、`admin user disable|enable`、`admin session revoke-all`、`admin audit list`、`admin runtime status`；仍需补强制重启 Runtime 的 `admin` 子命令（当前故障恢复通过用户重试入口）。
 2. **登录限流/防爆破**：已实现按客户端地址的进程内滑动窗口（`AUTH_LOGIN_RATE_LIMIT_*`，429 + Retry-After + 审计）；多副本部署需在共享反代执行同等额度。
 3. **W3 单点退出 / PKCE**：依赖 W3 支持情况，未在真实环境验证。
 4. **Session 清理任务**：过期 Session/OAuth state 的定期清理未建 cron；表上有索引，可后续加定时清理。
