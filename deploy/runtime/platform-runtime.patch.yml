@@ -35,6 +35,7 @@
   config:
     apiUrl: !!js process.env.DSH_INTEGRATION_API_URL
     capability: !!js process.env.DSH_INTEGRATION_CAPABILITY_TOKEN
+    stateFile: !!js dshHomePath('state', 'fusion-sessions.json')
 
 # Per-user full-text Session search. The shipped web profile keeps content
 # search disabled; the platform enables one SQLite index under this user's own

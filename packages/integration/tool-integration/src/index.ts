@@ -10,6 +10,8 @@
  * @module @deepseek-ai/dsh-tool-integration
  */
 
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
@@ -47,6 +49,8 @@ export interface Config {
   timeoutMs?: number
   /** Cap on resource and artifact text returned to the model. */
   maxContentChars?: number
+  /** Optional file persisting fusion-session ids across runtime restarts. */
+  stateFile?: string
 }
 
 export const Config: z<Config> = z.object({
@@ -54,6 +58,7 @@ export const Config: z<Config> = z.object({
   capability: z.string().default(''),
   timeoutMs: z.number().default(DEFAULT_INTEGRATION_TIMEOUT_MS),
   maxContentChars: z.number().default(DEFAULT_INTEGRATION_MAX_CONTENT_CHARS),
+  stateFile: z.string().default(''),
 })
 
 /** Complete configuration after defaults. */
@@ -69,6 +74,36 @@ const OBJECT_OUTPUT = { type: 'object', additionalProperties: true } as const
  */
 export function fusionToolAllowed(name: string): boolean {
   return name.startsWith('integration_')
+}
+
+/**
+ * Load persisted fusion-session ids.
+ * @param file - state file path; an empty path keeps the marker in memory only.
+ * @returns the marked session ids.
+ */
+export function loadFusionSessions(file: string): Set<string> {
+  if (file === '') return new Set()
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'))
+    if (!Array.isArray(parsed)) return new Set()
+    return new Set(parsed.filter((entry): entry is string => typeof entry === 'string'))
+  } catch {
+    // A missing or malformed marker file starts with no fusion sessions.
+    return new Set()
+  }
+}
+
+/**
+ * Persist fusion-session ids atomically.
+ * @param file - state file path; an empty path keeps the marker in memory only.
+ * @param sessions - marked session ids.
+ */
+export function saveFusionSessions(file: string, sessions: ReadonlySet<string>): void {
+  if (file === '') return
+  mkdirSync(dirname(file), { recursive: true })
+  const temporary = `${file}.tmp`
+  writeFileSync(temporary, JSON.stringify([...sessions]), { mode: 0o600 })
+  renameSync(temporary, file)
 }
 
 /** Render one canonical JSON value as model text. */
@@ -196,10 +231,12 @@ export function apply(ctx: Context, config: Config): void {
   // A session becomes a fusion-analysis session on its first fusion tool call.
   // From then on only integration tools are admitted: shell, MCP, PTY, SSH,
   // subagent, Schedule, dynamic plugins, and browser tools stay unavailable.
-  const fusionSessions = new Set<string>()
+  const fusionSessions = loadFusionSessions(resolved.stateFile)
   const markFusion = (exec: ToolRunContext): void => {
     const sessionId = exec.agent?.session.id
-    if (sessionId !== undefined) fusionSessions.add(sessionId)
+    if (sessionId === undefined || fusionSessions.has(sessionId)) return
+    fusionSessions.add(sessionId)
+    saveFusionSessions(resolved.stateFile, fusionSessions)
   }
   ctx.on('tools/pre-execute', async (exec, next): Promise<PreToolDecision> => {
     const sessionId = exec.agent?.session.id
@@ -217,6 +254,7 @@ export function apply(ctx: Context, config: Config): void {
     description: 'Enter fusion analysis mode: only integration_* tools remain available in this session.',
     handler: (invocation) => {
       fusionSessions.add(invocation.agent.session.id)
+      saveFusionSessions(resolved.stateFile, fusionSessions)
       return { kind: 'success' }
     },
   })

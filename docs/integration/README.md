@@ -98,7 +98,7 @@ Actual commands and results are in [TEST_REPORT.md](TEST_REPORT.md); per-gate st
 
 Not complete, and must not be claimed production-ready:
 
-- `/fusion` is an explicit opt-in; without it, the guard activates only on the first `integration_*` call. The marker is process-local rather than a physical sandbox rule.
+- `/fusion` is an explicit opt-in; without it, the guard activates only on the first `integration_*` call. The marker persists under `DSH_HOME` but is an application guard, not a physical sandbox rule.
 - A controlled egress broker is not implemented; analysis containers can only use `--network none`.
 - Real W3 tenant A/B, a seven-day target-machine run, and internal Git are external `BLOCKED` items.
 - Production deployment, upgrade, backup, and rollback reuse the existing scripts; a fusion-specific rehearsal on the target machine has not run.

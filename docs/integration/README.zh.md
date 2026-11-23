@@ -98,7 +98,7 @@ GET  /api/integration/audit?jobId=...
 
 尚未完成、不得声称生产可用：
 
-- `/fusion` 是显式 opt-in；未使用它时，guard 只在首次 `integration_*` 调用后生效。标记是进程内的，不是物理沙箱规则。
+- `/fusion` 是显式 opt-in；未使用它时，guard 只在首次 `integration_*` 调用后生效。标记持久化在 `DSH_HOME` 下，但仍是应用层 guard，不是物理沙箱规则。
 - 受控 egress broker 未实现；分析容器只能 `--network none`。
 - 真实 W3 租户 A/B、目标机 7 天运行、内网 Git 属外部 `BLOCKED`。
 - 生产部署、升级、备份与回滚仅复用现有脚本，尚未在目标机完成融合专用演练。

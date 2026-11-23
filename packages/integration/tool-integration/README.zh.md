@@ -75,7 +75,7 @@ schema 与描述为每个融合 Runtime 的请求增加固定提示成本。工�
 <a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与后续工作
 
-- **融合 guard 是 opt-in 且进程内的** — `/fusion` 在首个动作前标记会话；未使用时首次 `integration_*` 调用才标记，因此更早的工具调用不会被追溯限制。Runtime 重启会丢失标记。
+- **融合 guard 是 opt-in 的** — `/fusion` 在首个动作前标记会话；未使用时首次 `integration_*` 调用才标记，因此更早的工具调用不会被追溯限制。标记持久化在 `DSH_HOME` 下，重启后仍有效。
 - **没有流式 Job 状态** — 模型轮询 `integration_job_status`。
 - **产物只按文本读取** — 二进制产物按 UTF-8 解码，可能不可读。
 - **没有连接器 URL 或业务写操作** — 工具不能直接调用宿主系统，也不能执行写操作。

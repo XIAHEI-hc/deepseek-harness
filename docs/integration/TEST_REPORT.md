@@ -13,7 +13,7 @@ Records commands and results actually executed; unexecuted items are explicitly 
 | `DSH_INTEGRATION_JOB_IMAGE=dsh-runtime:2026.11.23.7 bash deploy/scripts/verify-integration-isolation.sh` (WSL2 Ubuntu) | PASS | real Docker 29.7.2; read-only root, read-only inputs, writable workspace/scratch, uid 1000, `network none`, no Docker socket, no host deployment root |
 | `pnpm exec vitest run packages/client/ui-integration-workbench/tests` | PASS | 2 files, 9 tests: status/overview/CSRF parsing, unavailable/ready/blocked panel states |
 | `pnpm exec vitest run packages/client/ui-theme/tests` | PASS | 24 files, 183 tests: the new stylesheet satisfies radius, hairline, elevation, focus-ring, corner-shape, and scrollbar gates |
-| `pnpm exec vitest run packages/integration/tool-integration/tests` | PASS | 1 file, 6 tests: capability header, discovery, bounded reads, job start/status, stable API errors, and the fusion tool allowlist |
+| `pnpm exec vitest run packages/integration/tool-integration/tests` | PASS | 2 files, 8 tests: capability header, discovery, bounded reads, job start/status, API errors, allowlist, and persisted session markers |
 | `pnpm run test:gui` (full suite) | RUN_FAIL (environment) | 9/14127 failed: 6 were new-stylesheet rule violations (fixed; `ui-theme` re-run passed), 3 are unrelated host conditions (symlink EPERM, secret-mask timeout, pnpm pack timeout) |
 
 ## 2. Fusion unit/contract coverage
@@ -30,7 +30,7 @@ Records commands and results actually executed; unexecuted items are explicitly 
 - workbench: hidden without the API, launcher/panel rendering, authorized resource listing, snapshot selection, blocked issue codes, CSRF on mutations.
 - runtime capability: mint/verify/expiry/tamper, gateway bearer route without a browser session, runtime environment injection, and model tool transport.
 - session revocation: `isSessionActive` after logout, stale permission version refused, and a running job cancelled by the revocation sweep.
-- fusion tool guard: `/fusion` marks the session before the first action; only `integration_*` names are admitted afterwards.
+- fusion tool guard: `/fusion` marks the session before the first action; only `integration_*` names are admitted afterwards, and the marker survives a runtime restart.
 
 ## 3. Real-container negative evidence
 

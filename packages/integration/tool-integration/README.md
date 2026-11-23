@@ -75,7 +75,7 @@ The tool schemas are stable for a runtime generation, so they do not invalidate 
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **The fusion guard is opt-in and process-local** — `/fusion` marks the session before the first action; without it the first `integration_*` call marks it, so an earlier tool call is not retroactively restricted. A runtime restart forgets the marker.
+- **The fusion guard is opt-in** — `/fusion` marks the session before the first action; without it the first `integration_*` call marks it, so an earlier tool call is not retroactively restricted. The marker persists under `DSH_HOME` across restarts.
 - **No streaming job status** — the model polls `integration_job_status`.
 - **Text-only artifact reads** — binary artifacts are decoded as UTF-8 and may be unreadable.
 - **No connector URL or business write** — the tools cannot call a host system directly or perform a write action.
