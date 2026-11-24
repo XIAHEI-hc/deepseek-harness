@@ -1,0 +1,9 @@
+PASS 1: seeded the user web profile with the Playwright MCP browser-use provider
+PASS 2: the user runtime starts with browser automation enabled
+PASS 3: the identity creates a Session whose browser MCP connection initializes
+PASS 4: the runtime exposes a model catalog
+PASS 5: the identity selects a model for its Session
+PASS 6: the scripted model submits the prompt turn
+PASS 7: the model-facing browser tool name is mcp__playwright-mcp__browser_navigate
+PASS 8: the per-Session Chromium navigated and returned the page content to the model turn
+BROWSER NATIVE PASS: 8 assertions

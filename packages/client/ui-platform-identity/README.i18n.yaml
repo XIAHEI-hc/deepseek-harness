@@ -1,0 +1,64 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/client/ui-platform-identity/README.md
+/:
+  en: 0607f1d4974def9f
+  zh: 283574437a2a6a19
+/deepseek-ai-dsh-client-ui-platform-identity:
+  en: 1a4b2bdf279bf026
+  zh: ecb4252f5add8a0a
+/deepseek-ai-dsh-client-ui-platform-identity/summary:
+  en: 15dabe5131634dc1
+  zh: 10be1c4d84df97b4
+/deepseek-ai-dsh-client-ui-platform-identity/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-client-ui-platform-identity/use-this-package:
+  en: 8d3a7dbe90ffd926
+  zh: 56c891b2d5717b49
+/deepseek-ai-dsh-client-ui-platform-identity/use-this-package/the-platform-entry:
+  en: 10fbc978f247a300
+  zh: 76221d115e7ec095
+/deepseek-ai-dsh-client-ui-platform-identity/use-this-package/personal-runtime-status:
+  en: a3398510924be25b
+  zh: 816f667232f6721b
+/deepseek-ai-dsh-client-ui-platform-identity/use-this-package/sign-out-and-local-state:
+  en: c04f0f3e5a9ce063
+  zh: 255629c25c9175b8
+/deepseek-ai-dsh-client-ui-platform-identity/understand-the-implementation:
+  en: 42b15ac6321706aa
+  zh: 4d0224a34e7cd519
+/deepseek-ai-dsh-client-ui-platform-identity/understand-the-implementation/identity-state-machine:
+  en: 4fee4762437be139
+  zh: 3d8ce5fed84103a5
+/deepseek-ai-dsh-client-ui-platform-identity/understand-the-implementation/slot-and-layout-ownership:
+  en: 13ae010e04c294af
+  zh: 5b0674866573d80b
+/deepseek-ai-dsh-client-ui-platform-identity/understand-the-implementation/copy-and-styling:
+  en: 33a0026b22e071a0
+  zh: 41304af6eeb38430
+/deepseek-ai-dsh-client-ui-platform-identity/further-exploration:
+  en: 25248acadcb98753
+  zh: f853ba4cc2e35a36
+/deepseek-ai-dsh-client-ui-platform-identity/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-client-ui-platform-identity/model-experience/browser-only-platform-chrome:
+  en: 4cca2c72b4cb1f1d
+  zh: b0fcf0320e197273
+/deepseek-ai-dsh-client-ui-platform-identity/model-experience/browser-only-platform-chrome/what-the-model-sees:
+  en: f30677b1eb5cf4ac
+  zh: 0990c616f69543ff
+/deepseek-ai-dsh-client-ui-platform-identity/model-experience/browser-only-platform-chrome/token-effect:
+  en: f87f4619cbf8b40c
+  zh: 23768674aebc47f7
+/deepseek-ai-dsh-client-ui-platform-identity/model-experience/browser-only-platform-chrome/kv-cache-effect:
+  en: bd06a80f04459052
+  zh: 42bb94fc6d6c42de
+/deepseek-ai-dsh-client-ui-platform-identity/known-limitations-and-deferred-work:
+  en: a1a8c4968344b466
+  zh: d34c3c652d25f294
+/deepseek-ai-dsh-client-ui-platform-identity/known-limitations-and-deferred-work/dev-note:
+  en: d2d9a0cb564bf65b
+  zh: 1e9bd00d06c17b11

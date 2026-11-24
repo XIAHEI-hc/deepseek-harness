@@ -58,6 +58,7 @@ export type {
 export type { SettingsDocumentActionInjected, SettingsDocumentActionProps } from './SettingsDocumentAction.tsx'
 export type { SettingsDocumentState } from './settings-document-store.ts'
 export { SettingsDocumentStore } from './settings-document-store.ts'
+export type { SettingsPlatformLauncherOwnerProps } from './shell-contract.ts'
 export type { SettingsKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -237,6 +238,7 @@ export function apply(ctx: ClientContext): void {
         children: {
           'settings.launcher': { kind: 'single', scope: 'root' },
           'settings.notice': { kind: 'single', scope: 'root' },
+          'settings.platform-launcher': { kind: 'single', scope: 'root' },
           'settings.trigger': { kind: 'single', scope: 'root' },
           'settings.header': { kind: 'single', scope: 'root' },
           'settings.action': { kind: 'list', scope: 'root' },

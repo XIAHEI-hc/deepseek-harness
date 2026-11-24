@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "systems": [
+    {
+      "id": "mock-erp",
+      "name": "Offline Mock ERP",
+      "adapter": "mock",
+      "mockResources": [
+        {
+          "id": "sales-2026",
+          "name": "Sales 2026",
+          "resourceType": "dataset",
+          "version": "3",
+          "classification": "internal",
+          "acl": {
+            "uid-10001": ["list", "read", "export"],
+            "uid-10002": ["list", "read", "export"]
+          },
+          "content": {
+            "rows": [
+              { "id": 1, "amount": 42 },
+              { "id": 2, "amount": 7 }
+            ]
+          }
+        },
+        {
+          "id": "engineering-source",
+          "name": "Read-only source snapshot",
+          "resourceType": "source",
+          "version": "1",
+          "classification": "confidential",
+          "acl": {
+            "uid-10001": ["read"]
+          },
+          "content": "// offline source snapshot fixture\n"
+        }
+      ]
+    }
+  ]
+}

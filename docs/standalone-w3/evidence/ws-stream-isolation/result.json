@@ -1,0 +1,12 @@
+{
+  "sessionA": "session-6536b15f-1337-4384-8b25-8ba79d56a866",
+  "sessionB": "session-a3fb0b68-b792-4400-8dc9-468448bb6cdd",
+  "titleA": "A 的实时 WebSocket 标题",
+  "frames": 2,
+  "cross": {
+    "frames": [
+      "{\"type\":\"error\",\"streamId\":\"probe-stream\",\"error\":{\"code\":\"session/not-found\",\"message\":\"session \\\"session-6536b15f-1337-4384-8b25-8ba79d56a866\\\" not found\",\"details\":{\"sessionId\":\"session-6536b15f-1337-4384-8b25-8ba79d56a866\"}}}"
+    ],
+    "closed": false
+  }
+}

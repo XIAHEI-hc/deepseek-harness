@@ -1,0 +1,14 @@
+PASS 1: both identities have the Playwright MCP browser-use provider in their own profile
+PASS 2: identity A runtime is READY with browser automation enabled
+PASS 3: identity A creates a Session whose browser MCP connection initializes
+PASS 4: identity A runtime exposes a model catalog
+PASS 5: identity A selects a model for its Session
+PASS 6: A's first browser visit has no cookie (fresh per-Session Chromium)
+PASS 7: A's second browser visit sees A's own cookie (state persists inside A's Session browser)
+PASS 8: identity B runtime is READY with browser automation enabled
+PASS 9: identity B creates a Session whose browser MCP connection initializes
+PASS 10: identity B runtime exposes a model catalog
+PASS 11: identity B selects a model for its Session
+PASS 12: B's first browser visit sees no cookie, so A's browser state never reaches B
+PASS 13: both browser turns use the native mcp__playwright-mcp__browser_navigate tool
+BROWSER ISOLATION PASS: 13 assertions

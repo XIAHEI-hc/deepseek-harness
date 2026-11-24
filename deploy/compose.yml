@@ -1,0 +1,90 @@
+# DSH 多用户平台的生产编排。
+#
+# 一个公开入口（platform 服务，内含 Gateway/Identity/Runtime Manager/Supervisor），
+# 用户 Runtime 由 supervisor 通过宿主 docker 创建，只挂在私有网络 dsh-private，
+# 不发布任何端口。宿主目录 /srv/dsh 以相同路径挂进 platform 容器，用户容器再由
+# 宿主 docker 以同样的宿主路径挂载，从而避免容器内路径与宿主路径不一致。
+#
+# 首次部署：bash deploy/scripts/init.sh && docker compose -f deploy/compose.yml up -d --build
+# 详见 docs/standalone-w3/DEPLOYMENT.md。
+
+name: dsh-platform
+
+services:
+  platform:
+    build:
+      context: ..
+      dockerfile: deploy/platform/Dockerfile
+    image: dsh-platform:${DSH_PLATFORM_VERSION:-local}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DSH_PLATFORM_DATA_DIR: /srv/dsh/management
+      DSH_PLATFORM_REPO_ROOT: /srv/dsh/current
+      DSH_RUNTIME_ROOT: /srv/dsh/spaces
+      DSH_RUNTIME_PATCH_FILE: /srv/dsh/current/deploy/runtime/platform-runtime.patch.yml
+      DSH_INTEGRATION_DATA_DIR: /srv/dsh/management/integration
+      DSH_INTEGRATION_SYSTEMS_FILE: /srv/dsh/management/integration/systems.json
+      DSH_GATEWAY_LISTEN_HOST: 0.0.0.0
+      DSH_GATEWAY_LISTEN_PORT: "8080"
+      DSH_GATEWAY_SIGNING_PRIVATE_KEY_FILE: /srv/dsh/management/keys/gateway-ed25519-private.pem
+      DSH_GATEWAY_PUBLIC_KEY_FILE: /srv/dsh/management/keys/gateway-ed25519-public.pem
+      DSH_RUNTIME_KIND: container
+      DSH_RUNTIME_NETWORK: dsh-private
+    ports:
+      - "${DSH_GATEWAY_LISTEN_PORT:-8080}:8080"
+    volumes:
+      # 平台管理数据、Gateway 密钥、用户空间、部署版本目录。
+      - /srv/dsh:/srv/dsh
+      # Supervisor 需要 docker CLI 与 socket 管理用户容器；用户 Runtime 不挂载它。
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - default
+      - dsh-private
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+  # Optional fusion egress broker. It is the only member of the internal
+  # analysis network with an external route; exact allowlisted host:port pairs
+  # are proxied. The service publishes no port.
+  fusion-broker:
+    build:
+      context: ./integration/broker
+    image: dsh-fusion-broker:${DSH_PLATFORM_VERSION:-local}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: "3128"
+      DSH_FUSION_EGRESS_ALLOWLIST: ${DSH_FUSION_EGRESS_ALLOWLIST:-}
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    user: "1000:1000"
+    networks:
+      - default
+      - dsh-fusion-egress
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3128/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  dsh-private:
+    external: true
+  dsh-fusion-egress:
+    internal: true

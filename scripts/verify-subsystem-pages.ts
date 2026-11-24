@@ -20,6 +20,7 @@ export const GROUPS_WITHOUT_SUBSYSTEM_PAGE: Readonly<Record<string, string>> = {
   sdk: 'Out-of-process protocol and client packages whose package READMEs own the SDK contracts.',
   'test-support': 'Repository test harnesses; docs/testing.md owns the testing policy they serve.',
   util: 'Low-level primitives whose business semantics remain with their consuming subsystems.',
+  integration: 'Platform fusion contracts are owned by docs/integration/README.md and services/platform/ARCHITECTURE.md.',
 }
 
 /** Result of auditing package-group subsystem documentation. */

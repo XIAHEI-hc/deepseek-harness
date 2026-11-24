@@ -1,0 +1,102 @@
+# 最终 HEAD 回归探针
+
+
+===== verify-agent-isolation.ps1 =====
+{"event":"runtime.ready","userRef":"bbbe3390b5a8","generation":1}
+{"event":"runtime.ready","userRef":"b33f0cb51b03","generation":1}
+PASS 1: both identities reach their native runtime UI
+PASS 2: both per-identity runtimes are READY before the agents start
+PASS 3: headless agent exited successfully
+PASS 4: agent executed the mocked tool call inside its runtime workspace
+PASS 5: agent reported its Session id
+PASS 6: headless agent exited successfully
+PASS 7: agent executed the mocked tool call inside its runtime workspace
+PASS 8: agent reported its Session id
+PASS 9: the two concurrent agents produced distinct Sessions
+PASS 10: agent Sessions carry native Session ids
+PASS 11: A's agent artifact exists in A's workspace
+PASS 12: B's agent artifact is absent from A's workspace
+PASS 13: B's agent artifact exists in B's workspace
+PASS 14: A's agent artifact is absent from B's workspace
+PASS 15: neither workspace contains the other identity artifact
+PASS 16: A's native Session list contains its agent Session
+PASS 17: A's native Session list does not contain B's agent Session
+PASS 18: B's native Session list contains its agent Session
+PASS 19: B's native Session list does not contain A's agent Session
+PASS 20: A cannot read B's agent Session state by id
+PASS 21: A cannot page B's agent Session events by id
+PASS 22: A's artifact carries A's agent content
+AGENT ISOLATION PASS: 22 assertions
+
+===== verify-ws-stream-isolation.ps1 =====
+{"event":"runtime.ready","userRef":"6797adad9071","generation":1}
+PASS 1: identity a is signed in and its runtime is READY
+{"event":"runtime.ready","userRef":"4e484fab6f60","generation":1}
+PASS 2: identity b is signed in and its runtime is READY
+PASS 3: both identities create a native Session through the Gateway
+PASS 4: A's Session event stream stays open
+PASS 5: A renames its own Session through the Gateway
+PASS 6: A's Session stream receives its own rename event
+PASS 7: B's page never shows A's Session title
+PASS 8: B's Session stream request for A's Session is refused as not-found
+PASS 9: identity A signs out its browser session
+PASS 10: A's Session WebSocket is closed after sign-out
+WS STREAM ISOLATION PASS: 10 assertions
+
+===== verify-job-isolation.ps1 =====
+{"event":"runtime.ready","userRef":"6a4c69fe539f","generation":1}
+PASS 1: identity a is signed in and its runtime is READY
+{"event":"runtime.ready","userRef":"d0cdd1e69b6e","generation":1}
+PASS 2: identity b is signed in and its runtime is READY
+PASS 3: both identities create a native Session through the Gateway
+PASS 4: A reads the model catalog from its own runtime
+PASS 5: A selects a model for its Session
+PASS 6: A submits a prompt whose scripted model calls the background shell tool
+PASS 7: A's agent registered a background Job in A's runtime
+PASS 8: A's own job list contains its Job
+PASS 9: B's job list never contains A's Job
+PASS 10: B cannot kill A's Job by id
+PASS 11: A can kill its own Job
+JOB ISOLATION PASS: 11 assertions
+
+===== verify-mcp-native.ps1 =====
+{"event":"runtime.ready","userRef":"8b1f62948a36","generation":1}
+PASS 1: seeded the user web profile with one stdio MCP server
+PASS 2: the user runtime starts with the MCP manager configured
+PASS 3: the identity creates a native Session through the Gateway
+PASS 4: the runtime exposes a model catalog
+PASS 5: the identity selects a model for its Session
+PASS 6: the scripted model submits the prompt turn
+PASS 7: the model-facing MCP tool name is mcp__fixtures__add
+PASS 8: the MCP stdio server executed the call and returned 5 to the model turn
+MCP NATIVE PASS: 8 assertions
+
+===== verify-browser-native.ps1 =====
+{"event":"runtime.ready","userRef":"6c0c46e5aa00","generation":1}
+PASS 1: seeded the user web profile with the Playwright MCP browser-use provider
+PASS 2: the user runtime starts with browser automation enabled
+PASS 3: the identity creates a Session whose browser MCP connection initializes
+PASS 4: the runtime exposes a model catalog
+PASS 5: the identity selects a model for its Session
+PASS 6: the scripted model submits the prompt turn
+PASS 7: the model-facing browser tool name is mcp__playwright-mcp__browser_navigate
+PASS 8: the per-Session Chromium navigated and returned the page content to the model turn
+BROWSER NATIVE PASS: 8 assertions
+
+===== verify-browser-isolation.ps1 =====
+{"event":"runtime.ready","userRef":"b06fd99fe16f","generation":1}
+{"event":"runtime.ready","userRef":"913572789e74","generation":1}
+PASS 1: both identities have the Playwright MCP browser-use provider in their own profile
+PASS 2: identity A runtime is READY with browser automation enabled
+PASS 3: identity A creates a Session whose browser MCP connection initializes
+PASS 4: identity A runtime exposes a model catalog
+PASS 5: identity A selects a model for its Session
+PASS 6: A's first browser visit has no cookie (fresh per-Session Chromium)
+PASS 7: A's second browser visit sees A's own cookie (state persists inside A's Session browser)
+PASS 8: identity B runtime is READY with browser automation enabled
+PASS 9: identity B creates a Session whose browser MCP connection initializes
+PASS 10: identity B runtime exposes a model catalog
+PASS 11: identity B selects a model for its Session
+PASS 12: B's first browser visit sees no cookie, so A's browser state never reaches B
+PASS 13: both browser turns use the native mcp__playwright-mcp__browser_navigate tool
+BROWSER ISOLATION PASS: 13 assertions

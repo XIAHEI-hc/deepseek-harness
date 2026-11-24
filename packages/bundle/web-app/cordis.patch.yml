@@ -359,6 +359,18 @@
     - id: remote-connection
       name: '@deepseek-ai/dsh-client-remote-connection'
 
+    # Platform identity: the sidebar account entry and the personal-runtime
+    # ready/starting/failed overlay over the multi-user gateway. The native
+    # pages stay unchanged; without the gateway both contributions render nothing.
+    - id: ui-platform-identity
+      name: '@deepseek-ai/dsh-client-ui-platform-identity'
+
+    # Optional system fusion: a launcher and workbench over the platform
+    # `/api/integration/*` API. A deployment without fusion renders nothing;
+    # the native chat surface stays unchanged.
+    - id: ui-integration-workbench
+      name: '@deepseek-ai/dsh-client-ui-integration-workbench'
+
     - id: ui-settings-models
       name: '@deepseek-ai/dsh-client-ui-settings-models'
 

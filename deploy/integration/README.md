@@ -1,0 +1,103 @@
+# System-fusion deployment
+
+English | [中文](README.zh.md)
+
+This directory holds the optional host-fusion assets. The native W3 platform runs unchanged when `DSH_INTEGRATION_ENABLED=false`.
+
+## Prerequisites
+
+1. Linux host with Docker Engine and `docker compose`; the platform process needs the Docker CLI and socket to start analysis containers. Fusion preflight refuses a non-Linux host because bind-mount paths and isolation flags must be authoritative.
+2. `APP_ENV=production`, `AUTH_MODE=w3`, and `DSH_RUNTIME_KIND=container`.
+3. A fixed analysis image built from [`job/Dockerfile`](job/Dockerfile) with `bash deploy/scripts/build-integration-job-image.sh [tag]`, or an equivalent image with `/bin/sh` and `python3`.
+4. A connector registry copied from [`systems.http.example.json`](systems.http.example.json). Remove the example host and users before deployment. ACL keys may be the internal user id, the W3 subject, or the W3 uid; `uid` is the practical choice for administrators.
+5. Snapshot, workspace, and job roots on a persistent volume. They must be pairwise disjoint real directories; preflight refuses overlap or symlinks.
+6. A backup plan for `DSH_INTEGRATION_DATA_DIR`. Snapshots and job metadata are required for source tracing, not for the native chat history.
+
+## Enable
+
+```dotenv
+DSH_INTEGRATION_ENABLED=true
+DSH_INTEGRATION_SYSTEMS_FILE=/srv/dsh/management/integration/systems.json
+DSH_INTEGRATION_DATA_DIR=/srv/dsh/management/integration
+DSH_INTEGRATION_JOB_RUNNER_KIND=container
+DSH_INTEGRATION_JOB_IMAGE=dsh-analysis@sha256:<digest>
+DSH_INTEGRATION_JOB_NETWORK=none
+DSH_INTEGRATION_RUNTIME_API_URL=http://platform:8080
+```
+
+Restart the platform and read `GET /api/integration/status` as a signed-in user. `ready` means preflight passed. `blocked` lists stable issue codes; the detail needed to repair the deployment stays in the operator's configuration, not in the browser.
+
+The supervisor mints and injects the per-runtime capability token; do not set `DSH_INTEGRATION_CAPABILITY_TOKEN` in `.env` or copy it between users.
+
+## Disable
+
+Set `DSH_INTEGRATION_ENABLED=false` and restart. Fusion routes disappear, the metadata database and snapshots stay on disk, and no analysis container is started. Revoke active jobs before disabling if they must stop immediately.
+
+## Verify
+
+Run the real Docker gate on the deployment host:
+
+```bash
+DSH_INTEGRATION_JOB_IMAGE=dsh-analysis@sha256:<digest> \
+  bash deploy/scripts/verify-integration-isolation.sh
+```
+
+The gate inspects the daemon-resolved container and fails if the root is writable, the network is not `none`, capabilities or `no-new-privileges` are missing, the user is not the configured uid, a Docker socket or host deployment root is visible, or the input snapshot is writable.
+
+## Backup, upgrade, and rollback
+
+- `backup.sh` archives `management/`, which contains the fusion metadata database, snapshots, and job records; keep the same backup schedule as the native platform.
+- Upgrade with the existing `upgrade.sh`. It preserves `.env`, keys, user spaces, and `management/integration`; if `DSH_INTEGRATION_ENABLED=true`, it refuses to start when the pinned job image is not already loaded. Update `DSH_INTEGRATION_JOB_IMAGE` only after the new analysis image is imported and pinned by digest.
+- To roll back, set `DSH_INTEGRATION_ENABLED=false`, restart, confirm that no analysis container remains, then restore the previous platform release. Fusion snapshots and job records are additive and remain readable.
+- Disabling fusion is the emergency stop: it removes every fusion route and cancels active job containers while keeping native users and data untouched.
+
+## Operations status
+
+Use the platform container's read-only admin command to inspect fusion state without starting analysis work:
+
+```bash
+docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin integration status
+```
+
+It prints `enabled`, `state`, issue codes, registered system count, and metadata counts (`workspaces`, `snapshots`, `jobs`, `artifacts`, `activeJobs`). It does not start a container or expose host paths.
+
+Recent job records with owner, workspace, status, inputs, and error code:
+
+```bash
+docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin integration jobs --limit 50
+```
+
+Emergency stop for one queued or running job (removes the analysis container and records `ADMIN_CANCELLED`):
+
+```bash
+docker exec dsh-platform-platform-1 node services/platform/src/main.ts admin integration cancel --job <job-id> --confirm
+```
+
+## Offline fusion release
+
+```bash
+DSH_INTEGRATION_JOB_IMAGE=dsh-integration-job:2026.11.24 \
+  bash deploy/scripts/make-integration-release.sh 2026.11.24
+bash deploy/scripts/verify-integration-release.sh deploy/release/integration-2026.11.24 2026.11.24
+```
+
+The bundle contains the image tar, both registry examples, the job Dockerfile, the broker source, a disabled-by-default `fusion.env.example`, and checksums. It never copies `.env`, databases, snapshots, workspaces, or user data. Import the image on the target host, keep `DSH_INTEGRATION_ENABLED=false`, merge only the reviewed settings, then run `admin integration status`.
+
+## Controlled egress (optional)
+
+Jobs stay on `--network none` unless an administrator deploys the broker. The broker joins the internal `dsh-fusion-egress` network and one egress network; jobs can reach only the broker. Configure exact destinations, then point the job network and proxy at it:
+
+```dotenv
+DSH_INTEGRATION_JOB_NETWORK=dsh-fusion-egress
+DSH_INTEGRATION_EGRESS_BROKER_URL=http://fusion-broker:3128
+DSH_FUSION_EGRESS_ALLOWLIST=api.example.test:443,batch.example.test:8443
+```
+
+The broker never follows redirects, refuses any target not in the exact `host:port` allowlist, and rejects metadata hosts. Preflight probes `/healthz` and stays blocked if the broker is missing or unhealthy. Build it with `docker build -t dsh-fusion-broker:local deploy/integration/broker`; compose starts it without publishing a port. Verify the network path with `DSH_INTEGRATION_EGRESS_TEST_IMAGE=<node-image> bash deploy/scripts/verify-integration-egress.sh`.
+
+## Boundaries
+
+- Analysis containers receive only `/inputs` (read-only), `/work` (the selected workspace, read-write), and `/scratch` (job-private, read-write). `/app`, the platform configuration, and `/secrets` are never mounted.
+- Jobs have no network by default. A dedicated network is accepted only with a healthy allowlisted broker; the job container itself has no direct egress.
+- The connector registry is administrator-owned. A request selects an existing endpoint id; it never supplies a URL, host, or action outside the configured read actions.
+- Mock connectors are development fixtures. Production preflight refuses them.

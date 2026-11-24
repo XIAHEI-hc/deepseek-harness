@@ -1,0 +1,20 @@
+# 最终发布包 2026.11.23.6
+release=2026.11.23.6
+built_at=2026-11-23T21:57Z
+
+--- SHA256SUMS ---
+41f34abf324c75324b032c92d81d4914023b982577d7e410f472432f439c0c48  dsh-runtime-2026.11.23.6.tar
+46965057414b24cf1d3e19163451699c5f76f0b940de51f4fec769395ef07a82  dsh-platform-2026.11.23.6.tar
+
+--- files ---
+-rwxrwxrwx 1 dev dev        191 Nov 23 21:57 deploy/release/SHA256SUMS-2026.11.23.6
+-rwxrwxrwx 1 dev dev       2141 Nov 23 21:57 deploy/release/compose-2026.11.23.6.yml
+-rwxrwxrwx 1 dev dev   93328896 Nov 23 21:57 deploy/release/dsh-platform-2026.11.23.6.tar
+-rwxrwxrwx 1 dev dev 1008215552 Nov 23 21:57 deploy/release/dsh-runtime-2026.11.23.6.tar
+-rwxrwxrwx 1 dev dev       5418 Nov 23 21:57 deploy/release/env.example-2026.11.23.6
+-rwxrwxrwx 1 dev dev       1654 Nov 23 21:57 deploy/release/platform-runtime-2026.11.23.6.patch.yml
+
+--- platform image ---
+[dsh-platform:2026.11.23.6] size=93308210
+--- runtime image ---
+[dsh-runtime:2026.11.23.6] size=1008196800

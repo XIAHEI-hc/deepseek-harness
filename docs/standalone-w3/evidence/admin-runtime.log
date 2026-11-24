@@ -1,0 +1,19 @@
+# 管理端 Runtime 状态只读查询（dev platform, Mock）
+
+打开一个用户 Runtime 后：
+runtime READY generation=1
+
+admin runtime status --all:
+[
+  {
+    "userId": "cfa504b0-2dd5-41a7-a10a-6152947ae4a9",
+    "state": "READY",
+    "desiredState": "RUNNING",
+    "generation": 1,
+    "runtimeId": "proc-a8b10b269592d38c-7208-59761",
+    "imageDigest": null,
+    "lastErrorCode": null,
+    "lastActivityAt": 1795428930898,
+    "updatedAt": 1795428931720
+  }
+]

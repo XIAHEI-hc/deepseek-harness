@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for TEST_REPORT.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/integration/TEST_REPORT.md
+/system-fusion-test-report:
+  en: 57bcfe034553b474
+  zh: 97a53beb801cc867
+/system-fusion-test-report/1-this-round-2026-11-23-windows-wsl2-ubuntu:
+  en: d3586e613d8cec31
+  zh: 26a59aa1ba7ff2ff
+/system-fusion-test-report/2-fusion-unit-contract-coverage:
+  en: 7b4d96e41c0f978d
+  zh: 90750d85aefc9f5d
+/system-fusion-test-report/3-real-container-negative-evidence:
+  en: f885d02a06c12613
+  zh: eb4cdde12d9159b5
+/system-fusion-test-report/4-not-executed-or-blocked:
+  en: 22191d9f49e34a99
+  zh: 9ffe92feaad84f67

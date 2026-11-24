@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/integration/README.md
+/dsh-system-fusion-analysis-implementation-record:
+  en: 5797b663a3151121
+  zh: 4df106feb6a22295
+/dsh-system-fusion-analysis-implementation-record/1-switch-and-state:
+  en: 760a4cab71f3dec6
+  zh: a31b4ad2a4b9f688
+/dsh-system-fusion-analysis-implementation-record/2-two-runtimes:
+  en: 6aad34603e54239b
+  zh: e168c63b7bc14cf0
+/dsh-system-fusion-analysis-implementation-record/3-resources-acl-and-snapshots:
+  en: 7699eab76a5f8851
+  zh: 768193f734a93a86
+/dsh-system-fusion-analysis-implementation-record/4-workspaces-and-jobs:
+  en: dac79be480c18a75
+  zh: aa13597e75b8ac9a
+/dsh-system-fusion-analysis-implementation-record/5-http-routes:
+  en: 4ab4f31797a01b81
+  zh: 1f94bde12094512b
+/dsh-system-fusion-analysis-implementation-record/6-configuration:
+  en: a0a7a56dff0952a1
+  zh: 7b48301f2efaa1ad
+/dsh-system-fusion-analysis-implementation-record/7-verified-and-outstanding:
+  en: 43e1955450244be0
+  zh: 9b946d67b8188be7

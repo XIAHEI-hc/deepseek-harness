@@ -20,6 +20,32 @@ import type { createSettingsShellStore } from './shell-store.ts'
 import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client'
 import type { DesktopUpdateView } from '../types.ts'
 
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface SlotMap {
+    /**
+     * Platform account entry rendered beside the settings launcher in the
+     * sidebar foot. The shell owns only the location, so a deployment
+     * without a platform identity renders nothing there.
+     */
+    'settings.platform-launcher': { kind: 'single'; scope: 'root'; owner: SettingsPlatformLauncherOwnerProps }
+  }
+}
+
+/**
+ * Owner share of the platform launcher seat: the sidebar geometry plus the
+ * shell's settings navigation. `openSettings` is absent in a shell occupant
+ * that cannot open the settings panel, so the launcher plugin owns its own
+ * fallback for the model-provider settings entry.
+ */
+export interface SettingsPlatformLauncherOwnerProps {
+  /** Whether the sidebar renders wide content (false = 56px rail, avatar only). */
+  wide: boolean
+  /** Whether the settings dialog covers the sidebar. */
+  settingsOpen: boolean
+  /** @param sectionId - section to open; absent uses the shell's default section. */
+  openSettings?: (sectionId?: string) => void
+}
+
 /** One nav row projected from a settings.section registration's options. */
 export interface SettingsSectionRow {
   id: string
@@ -68,6 +94,7 @@ export type SettingsRootComponentProps =
   & PropsRenderSlots<
     | 'settings.launcher'
     | 'settings.notice'
+    | 'settings.platform-launcher'
     | 'settings.trigger'
     | 'settings.header'
     | 'settings.action'

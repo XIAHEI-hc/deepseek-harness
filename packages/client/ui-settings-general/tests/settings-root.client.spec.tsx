@@ -534,6 +534,23 @@ it('opens Account from the contributed sidebar launcher', () => {
   expect(renderSlot.mock.calls.filter(call => call[0] === 'settings.launcher').at(-1)?.[1]).toMatchObject({ settingsOpen: false })
 })
 
+it('renders the platform identity seat above its own launcher with shared settings navigation', () => {
+  const { renderSlot, view } = mount({ rows: [{ id: 'models', order: 0, label: 'Models' }] })
+  const platform = renderSlot.mock.calls.find(call => call[0] === 'settings.platform-launcher')!
+  expect(platform[1]).toMatchObject({ wide: true, settingsOpen: false })
+  // The seat is empty when no platform identity contributes, so the native
+  // foot keeps its usual single launcher row.
+  expect(screen.queryByRole('button', { name: 'Settings' })).toBeTruthy()
+  act(() => { (platform[1] as { openSettings: (sectionId?: string) => void }).openSettings('models') })
+  expect(screen.getByTestId('section-models')).toBeTruthy()
+  expect(screen.queryByTestId('section-general')).toBeNull()
+  view.unmount()
+  cleanup()
+  const collapsed = mount({ wide: false }).renderSlot.mock.calls
+    .find(call => call[0] === 'settings.platform-launcher')
+  expect(collapsed?.[1]).toMatchObject({ wide: false })
+})
+
 it('opens the section requested by the contributed sidebar launcher', () => {
   const { renderSlot } = mount({ rows: [{ id: 'general', order: 0, label: 'General' }, { id: 'account', order: 1, label: 'Account' }] })
   const launcher = renderSlot.mock.calls.find(call => call[0] === 'settings.launcher')!

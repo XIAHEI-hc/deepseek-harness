@@ -1,0 +1,46 @@
+# 审计与登录限流实测（dev platform, Mock）
+
+登录尝试（AUTH_LOGIN_RATE_LIMIT_MAX=2, window=60s）:
+login1=302
+login2=302
+login3=429 rate-limited (audit row recorded)
+
+schema_migrations: 1,2
+
+admin audit list --limit 10:
+[
+  {
+    "id": "c3811cc5-3d60-4dc9-9f68-1af4eb0214bb",
+    "at": "2026-11-23T10:08:53.884Z",
+    "action": "login",
+    "outcome": "rate-limited",
+    "userId": null,
+    "subject": null,
+    "clientAddress": "127.0.0.1",
+    "detail": null
+  },
+  {
+    "id": "6f7985e2-b472-476f-965a-7060c251667d",
+    "at": "2026-11-23T10:08:53.879Z",
+    "action": "login",
+    "outcome": "success",
+    "userId": "8ef7d895-62ea-4695-8266-1dde9cad0da7",
+    "subject": "dev-user-001",
+    "clientAddress": "127.0.0.1",
+    "detail": {
+      "mode": "mock"
+    }
+  },
+  {
+    "id": "7c1c9dee-cbd4-4d51-a953-5b7c0a7bf121",
+    "at": "2026-11-23T10:08:53.754Z",
+    "action": "login",
+    "outcome": "success",
+    "userId": "8ef7d895-62ea-4695-8266-1dde9cad0da7",
+    "subject": "dev-user-001",
+    "clientAddress": "127.0.0.1",
+    "detail": {
+      "mode": "mock"
+    }
+  }
+]

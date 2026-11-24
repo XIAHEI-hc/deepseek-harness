@@ -1,0 +1,30 @@
+# 一键离线安装 + 部署机冒烟（WSL2 Ubuntu + Docker 29.7.2，发布包 2026.11.23.2）
+
+\$ bash deploy/scripts/install.sh --version 2026.11.23.2 --profile local --port 18080
+== 校验发布包 SHA256 ==
+== 导入镜像（已存在则跳过） ==
+镜像已存在：dsh-platform:2026.11.23.2
+镜像已存在：dsh-runtime:2026.11.23.2
+== 准备部署目录 /srv/dsh ==
+私有网络 dsh-private 已存在，保持不变
+编排文件：/srv/dsh/compose.yml
+Gateway 私钥已存在，保持不变
+已有 /srv/dsh/.env，保持不变
+== 校验平台配置 ==
+== 启动平台 ==
+ Container dsh-platform-platform-1 Running
+== 等待健康检查 ==
+平台已就绪：http://127.0.0.1:18080
+查看日志：docker compose -f /srv/dsh/compose-2026.11.23.2.yml logs -f platform
+
+\$ 安装后冒烟（Mock 登录 → 原生 UI → Runtime 容器 → 同身份复用）
+login=302
+landing=200
+runtime=READY
+native_http=200
+native_boot=present
+--- runtime containers ---
+dsh-rt-918d0fa4a9c56db9 dsh-runtime:2026.11.23.2 Up About a minute
+--- reuse check ---
+containers_before=1 containers_after=1
+INSTALL SMOKE PASS

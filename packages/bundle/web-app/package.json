@@ -58,6 +58,7 @@
     }
   },
   "dependencies": {
+    "@deepseek-ai/dsh-host-authentication-gateway": "workspace:*",
     "@deepseek-ai/dsh-host-authentication-token": "workspace:*",
     "@deepseek-ai/dsh-agent-instructions": "workspace:*",
     "@deepseek-ai/dsh-agent-preset": "workspace:*",
@@ -99,6 +100,7 @@
     "@deepseek-ai/dsh-client-ui-file-drag": "workspace:*",
     "@deepseek-ai/dsh-client-ui-goal": "workspace:*",
     "@deepseek-ai/dsh-client-ui-input-trigger": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-integration-workbench": "workspace:*",
     "@deepseek-ai/dsh-client-ui-jobs": "workspace:*",
     "@deepseek-ai/dsh-client-ui-layout": "workspace:*",
     "@deepseek-ai/dsh-client-ui-message-feedback": "workspace:*",
@@ -106,6 +108,7 @@
     "@deepseek-ai/dsh-client-ui-open-in-app": "workspace:*",
     "@deepseek-ai/dsh-client-ui-permission-presets": "workspace:*",
     "@deepseek-ai/dsh-client-ui-plan": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-platform-identity": "workspace:*",
     "@deepseek-ai/dsh-client-ui-plugin-manager": "workspace:*",
     "@deepseek-ai/dsh-client-ui-reference": "workspace:*",
     "@deepseek-ai/dsh-client-ui-renderer": "workspace:*",

@@ -1,0 +1,23 @@
+PASS 1: both identities reach their native runtime UI
+PASS 2: both per-identity runtimes are READY before the agents start
+PASS 3: headless agent exited successfully
+PASS 4: agent executed the mocked tool call inside its runtime workspace
+PASS 5: agent reported its Session id
+PASS 6: headless agent exited successfully
+PASS 7: agent executed the mocked tool call inside its runtime workspace
+PASS 8: agent reported its Session id
+PASS 9: the two concurrent agents produced distinct Sessions
+PASS 10: agent Sessions carry native Session ids
+PASS 11: A's agent artifact exists in A's workspace
+PASS 12: B's agent artifact is absent from A's workspace
+PASS 13: B's agent artifact exists in B's workspace
+PASS 14: A's agent artifact is absent from B's workspace
+PASS 15: neither workspace contains the other identity artifact
+PASS 16: A's native Session list contains its agent Session
+PASS 17: A's native Session list does not contain B's agent Session
+PASS 18: B's native Session list contains its agent Session
+PASS 19: B's native Session list does not contain A's agent Session
+PASS 20: A cannot read B's agent Session state by id
+PASS 21: A cannot page B's agent Session events by id
+PASS 22: A's artifact carries A's agent content
+AGENT ISOLATION PASS: 22 assertions

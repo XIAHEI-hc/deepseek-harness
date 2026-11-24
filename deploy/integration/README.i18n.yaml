@@ -1,0 +1,34 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write deploy/integration/README.md
+/system-fusion-deployment:
+  en: a858c0e32b495bb0
+  zh: 3eb9a57cfb6183ac
+/system-fusion-deployment/prerequisites:
+  en: 427720ffd3967b21
+  zh: 8d5940ca40848caf
+/system-fusion-deployment/enable:
+  en: 842810160f6d969a
+  zh: db71d1700a2572bc
+/system-fusion-deployment/disable:
+  en: aa0d62b991775829
+  zh: 955551d03a213824
+/system-fusion-deployment/verify:
+  en: 64b99fddbcaf94f6
+  zh: b6d19474dd580cd5
+/system-fusion-deployment/backup-upgrade-and-rollback:
+  en: 1f083d8344f9e999
+  zh: 547e2d2d8ee747ac
+/system-fusion-deployment/operations-status:
+  en: ca22558d28113174
+  zh: 24cc5d6634381bb3
+/system-fusion-deployment/offline-fusion-release:
+  en: a9b1d2014c890b8e
+  zh: c9a992b8937072c2
+/system-fusion-deployment/controlled-egress-optional:
+  en: b0ba84c71890816f
+  zh: 8e2b84afa7c67995
+/system-fusion-deployment/boundaries:
+  en: bd7471b3e5cf91b7
+  zh: 621ca05d5924c842

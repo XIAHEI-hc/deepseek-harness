@@ -1,0 +1,3 @@
+ Test Files  3 failed | 790 passed (793)
+      Tests  4 failed | 14108 passed | 2 skipped (14114)
+failures are Windows environment only: symlink EPERM (present-open), pnpm pack ETIMEDOUT (document-preview license), slow-fs timeouts (ui-theme menu-surfaces)

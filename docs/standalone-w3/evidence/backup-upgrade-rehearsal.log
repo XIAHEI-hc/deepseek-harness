@@ -1,0 +1,98 @@
+== bash /mnt/d/Vibe_coding/deepseek-harness/deploy/scripts/install.sh --version 2026.11.23.3 --profile local --port 18081 ==
+== 校验发布包 SHA256 ==
+== 导入镜像（已存在则跳过） ==
+镜像已存在：dsh-platform:2026.11.23.3
+镜像已存在：dsh-runtime:2026.11.23.3
+== 准备部署目录 /srv/dsh ==
+私有网络 dsh-private 已存在，保持不变
+编排文件：/srv/dsh/compose.yml
+已生成 Gateway Ed25519 密钥
+已生成本地冒烟环境文件：/srv/dsh/.env
+== 校验平台配置 ==
+== 启动平台 ==
+ Container dsh-platform-platform-1 Recreate
+ Container dsh-platform-platform-1 Recreated
+ Container dsh-platform-platform-1 Starting
+ Container dsh-platform-platform-1 Started
+== 等待健康检查 ==
+平台已就绪：http://127.0.0.1:18081
+查看日志：docker compose -f /srv/dsh/compose-2026.11.23.3.yml logs -f platform
+{"mode":"create","state":"READY","sessionId":"session-b0b39f7c-5291-4679-9df5-029f7ba53047","userId":"4ed34e4c-22f2-4105-8957-972c0129e4a9"}
+session_id=session-b0b39f7c-5291-4679-9df5-029f7ba53047
+== env DSH_DEPLOY_ROOT=/srv/dsh DSH_COMPOSE_FILE=/srv/dsh/compose.yml bash /mnt/d/Vibe_coding/deepseek-harness/deploy/scripts/backup.sh pre-upgrade-v4 ==
+== 停止 platform（短暂维护窗口）==
+ Container dsh-platform-platform-1 Stopping
+ Container dsh-platform-platform-1 Stopped
+== 备份管理数据与密钥 ==
+== 备份用户空间 ==
+== 记录部署事实 ==
+备份完成：/srv/dsh/backups/pre-upgrade-v4
+--- backup files ---
+spaces/b44320e922e80de401e54ba78b5b492f811382412b1399676b109b343fbbb85c.tar.gz 2446705 bytes
+spaces/SHA256SUMS 138 bytes
+MANIFEST.txt 202 bytes
+management.tar.gz.sha256 84 bytes
+management.tar.gz 3160 bytes
+label=pre-upgrade-v4
+created_at=2026-11-23T12:10:21Z
+platform_image=f8976ba83ff5fa9552a24904813e72c2309b9331bd615b4be17c7f0e6cfd46f3
+runtime_image=
+runtime_containers=58b54b3de65a 0cc61ef7c5d3
+spaces=1
+== bash /mnt/d/Vibe_coding/deepseek-harness/deploy/scripts/install.sh --version 2026.11.23.4 --profile local --port 18081 ==
+== 校验发布包 SHA256 ==
+== 导入镜像（已存在则跳过） ==
+镜像已存在：dsh-platform:2026.11.23.4
+镜像已存在：dsh-runtime:2026.11.23.4
+== 准备部署目录 /srv/dsh ==
+私有网络 dsh-private 已存在，保持不变
+编排文件：/srv/dsh/compose.yml
+Gateway 私钥已存在，保持不变
+已有 /srv/dsh/.env，保持不变
+== 校验平台配置 ==
+== 启动平台 ==
+ Container dsh-platform-platform-1 Recreate
+ Container dsh-platform-platform-1 Recreated
+ Container dsh-platform-platform-1 Starting
+ Container dsh-platform-platform-1 Started
+== 等待健康检查 ==
+平台已就绪：http://127.0.0.1:18081
+查看日志：docker compose -f /srv/dsh/compose-2026.11.23.4.yml logs -f platform
+--- runtime before restart ---
+[
+  {
+    "userId": "4ed34e4c-22f2-4105-8957-972c0129e4a9",
+    "state": "READY",
+    "desiredState": "RUNNING",
+    "generation": 1,
+    "runtimeId": "dsh-rt-b44320e922e80de4",
+    "imageDigest": "dsh-runtime:2026.11.23.3",
+    "lastErrorCode": null,
+    "lastActivityAt": 1795435819069,
+    "updatedAt": 1795436148847
+  }
+]
+--- restart runtime onto new image ---
+{"event":"runtime.adopted","userRef":"6abbb268e8c2","generation":1}
+{"event":"runtime.ready","userRef":"6abbb268e8c2","generation":2}
+{
+  "userId": "4ed34e4c-22f2-4105-8957-972c0129e4a9",
+  "state": "READY",
+  "generation": 2
+}
+--- runtime status after restart ---
+[
+  {
+    "userId": "4ed34e4c-22f2-4105-8957-972c0129e4a9",
+    "state": "READY",
+    "desiredState": "RUNNING",
+    "generation": 2,
+    "runtimeId": "dsh-rt-b44320e922e80de4",
+    "imageDigest": "dsh-runtime:2026.11.23.4",
+    "lastErrorCode": null,
+    "lastActivityAt": 1795436160562,
+    "updatedAt": 1795436160562
+  }
+]
+{"mode":"verify","meStatus":200,"userId":"4ed34e4c-22f2-4105-8957-972c0129e4a9","listOk":true,"listError":null,"sessionFound":true,"title":"upgrade-preserved-title","nativeBoot":true}
+UPGRADE REHEARSAL COMPLETE

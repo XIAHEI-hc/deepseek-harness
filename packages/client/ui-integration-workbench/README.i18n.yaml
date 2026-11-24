@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/client/ui-integration-workbench/README.md
+/:
+  en: 90e7fdd9758796c6
+  zh: a1180e4884e12f40
+/deepseek-ai-dsh-client-ui-integration-workbench:
+  en: 90e622fd49d85ce3
+  zh: ae8f44f12078d18d
+/deepseek-ai-dsh-client-ui-integration-workbench/summary:
+  en: 4161d396cbfb5dcb
+  zh: 093847e894e0280c
+/deepseek-ai-dsh-client-ui-integration-workbench/table-of-contents:
+  en: b563e4ec4727d0de
+  zh: 96743a2cfcba9955
+/deepseek-ai-dsh-client-ui-integration-workbench/use-this-package:
+  en: 67999436cd78a13f
+  zh: bb37e504adb93e7b
+/deepseek-ai-dsh-client-ui-integration-workbench/understand-the-implementation:
+  en: ee4615a04fa6503d
+  zh: ee2c5fb2204a43cf
+/deepseek-ai-dsh-client-ui-integration-workbench/understand-the-implementation/availability:
+  en: ecbc6af8677a8dd8
+  zh: 3dcc8824af0b0c4a
+/deepseek-ai-dsh-client-ui-integration-workbench/understand-the-implementation/data-and-mutation:
+  en: f6131e9eb7d7235b
+  zh: ff933417edb841d1
+/deepseek-ai-dsh-client-ui-integration-workbench/understand-the-implementation/copy-and-styling:
+  en: e8f24500702a583b
+  zh: ca4792e9cddd1d14
+/deepseek-ai-dsh-client-ui-integration-workbench/further-exploration:
+  en: 458e65c9ba288459
+  zh: eba00514ce1bf600
+/deepseek-ai-dsh-client-ui-integration-workbench/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-client-ui-integration-workbench/model-experience/browser-only-fusion-chrome:
+  en: f38af2dca40b85a8
+  zh: 0d7a5e9dbe54f124
+/deepseek-ai-dsh-client-ui-integration-workbench/model-experience/browser-only-fusion-chrome/what-the-model-sees:
+  en: edbd19606fcca06b
+  zh: 68f05665fe743570
+/deepseek-ai-dsh-client-ui-integration-workbench/model-experience/browser-only-fusion-chrome/token-effect:
+  en: f87f4619cbf8b40c
+  zh: b1e0260c64e430c4
+/deepseek-ai-dsh-client-ui-integration-workbench/model-experience/browser-only-fusion-chrome/kv-cache-effect:
+  en: bd06a80f04459052
+  zh: 6bfe1fae101f6653
+/deepseek-ai-dsh-client-ui-integration-workbench/known-limitations-and-deferred-work:
+  en: cfe5dcbae3ca951e
+  zh: 673e65c0927ae826
+/deepseek-ai-dsh-client-ui-integration-workbench/known-limitations-and-deferred-work/dev-note:
+  en: 9070fb79960f3858
+  zh: 4a8a40f5a6c25364

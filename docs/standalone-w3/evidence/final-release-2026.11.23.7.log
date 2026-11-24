@@ -1,0 +1,48 @@
+# 最终发布包安装 + 冒烟 + Runtime 生命周期审计（2026.11.23.7）
+
+$ bash deploy/scripts/install.sh --version 2026.11.23.7 --profile local --port 18088
+ Container dsh-platform-platform-1 Created
+ Container dsh-platform-platform-1 Starting
+ Container dsh-platform-platform-1 Started
+== 等待健康检查 ==
+平台已就绪：http://127.0.0.1:18088
+查看日志：docker compose -f /srv/dsh/compose-2026.11.23.7.yml logs -f platform
+
+$ final smoke (Mock 登录 → /auth/me → Runtime → 原生 UI → admin audit list)
+login=302
+me=200
+runtime=READY
+native_boot=present
+runtime_container: dsh-rt-8aeb6c229e9f3c81 dsh-runtime:2026.11.23.7
+--- runtime lifecycle audit rows ---
+[
+  {
+    "id": "ee6a5e95-ba72-4ff1-87bb-15c1e9b1109d",
+    "at": "2026-11-23T14:21:15.280Z",
+    "action": "runtime.ready",
+    "outcome": "success",
+    "userId": "b915efc2-9b80-4d39-89c8-9de711a83700",
+    "subject": null,
+    "clientAddress": null,
+    "detail": {
+      "generation": 1,
+      "errorCode": null,
+      "runtimeId": "dsh-rt-8aeb6c229e9f3c81"
+    }
+  },
+  {
+    "id": "7a3b3d6a-8406-4e8b-aaab-bcedc3cce840",
+    "at": "2026-11-23T14:21:04.641Z",
+    "action": "runtime.start",
+    "outcome": "success",
+    "userId": "b915efc2-9b80-4d39-89c8-9de711a83700",
+    "subject": null,
+    "clientAddress": null,
+    "detail": {
+      "generation": 1,
+      "errorCode": null,
+      "runtimeId": null
+    }
+  }
+]
+FINAL V7 SMOKE PASS

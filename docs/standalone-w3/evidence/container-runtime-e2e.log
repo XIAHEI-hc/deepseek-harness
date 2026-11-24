@@ -1,0 +1,47 @@
+PASS 1: W3 test control accepted account a
+PASS 2: login redirects account a to W3
+PASS 3: callback redirects account a back to DSH
+PASS 4: session for account a is authenticated
+PASS 5: W3 test control accepted account b
+PASS 6: login redirects account b to W3
+PASS 7: callback redirects account b back to DSH
+PASS 8: session for account b is authenticated
+PASS 9: two W3 identities resolve to distinct platform users
+PASS 10: identity A receives the native DSH UI from its container
+PASS 11: identity B receives the native DSH UI from its container
+PASS 12: two identities run two real DSH containers (got 2)
+PASS 13: each identity owns exactly one container
+PASS 14: container dsh-rt-16329a31f16208e6 runs as non-root uid/gid 1000:1000
+PASS 15: container dsh-rt-16329a31f16208e6 publishes no ports
+PASS 16: container dsh-rt-16329a31f16208e6 exposes exactly 8 mounts
+PASS 17: container dsh-rt-16329a31f16208e6 mounts only explicit per-user paths
+PASS 18: container dsh-rt-59ad79c6e6e38367 runs as non-root uid/gid 1000:1000
+PASS 19: container dsh-rt-59ad79c6e6e38367 publishes no ports
+PASS 20: container dsh-rt-59ad79c6e6e38367 exposes exactly 8 mounts
+PASS 21: container dsh-rt-59ad79c6e6e38367 mounts only explicit per-user paths
+PASS 22: both identities can create native Sessions in their own runtime
+PASS 23: the two identities receive distinct Session ids
+PASS 24: A's native Session list contains only A's Session
+PASS 25: B's native Session list contains only B's Session
+PASS 26: A cannot read B's Session state with B's id
+PASS 27: A cannot rename B's Session
+PASS 28: identity A can save a personal Skill Plaza draft
+PASS 29: the saved draft reports a stable draft id
+PASS 30: A's draft list contains A's draft
+PASS 31: B's draft list does not contain A's draft
+PASS 32: A's draft still belongs to A after B's attempt
+PASS 33: B cannot update A's draft by id
+PASS 34: B can read its own file inside its container
+PASS 35: A's container cannot read B's file
+PASS 36: A container cannot see the host filesystem
+PASS 37: A container cannot see the Docker socket
+PASS 38: A container cannot see the gateway private key
+PASS 39: credential files resolve inside each user mount, never another user
+PASS 40: runtime manager reports the container runtime READY
+PASS 41: the model-provider account state is readable without provider sign-in
+PASS 42: the model provider is signed out while the platform identity is active
+PASS 43: model-provider sign-out does not end the platform session
+PASS 44: the native DSH UI stays available after provider sign-out
+PASS 45: platform logout revokes the browser session against the container runtime
+PASS 46: B keeps working after A logs out
+CONTAINER RUNTIME E2E PASS: 46 assertions

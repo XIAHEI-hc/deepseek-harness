@@ -1,0 +1,10 @@
+{
+  "rows": [
+    "Account information",
+    "Model provider settings",
+    "Sign out of DSH",
+    "Sign out of all devices"
+  ],
+  "dialogText": "Sign out of all devices?\n\nThis revokes your DSH sessions on every browser and device, including this one.\n\nCancel\nSign out everywhere",
+  "afterStatus": 401
+}

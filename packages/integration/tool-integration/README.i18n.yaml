@@ -1,0 +1,52 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/integration/tool-integration/README.md
+/:
+  en: 86fa7e1534f608de
+  zh: ff52b16372494d69
+/deepseek-ai-dsh-tool-integration:
+  en: 9a2161791bb0fd59
+  zh: 9f97f299da7830c2
+/deepseek-ai-dsh-tool-integration/summary:
+  en: d53d32ac1607c7ee
+  zh: 07b0a64a81ff0cd0
+/deepseek-ai-dsh-tool-integration/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: ffab54373e9e61f0
+/deepseek-ai-dsh-tool-integration/use-this-package:
+  en: 3392548d88ecbf64
+  zh: b05a42e3f2d47fcb
+/deepseek-ai-dsh-tool-integration/understand-the-implementation:
+  en: ee4615a04fa6503d
+  zh: ee2c5fb2204a43cf
+/deepseek-ai-dsh-tool-integration/understand-the-implementation/trust-and-transport:
+  en: 45c1c18931b7c097
+  zh: 8fea870d54e85c80
+/deepseek-ai-dsh-tool-integration/understand-the-implementation/content-bounds:
+  en: 01774f850976e8b0
+  zh: 9aacbbcc1accfcf1
+/deepseek-ai-dsh-tool-integration/further-exploration:
+  en: d872feec45824cb1
+  zh: b95e9e3a94492764
+/deepseek-ai-dsh-tool-integration/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-tool-integration/model-experience/fusion-analysis-tools:
+  en: 2f383470083b6aa9
+  zh: 78badbb23e0bec4f
+/deepseek-ai-dsh-tool-integration/model-experience/fusion-analysis-tools/what-the-model-sees:
+  en: 5d5dd5e480890559
+  zh: e1860b5d798e9a26
+/deepseek-ai-dsh-tool-integration/model-experience/fusion-analysis-tools/token-effect:
+  en: d89ab75c031e1cdf
+  zh: c7e5d751e4ea19b8
+/deepseek-ai-dsh-tool-integration/model-experience/fusion-analysis-tools/kv-cache-effect:
+  en: 619ea21bf33aa705
+  zh: cdb5ab1571e1c34a
+/deepseek-ai-dsh-tool-integration/known-limitations-and-deferred-work:
+  en: d112c5235e833e09
+  zh: 53ab611dc7f300e4
+/deepseek-ai-dsh-tool-integration/known-limitations-and-deferred-work/dev-note:
+  en: e0a7efdefa0db4bd
+  zh: edf0df6052f84ba8

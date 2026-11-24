@@ -455,6 +455,12 @@
     - id: image-offload
       name: '@deepseek-ai/dsh-compaction-image-offload'
 
+    # Optional system-fusion tools. The platform runtime overlay enables this
+    # row only when the runtime carries the gateway URL and capability token.
+    - id: tool-integration
+      name: '@deepseek-ai/dsh-tool-integration'
+      disabled: true
+
     - id: tool-todo
       name: '@deepseek-ai/dsh-tool-todo'
       config:

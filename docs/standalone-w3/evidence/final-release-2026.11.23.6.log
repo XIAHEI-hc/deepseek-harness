@@ -1,0 +1,24 @@
+# 最终发布包安装 + 冒烟（2026.11.23.6）
+
+$ bash deploy/scripts/install.sh --version 2026.11.23.6 --profile local --port 18086
+ Network dsh-platform_default Created
+ Container dsh-platform-platform-1 Creating
+ Container dsh-platform-platform-1 Created
+ Container dsh-platform-platform-1 Starting
+ Container dsh-platform-platform-1 Started
+== 等待健康检查 ==
+平台已就绪：http://127.0.0.1:18086
+查看日志：docker compose -f /srv/dsh/compose-2026.11.23.6.yml logs -f platform
+
+$ final smoke (Mock 登录 → /auth/me → Runtime → 原生 UI → 镜像内 pg 驱动)
+login=302
+me=200
+runtime=READY
+native_boot=present
+runtime_container: dsh-rt-df7013e6a8882c4f dsh-runtime:2026.11.23.6
+--- platform image metadata ---
+
+template parsing error: template: :1:15: executing "" at <.Config.Image>: map has no entry for key "Image"
+--- pg driver inside platform image ---
+/app/services/platform/node_modules/pg/lib/index.js
+FINAL RELEASE SMOKE PASS

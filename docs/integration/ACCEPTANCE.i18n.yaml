@@ -1,0 +1,13 @@
+# Bilingual-pair consistency record for ACCEPTANCE.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/integration/ACCEPTANCE.md
+/system-fusion-acceptance:
+  en: deebee8f210d9c7b
+  zh: 701c64788871799e
+/system-fusion-acceptance/fusion-gates:
+  en: 7de931c92de25736
+  zh: 4d8f16062d373bd1
+/system-fusion-acceptance/explicit-non-claims:
+  en: f43b33bddb2b7d44
+  zh: c88d45deb2911cb4

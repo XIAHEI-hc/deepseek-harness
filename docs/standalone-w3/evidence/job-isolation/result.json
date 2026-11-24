@@ -1,0 +1,31 @@
+{
+  "sessionA": "session-d761a8c7-1c92-4172-a5ab-6619655a01a2",
+  "sessionB": "session-630a6ff1-e56b-4502-a065-2b3170154413",
+  "jobId": "pwsh-37d7748af1fd4025",
+  "ownJobs": [
+    {
+      "id": "pwsh-37d7748af1fd4025",
+      "kind": "pwsh",
+      "label": "Start-Sleep -Seconds 120",
+      "owner": "session-d761a8c7-1c92-4172-a5ab-6619655a01a2",
+      "status": "running",
+      "startedAt": 1795444751026,
+      "output": {
+        "total": 0,
+        "earliest": 0
+      }
+    }
+  ],
+  "foreignJobs": [],
+  "foreignKill": {
+    "ok": false,
+    "error": {
+      "code": "job/not-found",
+      "message": "JobError: unknown job pwsh-37d7748af1fd4025",
+      "details": {
+        "sessionId": "session-d761a8c7-1c92-4172-a5ab-6619655a01a2",
+        "jobId": "pwsh-37d7748af1fd4025"
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+# 未完成项与客观阻塞（OPEN ISSUES）
+
+状态以实际运行为准；未跑过的检查记 `NOT_RUN`，环境/凭据缺失记 `BLOCKED`，绝不把 Mock 结果当真实 W3 通过。
+
+## 1. BLOCKED（目标环境才能完成）
+
+| ID | 阻塞事项 | 精确缺失条件 | 已完成部分 | 下一步命令/材料 |
+|---|---|---|---|---|
+| AUTH-24 | 真实 W3 A/B 账号端到端 | 无 W3 租户的 `W3_CLIENT_ID/SECRET/AUTHORIZE/TOKEN/USERINFO` 与回调白名单 | W3 契约测试、Mock 流程、模拟 W3 Provider 全链路 e2e 通过 | 在目标环境填 `.env` 的 W3_*，`bash deploy/scripts/run-dev.sh`（或生产 compose）后用两个真实账号走 `/login`，记录回调时间与姓名 |
+| OPS-10 | 内网 Git 提交 | 未提供内网 Git 地址、分支与凭据 | 平台代码、部署文件与文档已完成并在本地分支 `feat/standalone-w3-platform` 提交 | 目标环境确认后按内网流程推送并打版本标签 |
+| OPS-04 Postgres | 生产 PostgreSQL 迁移/备份 | 已实现可选 PostgreSQL 身份库后端（迁移、登录/Session/审计、重启后 Session 保持；本地 PostgreSQL 16 实测），目标环境托管 PG 仍待连接信息 | SQLite 版本化迁移、PostgreSQL 后端与集成测试、备份/恢复脚本 | 在目标环境配置 `DSH_PLATFORM_STORAGE=postgres` + `DSH_POSTGRES_URL` 完成一次真实连接与备份演练 |
+| OPS-08 | 运行 7 天后重启恢复 | 需要 7 天真实运行窗口 | 重启恢复设计 + 对账单测 | 目标环境长稳测试 |
+
+## 2. 代码缺口（后续迭代，非阻塞当前验收）
+
+1. **管理控制台/CLI**：已提供 `admin migrate-home`、`admin user disable|enable`、`admin session revoke-all`、`admin audit list`、`admin session cleanup`、`admin runtime status`、`admin runtime restart`（容器后端；生产在 platform 容器内执行）；仍需补图形化运维控制台与 process 后端的强制重启入口。
+2. **登录限流/防爆破**：已实现按客户端地址的进程内滑动窗口（`AUTH_LOGIN_RATE_LIMIT_*`，429 + Retry-After + 审计）；多副本部署需在共享反代执行同等额度。
+3. **W3 单点退出 / PKCE**：依赖 W3 支持情况，未在真实环境验证。
+4. **Session 清理任务**：已提供 `admin session cleanup [--retention-days n] [--confirm]`（dry-run/删除/审计）；生产可由系统 cron/定时任务按天调用，仓库不内置调度器。
+5. **gzip/压缩与 HTTP/2**：Gateway 透传原始流，未做压缩；由反代负责。
+6. **前端快照/浏览器冒烟**：平台身份插件的组件/apply 测试与 Playwright 真实浏览器验收（登录、姓名、退出、刷新、第二身份）已通过并留存 `docs/standalone-w3/evidence/` 截图；仓库自带 `test:web` 快照套件未运行（需要构建后的 Web host 与模型凭据）。
+7. **平台审计事件表**：`dsh_audit_events`（migration v2）已记录登录成功/拒绝/限流、注销、全设备注销、管理员 disable/enable/revoke-all，以及 Runtime 生命周期（start/ready/failed/stop，含 generation/错误码/runtimeId）；`admin audit list` 可读。连接归属事件可在需要时再扩展。
+8. **容器化生产验证**：平台镜像与完整 DSH 运行时镜像都已成功构建；一键离线安装脚本在 WSL2 Ubuntu + 真实 Docker 上完成发布包导入、容器模式启动、Mock 登录、原生 UI 与用户 Runtime 容器冒烟（证据 `evidence/install-smoke.log`），并修复了平台容器 root 创建空间目录导致运行时无法写入的属主缺陷；随后完成备份一致性 + 真实发布包 v3→v4 离线升级演练（Session/标题保留、Runtime adopt + restart 到新镜像，证据 `evidence/backup-upgrade-rehearsal.log`），以及部署机安装栈 W3 双身份 A/B 隔离验证（两个真实 Runtime 容器、姓名/注销撤销，证据 `evidence/install-w3-ab.log`）。真实 W3 登录、目标机 7 天运行与内网 Git 仍属 BLOCKED 外部队列。
+9. **仓库级既有红**（与本次改动无关）：`verify-cordis-config`（`apps/cli/tests/profiles/acp/cordis.yml` 夹具）、`verify-client-domain-graph`（ui-workspace sibling import）、`pnpm run lint` 中 skill-plaza/authentication-gateway 测试/workspace-controller 的既有告警；新增代码定向 oxlint 为 0 问题。
+10. **真实环境回归**：浏览器自动化（Playwright MCP + 真实 Chromium）与 keyless Mock LLM 的 Agent/MCP/Job/WebSocket 路径均已实测；真实模型供应商聊天、真实 W3 登录与目标部署机演练仍属目标环境项（见 §1 BLOCKED 与 TEST_REPORT §5）。
+
+## 3. 与开发包的已知偏差
+
+1. **身份服务为 TypeScript 重写**而非托管 Python sidecar：行为以开发包 Python 实现与原测试逐条对拍（见 `services/platform/tests/identity.*.spec.ts`），部署不依赖 Python。
+2. **断言 sub 使用内部 `user_id`** 而非 W3 subject；W3 subject 只用于身份库唯一映射。原因：Runtime 只接受一个固定 subject，使用内部不可变 id 避免 W3 subject 变更/复用带来的越权与迁移歧义。
+3. **开发包 bridge README 的断言 header 写法与仓库 verifier 冲突**：以 verifier 为准（线上两段格式），已用真实 Runtime 冒烟验证。
+4. **数据库**：身份库默认 SQLite，生产可选 PostgreSQL（已实现并本地实测）；运行时注册表为节点本地 SQLite。目标托管 PostgreSQL 只需在部署 `.env` 配置连接串并完成一次备份演练。
+5. **宿主环境**：本机 Windows + WSL2 Docker；容器后端代码与参数单测完成，真实容器 e2e 建议在 Linux 部署机执行。

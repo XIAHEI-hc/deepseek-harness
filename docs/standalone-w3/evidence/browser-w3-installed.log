@@ -1,0 +1,35 @@
+# Windows Chromium 对最终安装栈的 W3 A/B 登录与左下角姓名（2026.11.23.7）
+
+$ node .dsh-final-browser.mjs
+[
+  {
+    "account": "a",
+    "state": "READY",
+    "launcherText": "U User A W3 · uid-a",
+    "displayName": "User A",
+    "userId": "0d213c8f-5bee-4484-a708-e33917622739",
+    "hasOwnName": true
+  },
+  {
+    "account": "b",
+    "state": "READY",
+    "launcherText": "U User B W3 · uid-b",
+    "displayName": "User B",
+    "userId": "c2982f6b-138c-4da2-a645-dfbca813abad",
+    "hasOwnName": true
+  }
+]
+FINAL BROWSER W3 AB PASS
+
+--- runtime containers ---
+dsh-rt-b04f75818cbad2c3 dsh-runtime:2026.11.23.7
+dsh-rt-4476ef7e8bf5f517 dsh-runtime:2026.11.23.7
+--- runtime audit rows (platform container) ---
+    "action": "runtime.ready",
+    "action": "runtime.start",
+    "action": "runtime.ready",
+    "action": "runtime.start",
+--- screenshots ---
+total 100
+-rwxrwxrwx 1 dev dev 63958 Nov 23 22:27 identity-a.png
+-rwxrwxrwx 1 dev dev 34143 Nov 23 22:27 identity-b.png

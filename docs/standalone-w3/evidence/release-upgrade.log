@@ -1,0 +1,4 @@
+PASS 1: 临时部署启动，Mock 会话建立
+PASS 2: 真实发布包离线导入并切换版本，既有会话与数据保持
+PASS 3: 发布包 SHA256SUMS 校验通过
+RELEASE UPGRADE PASS: 3 assertions（版本 2026.11.23.1）

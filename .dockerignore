@@ -1,0 +1,21 @@
+# Docker 构建上下文排除项：镜像在构建阶段重新安装与编译。
+node_modules
+**/node_modules
+.git
+.gitattributes
+.github
+coverage
+.artifacts
+.cache
+.dsh-build
+.ui-review
+_devpack
+.dsh-platform
+**/lib
+**/*.tsbuildinfo
+apps/web/dist
+benchmarks/results
+.pnpm-store
+deploy/.env
+deploy/release
+docs/standalone-w3/evidence

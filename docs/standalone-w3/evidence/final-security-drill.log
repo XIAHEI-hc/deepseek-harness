@@ -1,0 +1,42 @@
+== 未认证的旧 token 入口 ==
+page_token_status=302
+api_bearer_status=401
+== login and open runtime ==
+runtime_initial=READY
+runtime_container=728ae4c8bf8d
+--- container identity/limits/networks ---
+user=1000:1000 cpu=1000000000 memory=2147483648 pids=512 net=dsh-private ports={}
+--- mounts ---
+/srv/dsh/spaces/4223b17849dc40a09331eeb1607dc95d35135917a9ba3ca985f58d6c265ad7c0/dsh-home -> /data/dsh-home rw=true
+/srv/dsh/spaces/4223b17849dc40a09331eeb1607dc95d35135917a9ba3ca985f58d6c265ad7c0/home -> /data/home rw=true
+/srv/dsh/spaces/4223b17849dc40a09331eeb1607dc95d35135917a9ba3ca985f58d6c265ad7c0/agents-home -> /data/agents-home rw=true
+/srv/dsh/spaces/4223b17849dc40a09331eeb1607dc95d35135917a9ba3ca985f58d6c265ad7c0/workspaces -> /data/workspaces rw=true
+/srv/dsh/spaces/4223b17849dc40a09331eeb1607dc95d35135917a9ba3ca985f58d6c265ad7c0/uploads -> /data/uploads rw=true
+/srv/dsh/spaces/4223b17849dc40a09331eeb1607dc95d35135917a9ba3ca985f58d6c265ad7c0/tmp -> /data/tmp rw=true
+/srv/dsh/management/keys/gateway-ed25519-public.pem -> /run/dsh/gateway-public.pem rw=false
+/srv/dsh/current/deploy/runtime/platform-runtime.patch.yml -> /run/dsh/platform-runtime.patch.yml rw=false
+
+--- env key leakage ---
+DSH_GATEWAY_MAX_LIFETIME_SECONDS=300
+DSH_GATEWAY_PUBLIC_KEY_FILE=/run/dsh/gateway-public.pem
+DSH_GATEWAY_AUDIENCE=dsh-web
+DSH_GATEWAY_KEY_ID=dsh-gateway-key-v1
+DSH_GATEWAY_ISSUER=dsh-gateway
+DSH_GATEWAY_REPLAY_WINDOW_SECONDS=60
+--- direct runtime old token attempt ---
+runtime_ip=172.26.238.38
+direct_token_status=401
+direct_no_assertion_status=401
+== idle reaper (idle=8s, reap=2s) ==
+runtime_after_idle=STOPPED
+container_after_idle=
+--- persisted space dirs ---
+4223b17849dc40a09331eeb1607dc95d35135917a9ba3ca985f58d6c265ad7c0/tmp
+4223b17849dc40a09331eeb1607dc95d35135917a9ba3ca985f58d6c265ad7c0/home
+4223b17849dc40a09331eeb1607dc95d35135917a9ba3ca985f58d6c265ad7c0/uploads
+4223b17849dc40a09331eeb1607dc95d35135917a9ba3ca985f58d6c265ad7c0/agents-home
+4223b17849dc40a09331eeb1607dc95d35135917a9ba3ca985f58d6c265ad7c0/dsh-home
+4223b17849dc40a09331eeb1607dc95d35135917a9ba3ca985f58d6c265ad7c0/workspaces
+== restart runtime from persisted space ==
+runtime_after_idle_restart=READY
+container_after_restart=dsh-rt-4223b17849dc40a0 dsh-runtime:2026.11.23.7

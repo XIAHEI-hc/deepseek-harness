@@ -1,0 +1,9 @@
+PASS 1: seeded the user web profile with one stdio MCP server
+PASS 2: the user runtime starts with the MCP manager configured
+PASS 3: the identity creates a native Session through the Gateway
+PASS 4: the runtime exposes a model catalog
+PASS 5: the identity selects a model for its Session
+PASS 6: the scripted model submits the prompt turn
+PASS 7: the model-facing MCP tool name is mcp__fixtures__add
+PASS 8: the MCP stdio server executed the call and returned 5 to the model turn
+MCP NATIVE PASS: 8 assertions

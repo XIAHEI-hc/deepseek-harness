@@ -1,0 +1,18 @@
+== 清理旧验证栈：/srv/dsh ==
+docker0 host gateway: 172.17.0.1
+== 启动测试 W3 Provider ==
+== 安装 W3 模式平台（发布包 2026.11.23.4，端口 18082）==
+ Network dsh-platform_default Creating
+ Network dsh-platform_default Creating
+ Network dsh-platform_default Created
+ Network dsh-platform_default Created
+ Container dsh-platform-platform-1 Creating
+ Container dsh-platform-platform-1 Created
+ Container dsh-platform-platform-1 Starting
+ Container dsh-platform-platform-1 Started
+== A/B 登录、Runtime、Session 隔离、注销撤销 ==
+{"mode":"login","A":{"userId":"42265c0c-3651-4bfc-8e9c-971f045521d9","displayName":"User A","state":"READY"},"B":{"userId":"2a12d4a9-ced5-490e-8915-08cc778ffcdc","displayName":"User B","state":"READY"},"sessionA":"session-d6985195-5d6c-4957-ad43-517dc08e61e3","sessionB":"session-236c48ba-f725-4f4a-b778-a019b94698b9","listAHasOwn":true,"listALacksB":true,"listBHasOwn":true,"listBLacksA":true,"crossStateOk":false,"bootA":true,"bootB":true,"cookiesA":{"w3_account":"a","dsh_session":"rejVxRm60KZIlxS4Vzio6Ri2Q35FZRGa46tmCXXVf1-PuCSf3pxEterVEYn6sHZ5","dsh_csrf":"A5LKbrdXKgVruRJOe6cnNF3-zCchBB4kHsL6SEJApzg"},"cookiesB":{"w3_account":"b","dsh_session":"i53EIqS3ebJ6eV3YCgjOlGSfsuFXpy1U2Yhcqvo-NzwAIxZ-fB0K_fMmutEZDk8c","dsh_csrf":"rc3YM4ASFy1mocukNL59qjYFJ61A-6rVb2m8LA474lA"}}
+container: dsh-rt-a59d0f4b5f0519c9 dsh-runtime:2026.11.23.4
+container: dsh-rt-04d66fbd600f98aa dsh-runtime:2026.11.23.4
+{"mode":"revoke","logoutStatus":200,"aMeAfterLogout":401,"bMeAfterLogout":200,"bNativeBootAfterALogout":true}
+INSTALLED STACK W3 A/B PASS
