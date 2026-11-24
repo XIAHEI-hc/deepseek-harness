@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/integration/README.md
 /dsh-system-fusion-analysis-implementation-record:
-  en: e66a2e5d67a6d8d6
-  zh: 00ec327c002970a7
+  en: 5797b663a3151121
+  zh: 4df106feb6a22295
 /dsh-system-fusion-analysis-implementation-record/1-switch-and-state:
   en: 760a4cab71f3dec6
   zh: a31b4ad2a4b9f688

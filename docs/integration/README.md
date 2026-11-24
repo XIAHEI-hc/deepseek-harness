@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-System fusion is a **disabled by default** capability on the independent DSH multi-user platform: an authenticated W3/Mock user can read administrator-registered, user-authorized read-only resources without modifying the host business system, and submit analysis scripts to a separate short-lived container. The native DSH chat, Session, Workspace, identity, and deployment are unchanged while the switch is off.
+System fusion is a **disabled by default** capability on the independent DSH multi-user platform: an authenticated W3/Mock user can read administrator-registered, user-authorized read-only resources without modifying the host business system, and submit analysis scripts to a separate short-lived container. The native DSH chat, Session, Workspace, identity, and deployment are unchanged while the switch is off. Host-system onboarding conditions are in [ONBOARDING.md](ONBOARDING.md).
 
 ## 1. Switch and state
 

@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for ONBOARDING.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/integration/ONBOARDING.md
+/host-system-onboarding-conditions:
+  en: b5bbd34c7b8f387e
+  zh: 137595155907280e
+/host-system-onboarding-conditions/1-roles-and-decisions:
+  en: 3120061ca8facc8d
+  zh: f6263072e08518af
+/host-system-onboarding-conditions/2-identity-and-authorization-conditions:
+  en: 34aa93eb36e37fd1
+  zh: 01d0a8f4c5598e8c
+/host-system-onboarding-conditions/3-resource-conditions:
+  en: 98bc261a9a2b0b41
+  zh: 676d21d6ba8fd867
+/host-system-onboarding-conditions/4-adapter-and-network-conditions:
+  en: 0d0d29d125a3f41d
+  zh: e59398b86ff9c3ae
+/host-system-onboarding-conditions/5-connector-registry-and-grants:
+  en: 79cfdb54c662b5a0
+  zh: 65b8589f1c5ddcfd
+/host-system-onboarding-conditions/6-runtime-and-deployment-conditions:
+  en: e7dd26f7c58457a1
+  zh: dd78a8fe5e14067e
+/host-system-onboarding-conditions/7-security-conditions:
+  en: 37351377d0caa4ec
+  zh: a17d43d797e79109
+/host-system-onboarding-conditions/8-acceptance-evidence-required-before-production:
+  en: b0a14755421c2adb
+  zh: a4763992bce3ca08
+/host-system-onboarding-conditions/9-intake-form:
+  en: 7fde34417e71d523
+  zh: 7ebf88c36f6dfc2e
+/host-system-onboarding-conditions/10-conditions-that-stop-onboarding:
+  en: be1d8860f70f7a34
+  zh: 48f60052aeeb9602
+/host-system-onboarding-conditions/11-onboarding-sequence:
+  en: d21df346f2b084c9
+  zh: 9db12c889ee48f1d
